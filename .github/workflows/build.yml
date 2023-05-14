@@ -1,0 +1,39 @@
+name: Build Plugin
+on:
+  push:
+    branches: 'main'
+jobs:
+  build:
+    if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
+    runs-on: [windows-2022]
+
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          submodules: 'true'
+          fetch-depth: 0
+      
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.3.1
+        with:
+          vs-prerelease: true
+        
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1.2.0
+        
+      - name: Restore NuGet Packages
+        continue-on-error: true
+        run: nuget restore SimpleHeels.sln
+
+      - name: Download Dalamud
+        run: |
+          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+          Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+
+      - name: Build
+        run: msbuild SimpleHeels.sln /p:Configuration=Release
+          
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          path: ./bin/Release/SimpleHeels/latest.zip
