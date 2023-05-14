@@ -246,12 +246,14 @@ public class ConfigWindow : Window {
     
     private void DrawCharacterView(CharacterConfig? characterConfig) {
         if (characterConfig == null) return;
+        var activeFootwear = GetFootwearForPlayer(selectedName, selectedWorld);
         
-        if (ImGui.BeginTable("OffsetsTable", 4)) {
+        if (ImGui.BeginTable("OffsetsTable", 5)) {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 2 + 1);
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Footwear", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, checkboxSize);
             ImGui.TableHeadersRow();
 
             var deleteIndex = -1;
@@ -352,6 +354,16 @@ public class ConfigWindow : Window {
                     ImGui.EndCombo();
                 }
                 
+                ImGui.TableNextColumn();
+                if (activeFootwear == heelConfig.ModelId) {
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.Text($"{(char)FontAwesomeIcon.ArrowLeft}");
+                    ImGui.PopFont();
+                    if (ImGui.IsItemHovered()) {
+                        ImGui.SetTooltip("Currently Wearing");
+                    }
+                }
+
                 ImGui.PopID();
             }
 
