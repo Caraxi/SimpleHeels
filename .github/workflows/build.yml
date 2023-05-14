@@ -22,8 +22,14 @@ jobs:
       - name: Setup NuGet
         uses: NuGet/setup-nuget@v1.2.0
         
+      - uses: actions/cache@v1
+        id: cache
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+
       - name: Restore NuGet Packages
-        continue-on-error: true
+        if: steps.cache.outputs.cache-hit != 'true'
         run: nuget restore SimpleHeels.sln
 
       - name: Download Dalamud
