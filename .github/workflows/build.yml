@@ -1,7 +1,7 @@
 name: Build Plugin
 on:
   push:
-    branches: 'main'
+    branches: 'master'
 jobs:
   build:
     if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
