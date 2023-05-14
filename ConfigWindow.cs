@@ -443,6 +443,7 @@ public class ConfigWindow : Window {
         var characterBase = (CharacterBase*)obj->DrawObject;
         if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return 0;
         var human = (Human*)obj->DrawObject;
+        if (human == null) return 0;
         return human->Feet.Id;
     }
     
