@@ -8,7 +8,8 @@ jobs:
     runs-on: [windows-2022]
 
     steps:
-      - uses: actions/checkout@v3.5.2
+      - name: Checkout
+        uses: actions/checkout@v3.5.2
         with:
           submodules: 'true'
           fetch-depth: 0
@@ -33,7 +34,11 @@ jobs:
       - name: Build
         run: msbuild SimpleHeels.sln /p:Configuration=Release
           
+      - name: Extract Artifact
+        run: |
+          Expand-Archive -Force ./bin/Release/SimpleHeels/latest.zip ./Artifact
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v3.1.2
         with:
-          path: ./bin/Release/SimpleHeels/latest.zip
+          path: ./Artifact/*
