@@ -182,6 +182,7 @@ public unsafe class Plugin : IDalamudPlugin {
         
         var character = (Character*)gameObject;
         if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1 or 2 or 3) return null;
+        if (character->Mode == Character.CharacterModes.EmoteLoop && character->ModeParam is 21) return null;
         var name = MemoryHelper.ReadSeString(new nint(gameObject->GetName()), 64);
         return GetOffsetFromConfig(name.TextValue, character->HomeWorld, human->Feet.Id);
     }
