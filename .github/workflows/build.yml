@@ -30,7 +30,6 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
 
       - name: Restore NuGet Packages
-        if: steps.cache.outputs.cache-hit != 'true'
         run: nuget restore SimpleHeels.sln
 
       - name: Download Dalamud
