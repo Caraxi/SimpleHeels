@@ -225,6 +225,12 @@ public class ConfigWindow : Window {
                 
                 ImGui.Text("SimpleHeels Options");
                 ImGui.Separator();
+
+                ImGui.Checkbox("Show Plus/Minus buttons for offset adjustments", ref config.ShowPlusMinusButtons);
+                if (config.ShowPlusMinusButtons) {
+                    ImGui.SetNextItemWidth(200 * ImGuiHelpers.GlobalScale);
+                    ImGui.SliderFloat("Plus/Minus Button Delta", ref config.PlusMinusDelta, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags.AlwaysClamp);
+                }
                 
                 #if DEBUG
                 ImGui.Checkbox("[DEBUG] Open config window on startup", ref config.DebugOpenOnStartup);
@@ -244,7 +250,7 @@ public class ConfigWindow : Window {
         if (ImGui.BeginTable("OffsetsTable", 4)) {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 2 + 1);
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
-            ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthFixed, 90 * ImGuiHelpers.GlobalScale);
+            ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Footwear", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableHeadersRow();
 
@@ -288,9 +294,29 @@ public class ConfigWindow : Window {
                 ImGui.InputText("##label", ref heelConfig.Label, 100);
                 
                 ImGui.TableNextColumn();
-                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -1, 1, "%.4f", ImGuiSliderFlags.AlwaysClamp)) {
-                    if (heelConfig.Enabled) Plugin.RequestUpdateAll();
+
+                if (plugin.Config.ShowPlusMinusButtons) {
+                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Minus)) {
+                        heelConfig.Offset -= plugin.Config.PlusMinusDelta;
+                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
+                    }
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetItemRectSize().X - ImGui.GetStyle().ItemSpacing.X);
+                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -1, 1, "%.4f", ImGuiSliderFlags.AlwaysClamp)) {
+                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
+                    }
+                    ImGui.SameLine();
+                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus)) {
+                        heelConfig.Offset += plugin.Config.PlusMinusDelta;
+                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
+                    }
+                    
+                    
+                } else {
+                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -1, 1, "%.4f", ImGuiSliderFlags.AlwaysClamp)) {
+                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
+                    }
                 }
                 
                 ImGui.TableNextColumn();

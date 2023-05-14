@@ -9,6 +9,8 @@ public class PluginConfig : IPluginConfiguration {
     public Dictionary<uint, Dictionary<string, CharacterConfig>> WorldCharacterDictionary = new();
     
     public bool DebugOpenOnStartup = true;
+    public bool ShowPlusMinusButtons = false;
+    public float PlusMinusDelta = 0.001f;
 
     public bool TryGetCharacterConfig(string name, uint world, out CharacterConfig? characterConfig) {
         characterConfig = null;
