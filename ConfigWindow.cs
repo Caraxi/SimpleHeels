@@ -451,6 +451,7 @@ public class ConfigWindow : Window {
         var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
         if (player is not PlayerCharacter) return 0;
         var obj = (GameObjectExt*)player.Address;
+        if (obj->DrawObject == null) return 0;
         if (obj->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return 0;
         var characterBase = (CharacterBase*)obj->DrawObject;
         if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return 0;
