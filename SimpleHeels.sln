@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{A70663D7-6EA4-4FD8-AC9A-BB7D1CD86678}") = "SimpleHeels", "SimpleHeels.csproj", "{B4FE8155-7639-4588-8715-1EB17CDF8F15}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B4FE8155-7639-4588-8715-1EB17CDF8F15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4FE8155-7639-4588-8715-1EB17CDF8F15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4FE8155-7639-4588-8715-1EB17CDF8F15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4FE8155-7639-4588-8715-1EB17CDF8F15}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
