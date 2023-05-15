@@ -100,7 +100,6 @@ public unsafe class Plugin : IDalamudPlugin {
         var character = PluginService.Objects[updateIndex] as PlayerCharacter;
         if (character == null) {
             managedIndex[updateIndex] = false;
-            if (updateIndex == 0) LegacyApiProvider.OnOffsetChange(0);
             return;
         }
         var obj = (GameObjectExt*)character.Address;
