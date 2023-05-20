@@ -412,7 +412,7 @@ public class ConfigWindow : Window {
             [0] = new() { Id = 0, Name = "Smallclothes (Barefoot)"}
         };
 
-        foreach (var item in PluginService.Data.GetExcelSheet<Item>()!.Where(i => i.EquipSlotCategory?.Value?.Feet != 0)) {
+        foreach (var item in PluginService.Data.GetExcelSheet<Item>()!.Where(i => i.EquipSlotCategory?.Value?.Feet == 1)) {
             var modelBytes = BitConverter.GetBytes(item.ModelMain);
             var modelId = BitConverter.ToUInt16(modelBytes, 0);
             
