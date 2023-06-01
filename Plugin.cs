@@ -13,6 +13,7 @@ using Dalamud.Memory;
 using Dalamud.Plugin;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 
 namespace SimpleHeels;
@@ -28,18 +29,18 @@ public unsafe class Plugin : IDalamudPlugin {
     internal static bool IsDebug;
     internal static bool IsEnabled;
 
-    private delegate void SetDrawOffset(GameObjectExt* gameObject, float x, float y, float z);
+    private delegate void SetDrawOffset(GameObject* gameObject, float x, float y, float z);
 
     [Signature("E8 ?? ?? ?? ?? 0F 28 74 24 ?? 80 3D", DetourName = nameof(SetDrawOffsetDetour))]
     private Hook<SetDrawOffset>? setDrawOffset;
 
-    private void SetDrawOffsetDetour(GameObjectExt* gameObject, float x, float y, float z) {
-        if (gameObject->GameObject.ObjectIndex < 200 && managedIndex[gameObject->GameObject.ObjectIndex]) {
+    private void SetDrawOffsetDetour(GameObject* gameObject, float x, float y, float z) {
+        if (gameObject->ObjectIndex < 200 && managedIndex[gameObject->ObjectIndex]) {
             PluginLog.Log("Game Applied Offset. Releasing Control");
-            if (gameObject->GameObject.ObjectIndex == 0) {
+            if (gameObject->ObjectIndex == 0) {
                 LegacyApiProvider.OnOffsetChange(0);
             }
-            managedIndex[gameObject->GameObject.ObjectIndex] = false;
+            managedIndex[gameObject->ObjectIndex] = false;
         }
         setDrawOffset?.Original(gameObject, x, y, z);
     }
@@ -102,7 +103,7 @@ public unsafe class Plugin : IDalamudPlugin {
             managedIndex[updateIndex] = false;
             return;
         }
-        var obj = (GameObjectExt*)character.Address;
+        var obj = (GameObject*)character.Address;
         if (!managedIndex[updateIndex] && obj->DrawOffset.Y != 0) {
 
             if (updateIndex == 0) LegacyApiProvider.OnOffsetChange(0);
@@ -110,7 +111,7 @@ public unsafe class Plugin : IDalamudPlugin {
         }
         
         var chr = (Character*)character.Address;
-        var offset = GetOffset((GameObjectExt*)character.Address);
+        var offset = GetOffset((GameObject*)character.Address);
         if (offset == null) {
             if (managedIndex[updateIndex]) {
                 managedIndex[updateIndex] = false;
@@ -187,7 +188,7 @@ public unsafe class Plugin : IDalamudPlugin {
         return firstMatch?.Offset ?? null;
     }
 
-    public float? GetOffset(GameObjectExt* gameObject) {
+    public float? GetOffset(GameObject* gameObject) {
         if (isDisposing) return null;
         if (!Config.Enabled) return null;
         if (gameObject == null) return null;

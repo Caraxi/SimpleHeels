@@ -10,6 +10,7 @@ using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
@@ -113,7 +114,7 @@ public class ConfigWindow : Window {
                 if (ImGui.IsItemClicked()) ImGui.SetClipboardText($"{pc.Address:X}");
 
                 unsafe {
-                    var obj = (GameObjectExt*)activePlayer.Address;
+                    var obj = (GameObject*)activePlayer.Address;
                     var character = (Character*)obj;
                     Util.ShowStruct(character);
                     var realPosition = obj->Position;
@@ -462,7 +463,7 @@ public class ConfigWindow : Window {
     private static unsafe ushort GetFootwearForPlayer(string name, uint world) {
         var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
         if (player is not PlayerCharacter) return 0;
-        var obj = (GameObjectExt*)player.Address;
+        var obj = (GameObject*)player.Address;
         if (obj->DrawObject == null) return 0;
         if (obj->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return 0;
         var characterBase = (CharacterBase*)obj->DrawObject;

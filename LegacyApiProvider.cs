@@ -51,7 +51,7 @@ public static class LegacyApiProvider {
             var player = PluginService.ClientState.LocalPlayer;
             if (player == null) return 0;
             unsafe {
-                return plugin.GetOffset((GameObjectExt*) player.Address) ?? 0;
+                return plugin.GetOffset((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*) player.Address) ?? 0;
             }
         });
     }
