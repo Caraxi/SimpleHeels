@@ -134,12 +134,16 @@ public unsafe class Plugin : IDalamudPlugin {
             for (var i = 0; i < 200; i++) {
                 UpdateObjectIndex(i);
             }
-        } else {
-            nextUpdateIndex %= 200;
-            var updateIndex = nextUpdateIndex++;
-            if (updateIndex != 0 && !managedIndex[updateIndex]) {
-                UpdateObjectIndex(nextUpdateIndex++);
-            }
+
+            return;
+        }
+
+        if (!Config.Enabled) return;
+        
+        nextUpdateIndex %= 200;
+        var updateIndex = nextUpdateIndex++;
+        if (updateIndex != 0 && !managedIndex[updateIndex]) {
+            UpdateObjectIndex(nextUpdateIndex++);
         }
 
         for (var i = 0; i < 200; i++) {
@@ -149,27 +153,43 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void OnCommand(string command, string args) {
-        if (args.ToLower() == "debug") {
-            IsDebug = !IsDebug;
-            return;
+        switch (args.ToLowerInvariant()) {
+            case "debug":
+                IsDebug = !IsDebug;
+                return;
+            case "enable":
+                Config.Enabled = true;
+                RequestUpdateAll();
+                break;
+            case "disable":
+                Config.Enabled = false;
+                RequestUpdateAll();
+                break;
+            case "toggle":
+                Config.Enabled = !Config.Enabled;
+                RequestUpdateAll();
+                break;
+            default:
+                configWindow.IsOpen = !configWindow.IsOpen;
+                break;
         }
-        configWindow.IsOpen = !configWindow.IsOpen;
     }
 
     public static Dictionary<(string, uint), float> IpcAssignedOffset { get; } = new();
     
-    private float GetOffsetFromConfig(string name, uint homeWorld, ushort modelId) {
-        if (isDisposing) return 0;
+    private float? GetOffsetFromConfig(string name, uint homeWorld, ushort modelId) {
+        if (isDisposing) return null;
         if (IpcAssignedOffset.TryGetValue((name, homeWorld), out var offset)) return offset;
         if (!Config.TryGetCharacterConfig(name, homeWorld, out var characterConfig) || characterConfig == null) {
-            return 0;
+            return null;
         }
         var firstMatch = characterConfig.HeelsConfig.FirstOrDefault(hc => hc.Enabled && hc.ModelId == modelId);
-        return firstMatch?.Offset ?? 0;
+        return firstMatch?.Offset ?? null;
     }
 
     public float? GetOffset(GameObjectExt* gameObject) {
         if (isDisposing) return null;
+        if (!Config.Enabled) return null;
         if (gameObject == null) return null;
         if (!(gameObject->ObjectKind == 1 && gameObject->SubKind == 4)) return null;
         var drawObject = gameObject->DrawObject;

@@ -7,7 +7,7 @@ public class PluginConfig : IPluginConfiguration {
     public int Version { get; set; } = 1;
 
     public Dictionary<uint, Dictionary<string, CharacterConfig>> WorldCharacterDictionary = new();
-    
+    public bool Enabled = true;
     public bool DebugOpenOnStartup = true;
     public bool ShowPlusMinusButtons = false;
     public float PlusMinusDelta = 0.001f;

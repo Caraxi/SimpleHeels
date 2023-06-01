@@ -164,6 +164,15 @@ public class ConfigWindow : Window {
             return;
         }
 
+        if (!config.Enabled) {
+            ImGui.PushStyleColor(ImGuiCol.Button, ImGuiColors.DalamudRed * new Vector4(1, 1, 1, 0.3f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGuiColors.DalamudRed * new Vector4(1, 1, 1, 0.3f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGuiColors.DalamudRed * new Vector4(1, 1, 1, 0.3f));
+            ImGui.Button($"{plugin.Name} is currently disabled. No offsets will be applied.", new Vector2(ImGui.GetContentRegionAvail().X, 32 * ImGuiHelpers.GlobalScale));
+            ImGui.PopStyleColor(3);
+        }
+        
+
         ImGui.BeginGroup();
         {
             if (ImGui.BeginChild("character_select", ImGuiHelpers.ScaledVector2(240, 0) - iconButtonSize with { X = 0 }, true)) {
@@ -223,6 +232,12 @@ public class ConfigWindow : Window {
                 ImGui.Text("SimpleHeels Options");
                 ImGui.Separator();
 
+                if (ImGui.Checkbox("Enabled", ref config.Enabled)) {
+                    Plugin.RequestUpdateAll();
+                }
+                ImGui.SameLine();
+                ImGuiComponents.HelpMarker("Can be toggled using commands:\n\t/heels toggle\n\t/heels enable\n\t/heels disable");
+                
                 ImGui.Checkbox("Show Plus/Minus buttons for offset adjustments", ref config.ShowPlusMinusButtons);
                 if (config.ShowPlusMinusButtons) {
                     ImGui.SetNextItemWidth(200 * ImGuiHelpers.GlobalScale);
