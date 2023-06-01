@@ -161,9 +161,6 @@ public class ConfigWindow : Window {
     public override void Draw() {
         if (!Plugin.IsEnabled) {
             ImGui.TextColored(ImGuiColors.DalamudRed, $"{plugin.Name} is currently disabled due to Heels Plugin being installed.\nPlease uninstall Heels Plugin to allow {plugin.Name} to run.");
-            foreach (var n in PluginService.PluginInterface.PluginInternalNames) {
-                ImGui.Text($"{n}");
-            }
             return;
         }
 
