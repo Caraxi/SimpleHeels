@@ -11,6 +11,10 @@ public class PluginConfig : IPluginConfiguration {
     public bool DebugOpenOnStartup = true;
     public bool ShowPlusMinusButtons = false;
     public float PlusMinusDelta = 0.001f;
+    public bool UseModelOffsets = true;
+
+    public string ModelEditorLastFolder = string.Empty;
+    
 
     public bool TryGetCharacterConfig(string name, uint world, out CharacterConfig? characterConfig) {
         characterConfig = null;

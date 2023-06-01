@@ -204,7 +204,28 @@ public unsafe class Plugin : IDalamudPlugin {
         if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1 or 2 or 3) return null;
         if (character->Mode == Character.CharacterModes.EmoteLoop && character->ModeParam is 21) return null;
         var name = MemoryHelper.ReadSeString(new nint(gameObject->GetName()), 64);
-        return GetOffsetFromConfig(name.TextValue, character->HomeWorld, human->Feet.Id);
+        var configuredOffset = GetOffsetFromConfig(name.TextValue, character->HomeWorld, human->Feet.Id);
+        if (configuredOffset != null) return configuredOffset;
+        
+        if (Config.UseModelOffsets) {
+            var modelArray = human->CharacterBase.ModelArray;
+            if (modelArray == null) return null;
+            var feetModel = (Model*)modelArray[4];
+            if (feetModel == null) return null;
+            var modelResource = feetModel->ModelResourceHandle;
+            if (modelResource == null) return null;
+
+            foreach (var attr in modelResource->Attributes) {
+                var str = MemoryHelper.ReadStringNullTerminated(new nint(attr.Item1.Value));
+                if (str.StartsWith("heels_offset=", StringComparison.OrdinalIgnoreCase)) {
+                    if (float.TryParse(str[13..], out var offsetAttr)) {
+                        return offsetAttr * human->CharacterBase.DrawObject.Object.Scale.Y;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
     
     private bool isDisposing;

@@ -7,7 +7,9 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
+using Dalamud.Logging;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -15,6 +17,7 @@ using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
+using SimpleHeels.Files;
 using World = Lumina.Excel.GeneratedSheets.World;
 
 namespace SimpleHeels; 
@@ -238,7 +241,15 @@ public class ConfigWindow : Window {
                 }
                 ImGui.SameLine();
                 ImGuiComponents.HelpMarker("Can be toggled using commands:\n\t/heels toggle\n\t/heels enable\n\t/heels disable");
-                
+                if (ImGui.Checkbox("Use model assigned offsets", ref config.UseModelOffsets)) {
+                    Plugin.RequestUpdateAll();
+                }
+                ImGui.SameLine();
+                ImGuiComponents.HelpMarker("Allows mod developers to assign an offset to a modded item.\nClick this for more information.");
+                if (ImGui.IsItemClicked()) {
+                    Util.OpenLink("https://github.com/Caraxi/SimpleHeels/blob/master/modguide.md");
+                }
+
                 ImGui.Checkbox("Show Plus/Minus buttons for offset adjustments", ref config.ShowPlusMinusButtons);
                 if (config.ShowPlusMinusButtons) {
                     ImGui.SetNextItemWidth(200 * ImGuiHelpers.GlobalScale);
@@ -248,12 +259,105 @@ public class ConfigWindow : Window {
                 #if DEBUG
                 ImGui.Checkbox("[DEBUG] Open config window on startup", ref config.DebugOpenOnStartup);
                 #endif
+
+                if (config.UseModelOffsets && ImGui.CollapsingHeader("Model Offset Editor")) {
+                    ShowModelEditor();
+                }
             }
             
         }
         ImGui.EndChild();
     }
 
+
+    private static FileDialogManager? _fileDialogManager;
+    private float mdlEditorOffset = 0f;
+    private Exception? mdlEditorException;
+    private MdlFile? loadedFile;
+    private string loadedFilePath;
+    
+    private void ShowModelEditor() {
+        if (mdlEditorException != null) {
+            ImGui.TextColored(ImGuiColors.DalamudRed, $"{mdlEditorException}");
+        } else {
+            ImGui.TextWrapped("This is a very simple editor that allows setting the offset for a mdl file.");
+            ImGui.Spacing();
+            ImGui.Text("- Select a file");
+            ImGui.Text("- Set Offset");
+            ImGui.Text("- Save the modified file");
+            ImGui.Spacing();
+            
+            if (loadedFile != null) {
+                var attributes = loadedFile.Attributes.ToList();
+                
+                
+                ImGui.InputText("Loaded File", ref loadedFilePath, 2048, ImGuiInputTextFlags.ReadOnly);
+                ImGui.SliderFloat("Heels Offset", ref mdlEditorOffset, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
+                
+                var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset="));
+                if (offset == null) {
+                    ImGui.Text("Model has no offset assigned.");
+                } else {
+                    ImGui.Text($"Current Offset: {offset[13..]}");
+                }
+                
+                if (ImGui.Button("Save MDL File")) {
+                    if (_fileDialogManager == null) {
+                        _fileDialogManager = new FileDialogManager();
+                        PluginService.PluginInterface.UiBuilder.Draw += _fileDialogManager.Draw;
+                    }
+
+                    try {
+                        _fileDialogManager.SaveFileDialog("Save MDL File...", "MDL File{.mdl}", "output.mdl", ".mdl", (b, files) => {
+                            attributes.RemoveAll(a => a.StartsWith("heels_offset="));
+                            attributes.Add($"heels_offset={mdlEditorOffset}");
+                            loadedFile.Attributes = attributes.ToArray();
+                            var outputBytes = loadedFile.Write();
+                            File.WriteAllBytes(files, outputBytes);
+                            loadedFile = null;
+                        }, Path.GetDirectoryName(loadedFilePath), true);
+                    } catch (Exception ex) {
+                        mdlEditorException = ex;
+                    }
+                }
+
+                if (ImGui.Button("Cancel")) {
+                    loadedFile = null;
+                }
+                
+            } else {
+                if (ImGui.Button("Select MDL File")) {
+                    if (_fileDialogManager == null) {
+                        _fileDialogManager = new FileDialogManager();
+                        PluginService.PluginInterface.UiBuilder.Draw += _fileDialogManager.Draw;
+                    }
+
+                    try {
+                        _fileDialogManager.OpenFileDialog("Select MDL File...", "MDL File{.mdl}", (b, files) => {
+                            if (files.Count != 1) return;
+                            loadedFilePath = files[0];
+                            PluginLog.Log($"Loading MDL: {loadedFilePath}");
+                           
+                            config.ModelEditorLastFolder = Path.GetDirectoryName(loadedFilePath) ?? string.Empty;
+                            var bytes = File.ReadAllBytes(loadedFilePath);
+                            loadedFile = new MdlFile(bytes);
+                            var attributes = loadedFile.Attributes.ToList();
+                            var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset="));
+                        
+                            if (offset != null) {
+                                if (!float.TryParse(offset[13..], out mdlEditorOffset)) {
+                                    mdlEditorOffset = 0;
+                                }
+                            }
+
+                        }, 1, config.ModelEditorLastFolder, true);
+                    } catch (Exception ex) {
+                        mdlEditorException = ex;
+                    }
+                }
+            }
+        }
+    }
 
     private string footwearSearch = string.Empty;
     

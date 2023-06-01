@@ -1,5 +1,5 @@
 Install from this repo:
 
 ```
-https://repo.caraxian.com
+https://raw.githubusercontent.com/Ottermandias/SeaOfStars/main/repo.json
 ```
