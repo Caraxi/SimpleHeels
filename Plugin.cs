@@ -178,16 +178,27 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public static Dictionary<(string, uint), float> IpcAssignedOffset { get; } = new();
     
-    private float? GetOffsetFromConfig(string name, uint homeWorld, ushort modelId) {
+    private float? GetOffsetFromConfig(string name, uint homeWorld, ushort modelId, string? path) {
         if (isDisposing) return null;
         if (IpcAssignedOffset.TryGetValue((name, homeWorld), out var offset)) return offset;
         if (!Config.TryGetCharacterConfig(name, homeWorld, out var characterConfig) || characterConfig == null) {
             return null;
         }
-        var firstMatch = characterConfig.HeelsConfig.FirstOrDefault(hc => hc.Enabled && hc.ModelId == modelId);
+        var firstMatch = characterConfig.HeelsConfig.FirstOrDefault(hc => hc.Enabled && ((hc.PathMode == false && hc.ModelId == modelId) || (hc.PathMode && path != null && path.Equals(hc.Path))));
         return firstMatch?.Offset ?? null;
     }
 
+    public static string? GetFeetModelPath(Human* human) {
+        if (human == null) return null;
+        var modelArray = human->CharacterBase.ModelArray;
+        if (modelArray == null) return null;
+        var feetModel = (Model*)modelArray[4];
+        if (feetModel == null) return null;
+        var modelResource = feetModel->ModelResourceHandle;
+        if (modelResource == null) return null;
+        return modelResource->ResourceHandle.FileName.ToString();
+    }
+    
     public float? GetOffset(GameObject* gameObject) {
         if (isDisposing) return null;
         if (!Config.Enabled) return null;
@@ -204,7 +215,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1 or 2 or 3) return null;
         if (character->Mode == Character.CharacterModes.EmoteLoop && character->ModeParam is 21) return null;
         var name = MemoryHelper.ReadSeString(new nint(gameObject->GetName()), 64);
-        var configuredOffset = GetOffsetFromConfig(name.TextValue, character->HomeWorld, human->Feet.Id);
+        var configuredOffset = GetOffsetFromConfig(name.TextValue, character->HomeWorld, human->Feet.Id, GetFeetModelPath(human));
         if (configuredOffset != null) return configuredOffset;
         
         if (Config.UseModelOffsets) {

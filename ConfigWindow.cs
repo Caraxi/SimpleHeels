@@ -147,6 +147,7 @@ public class ConfigWindow : Window {
                             var human = (Human*)obj->DrawObject;
                             ImGui.Text($"Current Footwear ID: {human->Feet.Id}, {human->Feet.Variant}");
                             ImGui.Text($"Current Footwear Name: {GetModelName(human->Feet.Id)}");
+                            ImGui.TextWrapped($"Current Footwear Path: {Plugin.GetFeetModelPath(human)}");
                         } else {
                             ImGui.TextDisabled("Player is not a 'Human'");
                         }
@@ -364,6 +365,7 @@ public class ConfigWindow : Window {
     private void DrawCharacterView(CharacterConfig? characterConfig) {
         if (characterConfig == null) return;
         var activeFootwear = GetFootwearForPlayer(selectedName, selectedWorld);
+        var activeFootwearPath = GetFootwearPathForPlayer(selectedName, selectedWorld);
         
         if (ImGui.BeginTable("OffsetsTable", 5)) {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 2 + 1);
@@ -440,39 +442,88 @@ public class ConfigWindow : Window {
                 
                 ImGui.TableNextColumn();
                 ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                if (ImGui.BeginCombo("##footwear", GetModelName(heelConfig.ModelId), ImGuiComboFlags.HeightLargest)) {
-                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                    if (ImGui.IsWindowAppearing()) {
-                        footwearSearch = string.Empty;
-                        ImGui.SetKeyboardFocusHere();
-                    }
-                    ImGui.InputTextWithHint("##footwearSearch", "Search...", ref footwearSearch, 100);
-                    
-                    if (ImGui.BeginChild("##footwearSelectScroll", new Vector2(-1, 200))) {
-                        foreach (var shoeModel in shoeModelList.Value.Values) {
-                            if (!string.IsNullOrWhiteSpace(footwearSearch)) {
-                                if (!((shoeModel.Name ?? $"Unknown#{shoeModel.Id}").Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase) || shoeModel.Items.Any(shoeItem => shoeItem.Name.ToDalamudString().TextValue.Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase)))) {
-                                    continue;
-                                }
-                            }
-                            
-                            if (ImGui.Selectable($"{shoeModel.Name}##shoeModel_{shoeModel.Id}")) {
-                                heelConfig.ModelId = shoeModel.Id;
-                                ImGui.CloseCurrentPopup();
-                            }
-
-                            if (ImGui.IsItemHovered() && shoeModel.Items.Count > 3) {
-                                ShowModelTooltip(shoeModel.Id);
+                
+                var pathMode = heelConfig.PathMode;
+                
+                if (ImGui.BeginCombo("##footwear", pathMode ? heelConfig.Path : GetModelName(heelConfig.ModelId), ImGuiComboFlags.HeightLargest)) {
+                    if (ImGui.BeginTabBar("##footwear_tabs")) {
+                        if (pathMode) {
+                            if (ImGui.TabItemButton("Model ID")) {
+                                heelConfig.PathMode = false;
                             }
                         }
+                        
+                        if (ImGui.BeginTabItem((pathMode ? "Model Path" : "Model ID") + "###currentConfigType")) {
+                            if (pathMode) {
+                                ImGui.TextWrapped("Assign offset based on the file path of the model, this can be a game path or a penumbra mod path.");
+                                ImGui.TextDisabled("File Path:");
+                                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                                ImGui.InputText("##pathInput", ref heelConfig.Path, 1024);
+
+                                if (activeFootwearPath != null) {
+                                    if (ImGui.Button("Current Model Path")) {
+                                        heelConfig.Path = activeFootwearPath;
+                                    }
+
+                                    if (ImGui.IsItemHovered()) {
+                                        ImGui.SetTooltip(activeFootwearPath);
+                                    }
+                                }
+                                
+                                
+                                
+                            } else {
+                                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                                if (ImGui.IsWindowAppearing()) {
+                                    footwearSearch = string.Empty;
+                                    ImGui.SetKeyboardFocusHere();
+                                }
+                                ImGui.InputTextWithHint("##footwearSearch", "Search...", ref footwearSearch, 100);
+                    
+                                if (ImGui.BeginChild("##footwearSelectScroll", new Vector2(-1, 200))) {
+                                    foreach (var shoeModel in shoeModelList.Value.Values) {
+                                        if (!string.IsNullOrWhiteSpace(footwearSearch)) {
+                                            if (!((shoeModel.Name ?? $"Unknown#{shoeModel.Id}").Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase) || shoeModel.Items.Any(shoeItem => shoeItem.Name.ToDalamudString().TextValue.Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase)))) {
+                                                continue;
+                                            }
+                                        }
+                            
+                                        if (ImGui.Selectable($"{shoeModel.Name}##shoeModel_{shoeModel.Id}")) {
+                                            heelConfig.ModelId = shoeModel.Id;
+                                            ImGui.CloseCurrentPopup();
+                                        }
+
+                                        if (ImGui.IsItemHovered() && shoeModel.Items.Count > 3) {
+                                            ShowModelTooltip(shoeModel.Id);
+                                        }
+                                    }
+                                }
+                    
+                                ImGui.EndChild();
+                            }
+                            
+                            
+                            
+                            
+                            ImGui.EndTabItem();
+                        }
+                            
+                        if (!pathMode) {
+                            if (ImGui.TabItemButton("Model Path")) {
+                                heelConfig.PathMode = true;
+                            }
+                        }
+                        
+                        ImGui.EndTabBar();
                     }
                     
-                    ImGui.EndChild();
+                    
+                    
                     ImGui.EndCombo();
                 }
                 
                 ImGui.TableNextColumn();
-                if (activeFootwear == heelConfig.ModelId) {
+                if ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))) {
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.Text($"{(char)FontAwesomeIcon.ArrowLeft}");
                     ImGui.PopFont();
@@ -490,7 +541,7 @@ public class ConfigWindow : Window {
 
             ImGui.EndTable();
 
-            if (ImGui.Button("Add an Entry")) {
+            if (ImGui.Button($"Add an Entry for {GetModelName(activeFootwear)}")) {
                 characterConfig.HeelsConfig.Add(new HeelConfig() {
                     ModelId = GetFootwearForPlayer(selectedName, selectedWorld)
                 });
@@ -575,6 +626,27 @@ public class ConfigWindow : Window {
         var human = (Human*)obj->DrawObject;
         if (human == null) return 0;
         return human->Feet.Id;
+    }
+    
+    private static unsafe string? GetFootwearPathForPlayer(string name, uint world) {
+        var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
+        if (player is not PlayerCharacter) return null;
+        var obj = (GameObject*)player.Address;
+        if (obj->DrawObject == null) return null;
+        if (obj->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return null;
+        var characterBase = (CharacterBase*)obj->DrawObject;
+        if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return null;
+        var human = (Human*)obj->DrawObject;
+        if (human == null) return null;
+
+        var modelArray = human->CharacterBase.ModelArray;
+        if (modelArray == null) return null;
+        var feetModel = (Model*)modelArray[4];
+        if (feetModel == null) return null;
+        var modelResource = feetModel->ModelResourceHandle;
+        if (modelResource == null) return null;
+
+        return modelResource->ResourceHandle.FileName.ToString();
     }
     
     private string GetModelName(ushort modelId) {
