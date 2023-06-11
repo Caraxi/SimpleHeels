@@ -18,6 +18,7 @@ using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
+using Action = System.Action;
 using World = Lumina.Excel.GeneratedSheets.World;
 
 namespace SimpleHeels; 
@@ -145,9 +146,28 @@ public class ConfigWindow : Window {
                         ImGui.Text($"Model Type: {characterBase->GetModelType()}");
                         if (characterBase->GetModelType() == CharacterBase.ModelType.Human) {
                             var human = (Human*)obj->DrawObject;
-                            ImGui.Text($"Current Footwear ID: {human->Feet.Id}, {human->Feet.Variant}");
-                            ImGui.Text($"Current Footwear Name: {GetModelName(human->Feet.Id)}");
-                            ImGui.TextWrapped($"Current Footwear Path: {Plugin.GetFeetModelPath(human)}");
+                            ImGui.Text("Active Models:");
+                            ImGui.Indent();
+                            ImGui.Text("Top:");
+                            ImGui.Indent();
+                            ImGui.Text($"ID: {human->Top.Id}, {human->Top.Variant}");
+                            ImGui.Text($"Name: {GetModelName(human->Top.Id, ModelSlot.Top, true) ?? "Does not replace feet"}");
+                            ImGui.Text($"Path: {Plugin.GetModelPath(human, ModelSlot.Top)}");
+                            ImGui.Unindent();
+                            ImGui.Text("Legs:");
+                            ImGui.Indent();
+                            ImGui.Text($"ID: {human->Legs.Id}, {human->Legs.Variant}");
+                            ImGui.Text($"Name: {GetModelName(human->Legs.Id, ModelSlot.Legs, true) ?? "Does not replace feet"}");
+                            ImGui.Text($"Path: {Plugin.GetModelPath(human, ModelSlot.Legs)}");
+                            ImGui.Unindent();
+                            ImGui.Text("Feet:");
+                            ImGui.Indent();
+                            ImGui.Text($"ID: {human->Feet.Id}, {human->Feet.Variant}");
+                            ImGui.Text($"Name: {GetModelName(human->Feet.Id, ModelSlot.Feet)}");
+                            ImGui.Text($"Path: {Plugin.GetModelPath(human, ModelSlot.Feet)}");
+                            ImGui.Unindent();
+                            
+                            ImGui.Unindent();
                         } else {
                             ImGui.TextDisabled("Player is not a 'Human'");
                         }
@@ -233,6 +253,8 @@ public class ConfigWindow : Window {
                 
                 DrawCharacterView(selectedCharacter);
             } else {
+
+                Changelog.Show(config);
                 
                 ImGui.Text("SimpleHeels Options");
                 ImGui.Separator();
@@ -270,12 +292,11 @@ public class ConfigWindow : Window {
         ImGui.EndChild();
     }
 
-
     private static FileDialogManager? _fileDialogManager;
     private float mdlEditorOffset = 0f;
     private Exception? mdlEditorException;
     private MdlFile? loadedFile;
-    private string loadedFilePath;
+    private string loadedFilePath = string.Empty;
     
     private void ShowModelEditor() {
         if (mdlEditorException != null) {
@@ -364,8 +385,15 @@ public class ConfigWindow : Window {
     
     private void DrawCharacterView(CharacterConfig? characterConfig) {
         if (characterConfig == null) return;
-        var activeFootwear = GetFootwearForPlayer(selectedName, selectedWorld);
-        var activeFootwearPath = GetFootwearPathForPlayer(selectedName, selectedWorld);
+        
+        var activeFootwear = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
+        var activeFootwearPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
+        
+        var activeTop = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Top);
+        var activeTopPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Top);
+        
+        var activeLegs = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
+        var activeLegsPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
         
         if (ImGui.BeginTable("OffsetsTable", 5)) {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 2 + 1);
@@ -445,11 +473,12 @@ public class ConfigWindow : Window {
                 
                 var pathMode = heelConfig.PathMode;
                 
-                if (ImGui.BeginCombo("##footwear", pathMode ? heelConfig.Path : GetModelName(heelConfig.ModelId), ImGuiComboFlags.HeightLargest)) {
+                if (ImGui.BeginCombo("##footwear", pathMode ? ((heelConfig.Slot != ModelSlot.Feet ? $"[{heelConfig.Slot}] " : "") + heelConfig.Path) : GetModelName(heelConfig.ModelId, heelConfig.Slot), ImGuiComboFlags.HeightLargest)) {
                     if (ImGui.BeginTabBar("##footwear_tabs")) {
                         if (pathMode) {
                             if (ImGui.TabItemButton("Model ID")) {
                                 heelConfig.PathMode = false;
+                                (heelConfig.Slot, heelConfig.RevertSlot) = (heelConfig.RevertSlot, heelConfig.Slot);
                             }
                         }
                         
@@ -460,13 +489,28 @@ public class ConfigWindow : Window {
                                 ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
                                 ImGui.InputText("##pathInput", ref heelConfig.Path, 1024);
 
-                                if (activeFootwearPath != null) {
+                                ImGui.TextDisabled("Equip Slot:");
+                                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                                if (ImGui.BeginCombo("##slotInput", $"{heelConfig.Slot}")) {
+                                    if (ImGui.Selectable($"{ModelSlot.Top}", heelConfig.Slot == ModelSlot.Top)) heelConfig.Slot = ModelSlot.Top;
+                                    if (ImGui.Selectable($"{ModelSlot.Legs}", heelConfig.Slot == ModelSlot.Legs)) heelConfig.Slot = ModelSlot.Legs;
+                                    if (ImGui.Selectable($"{ModelSlot.Feet}", heelConfig.Slot == ModelSlot.Feet)) heelConfig.Slot = ModelSlot.Feet;
+                                    ImGui.EndCombo();
+                                }
+                                
+                                var activeSlotPath = heelConfig.Slot switch {
+                                    ModelSlot.Top => activeTopPath,
+                                    ModelSlot.Legs => activeLegsPath,
+                                    _ => activeFootwearPath,
+                                };
+                                
+                                if (activeSlotPath != null) {
                                     if (ImGui.Button("Current Model Path")) {
-                                        heelConfig.Path = activeFootwearPath;
+                                        heelConfig.Path = activeSlotPath;
                                     }
 
                                     if (ImGui.IsItemHovered()) {
-                                        ImGui.SetTooltip(activeFootwearPath);
+                                        ImGui.SetTooltip(activeSlotPath);
                                     }
                                 }
                                 
@@ -490,11 +534,12 @@ public class ConfigWindow : Window {
                             
                                         if (ImGui.Selectable($"{shoeModel.Name}##shoeModel_{shoeModel.Id}")) {
                                             heelConfig.ModelId = shoeModel.Id;
+                                            heelConfig.Slot = shoeModel.Slot;
                                             ImGui.CloseCurrentPopup();
                                         }
 
                                         if (ImGui.IsItemHovered() && shoeModel.Items.Count > 3) {
-                                            ShowModelTooltip(shoeModel.Id);
+                                            ShowModelTooltip(shoeModel.Id, shoeModel.Slot);
                                         }
                                     }
                                 }
@@ -502,15 +547,13 @@ public class ConfigWindow : Window {
                                 ImGui.EndChild();
                             }
                             
-                            
-                            
-                            
                             ImGui.EndTabItem();
                         }
                             
                         if (!pathMode) {
                             if (ImGui.TabItemButton("Model Path")) {
                                 heelConfig.PathMode = true;
+                                (heelConfig.Slot, heelConfig.RevertSlot) = (heelConfig.RevertSlot, heelConfig.Slot);
                             }
                         }
                         
@@ -523,7 +566,11 @@ public class ConfigWindow : Window {
                 }
                 
                 ImGui.TableNextColumn();
-                if ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))) {
+
+                if ((heelConfig.Slot == ModelSlot.Feet && ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
+                    || (heelConfig.Slot == ModelSlot.Legs && ((heelConfig.PathMode == false && activeLegs == heelConfig.ModelId) || (heelConfig.PathMode && activeLegsPath != null && activeLegsPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
+                    || (heelConfig.Slot == ModelSlot.Top && ((heelConfig.PathMode == false && activeTop == heelConfig.ModelId) || (heelConfig.PathMode && activeTopPath != null && activeTopPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))))) {
+                    
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.Text($"{(char)FontAwesomeIcon.ArrowLeft}");
                     ImGui.PopFont();
@@ -541,11 +588,20 @@ public class ConfigWindow : Window {
 
             ImGui.EndTable();
 
-            if (ImGui.Button($"Add an Entry for {GetModelName(activeFootwear)}")) {
-                characterConfig.HeelsConfig.Add(new HeelConfig() {
-                    ModelId = GetFootwearForPlayer(selectedName, selectedWorld)
-                });
+            bool ShowAddButton(ushort id, ModelSlot slot) {
+                if (shoeModelList.Value.ContainsKey((id, slot))) {
+                    if (ImGui.Button($"Add an Entry for {GetModelName(id, slot)}")) {
+                        characterConfig.HeelsConfig.Add(new HeelConfig() {
+                            ModelId = activeTop,
+                            Slot = ModelSlot.Top
+                        });
+                    }
+                    return true;
+                }
+                return false;
             }
+
+            var _ = ShowAddButton(activeTop, ModelSlot.Top) || ShowAddButton(activeLegs, ModelSlot.Legs) || ShowAddButton(activeFootwear, ModelSlot.Feet);
 
             if (characterConfig.HeelsConfig.Count > 0) return;
             
@@ -575,19 +631,29 @@ public class ConfigWindow : Window {
     
     
 
-    private readonly Lazy<Dictionary<ushort, ShoeModel>> shoeModelList = new(() => {
-        var dict = new Dictionary<ushort, ShoeModel> {
-            [0] = new() { Id = 0, Name = "Smallclothes (Barefoot)"}
+    private readonly Lazy<Dictionary<(ushort, ModelSlot), ShoeModel>> shoeModelList = new(() => {
+        var dict = new Dictionary<(ushort, ModelSlot), ShoeModel> {
+            [(0, ModelSlot.Feet)] = new() { Id = 0, Name = "Smallclothes (Barefoot)"},
         };
 
-        foreach (var item in PluginService.Data.GetExcelSheet<Item>()!.Where(i => i.EquipSlotCategory?.Value?.Feet == 1)) {
+        foreach (var item in PluginService.Data.GetExcelSheet<Item>()!.Where(i => i.EquipSlotCategory?.Value?.Feet != 0)) {
+            if (item.ItemUICategory.Row is not (35 or 36 or 38)) continue;
+            
             var modelBytes = BitConverter.GetBytes(item.ModelMain);
             var modelId = BitConverter.ToUInt16(modelBytes, 0);
+
+            var slot = item.ItemUICategory.Row switch {
+                35 => ModelSlot.Top,
+                36 => ModelSlot.Legs,
+                _ => ModelSlot.Feet
+            };
             
-            if (!dict.ContainsKey(modelId)) dict.Add(modelId, new ShoeModel { Id = modelId });
+            if (!dict.ContainsKey((modelId, slot))) dict.Add((modelId, slot), new ShoeModel {
+                Id = modelId, Slot = slot
+            });
             
-            dict[modelId].Items.Add(item);
-            dict[modelId].Name = null;
+            dict[(modelId, slot)].Items.Add(item);
+            dict[(modelId, slot)].Name = null;
         }
 
         return dict;
@@ -595,6 +661,7 @@ public class ConfigWindow : Window {
 
     private class ShoeModel {
         public ushort Id;
+        public ModelSlot Slot;
         public readonly List<Item> Items = new();
 
         private string? nameCache;
@@ -609,13 +676,25 @@ public class ConfigWindow : Window {
                     _ => string.Join(", ", Items.Select(i => i.Name.ToDalamudString().TextValue))
                 };
 
+                switch (Slot) {
+                    case ModelSlot.Legs: {
+                        nameCache = $"[Legs] {nameCache}";
+                        break;
+                    }
+                    case ModelSlot.Top: {
+                        nameCache = $"[Top] {nameCache}";
+                        break;
+                    }
+                }
+                
+
                 return nameCache;
             }
             set => nameCache = value;
         }
     }
 
-    private static unsafe ushort GetFootwearForPlayer(string name, uint world) {
+    private static unsafe ushort GetModelIdForPlayer(string name, uint world, ModelSlot slot) {
         var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
         if (player is not PlayerCharacter) return 0;
         var obj = (GameObject*)player.Address;
@@ -625,10 +704,15 @@ public class ConfigWindow : Window {
         if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return 0;
         var human = (Human*)obj->DrawObject;
         if (human == null) return 0;
-        return human->Feet.Id;
+        return slot switch {
+            ModelSlot.Feet => human->Feet.Id,
+            ModelSlot.Top => human->Top.Id,
+            ModelSlot.Legs => human->Legs.Id,
+            _ => 0,
+        };
     }
     
-    private static unsafe string? GetFootwearPathForPlayer(string name, uint world) {
+    private static unsafe string? GetModelPathForPlayer(string name, uint world, ModelSlot slot) {
         var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
         if (player is not PlayerCharacter) return null;
         var obj = (GameObject*)player.Address;
@@ -638,10 +722,10 @@ public class ConfigWindow : Window {
         if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return null;
         var human = (Human*)obj->DrawObject;
         if (human == null) return null;
-
-        var modelArray = human->CharacterBase.ModelArray;
+        if ((byte)slot > human->CharacterBase.SlotCount) return null;
+        var modelArray = human->CharacterBase.Models;
         if (modelArray == null) return null;
-        var feetModel = (Model*)modelArray[4];
+        var feetModel = modelArray[(byte) slot];
         if (feetModel == null) return null;
         var modelResource = feetModel->ModelResourceHandle;
         if (modelResource == null) return null;
@@ -649,17 +733,17 @@ public class ConfigWindow : Window {
         return modelResource->ResourceHandle.FileName.ToString();
     }
     
-    private string GetModelName(ushort modelId) {
-        if (modelId == 0) return "Smallclothes (Barefoot)";
+    private string? GetModelName(ushort modelId, ModelSlot slot, bool nullOnNoMatch = false) {
+        if (modelId == 0) return "Smallclothes" + (slot == ModelSlot.Feet ? " (Barefoot)" : "");
 
-        if (shoeModelList.Value.TryGetValue(modelId, out var shoeModel)) {
+        if (shoeModelList.Value.TryGetValue((modelId, slot), out var shoeModel)) {
             return shoeModel.Name ?? $"Unknown#{modelId}";
         }
         
-        return $"Unknown#{modelId}";
+        return nullOnNoMatch ? null : $"Unknown#{modelId}";
     }
 
-    private void ShowModelTooltip(ushort modelId) {
+    private void ShowModelTooltip(ushort modelId, ModelSlot slot) {
         
         ImGui.BeginTooltip();
 
@@ -669,7 +753,7 @@ public class ConfigWindow : Window {
                 return;
             }
 
-            if (shoeModelList.Value.TryGetValue(modelId, out var shoeModel)) {
+            if (shoeModelList.Value.TryGetValue((modelId, slot), out var shoeModel)) {
 
                 foreach (var i in shoeModel.Items) {
                     ImGui.Text($"{i.Name.ToDalamudString().TextValue}");

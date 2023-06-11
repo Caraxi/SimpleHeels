@@ -178,21 +178,42 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public static Dictionary<(string, uint), float> IpcAssignedOffset { get; } = new();
     
-    private float? GetOffsetFromConfig(string name, uint homeWorld, ushort modelId, string? path) {
+    private float? GetOffsetFromConfig(string name, uint homeWorld, Human* human) {
         if (isDisposing) return null;
         if (IpcAssignedOffset.TryGetValue((name, homeWorld), out var offset)) return offset;
         if (!Config.TryGetCharacterConfig(name, homeWorld, out var characterConfig) || characterConfig == null) {
             return null;
         }
-        var firstMatch = characterConfig.HeelsConfig.FirstOrDefault(hc => hc.Enabled && ((hc.PathMode == false && hc.ModelId == modelId) || (hc.PathMode && path != null && path.Equals(hc.Path))));
+
+        string? feetModelPath = null;
+        string? topModelPath = null;
+        string? legsModelPath = null;
+
+        var firstMatch = characterConfig.HeelsConfig.FirstOrDefault(hc => {
+            if (!hc.Enabled) return false;
+
+            switch (hc.Slot) {
+                case ModelSlot.Feet:
+                    feetModelPath ??= GetModelPath(human, ModelSlot.Feet);
+                    return (hc.PathMode == false && hc.ModelId == human->Feet.Id) || (hc.PathMode && feetModelPath != null && feetModelPath.Equals(hc.Path));
+                case ModelSlot.Top:
+                    topModelPath ??= GetModelPath(human, ModelSlot.Top);
+                    return (hc.PathMode == false && hc.ModelId == human->Top.Id) || (hc.PathMode && topModelPath != null && topModelPath.Equals(hc.Path));
+                case ModelSlot.Legs:
+                    legsModelPath ??= GetModelPath(human, ModelSlot.Legs);
+                    return (hc.PathMode == false && hc.ModelId == human->Legs.Id) || (hc.PathMode && legsModelPath != null && legsModelPath.Equals(hc.Path));
+                default:
+                    return false;
+            }
+        });
         return firstMatch?.Offset ?? null;
     }
 
-    public static string? GetFeetModelPath(Human* human) {
+    public static string? GetModelPath(Human* human, ModelSlot slot) {
         if (human == null) return null;
-        var modelArray = human->CharacterBase.ModelArray;
+        var modelArray = human->CharacterBase.Models;
         if (modelArray == null) return null;
-        var feetModel = (Model*)modelArray[4];
+        var feetModel = modelArray[(byte)slot];
         if (feetModel == null) return null;
         var modelResource = feetModel->ModelResourceHandle;
         if (modelResource == null) return null;
@@ -215,25 +236,31 @@ public unsafe class Plugin : IDalamudPlugin {
         if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1 or 2 or 3) return null;
         if (character->Mode == Character.CharacterModes.EmoteLoop && character->ModeParam is 21) return null;
         var name = MemoryHelper.ReadSeString(new nint(gameObject->GetName()), 64);
-        var configuredOffset = GetOffsetFromConfig(name.TextValue, character->HomeWorld, human->Feet.Id, GetFeetModelPath(human));
+        var configuredOffset = GetOffsetFromConfig(name.TextValue, character->HomeWorld, human);
         if (configuredOffset != null) return configuredOffset;
         
         if (Config.UseModelOffsets) {
-            var modelArray = human->CharacterBase.ModelArray;
-            if (modelArray == null) return null;
-            var feetModel = (Model*)modelArray[4];
-            if (feetModel == null) return null;
-            var modelResource = feetModel->ModelResourceHandle;
-            if (modelResource == null) return null;
+            float? CheckModelSlot(ModelSlot slot) {
+                var modelArray = human->CharacterBase.Models;
+                if (modelArray == null) return null;
+                var feetModel = modelArray[(byte)slot];
+                if (feetModel == null) return null;
+                var modelResource = feetModel->ModelResourceHandle;
+                if (modelResource == null) return null;
 
-            foreach (var attr in modelResource->Attributes) {
-                var str = MemoryHelper.ReadStringNullTerminated(new nint(attr.Item1.Value));
-                if (str.StartsWith("heels_offset=", StringComparison.OrdinalIgnoreCase)) {
-                    if (float.TryParse(str[13..], out var offsetAttr)) {
-                        return offsetAttr * human->CharacterBase.DrawObject.Object.Scale.Y;
+                foreach (var attr in modelResource->Attributes) {
+                    var str = MemoryHelper.ReadStringNullTerminated(new nint(attr.Item1.Value));
+                    if (str.StartsWith("heels_offset=", StringComparison.OrdinalIgnoreCase)) {
+                        if (float.TryParse(str[13..], out var offsetAttr)) {
+                            return offsetAttr * human->CharacterBase.DrawObject.Object.Scale.Y;
+                        }
                     }
                 }
+
+                return null;
             }
+
+            return CheckModelSlot(ModelSlot.Top) ?? CheckModelSlot(ModelSlot.Legs) ?? CheckModelSlot(ModelSlot.Feet);
         }
 
         return null;
