@@ -189,7 +189,7 @@ public unsafe class Plugin : IDalamudPlugin {
         string? topModelPath = null;
         string? legsModelPath = null;
 
-        var firstMatch = characterConfig.HeelsConfig.FirstOrDefault(hc => {
+        var firstMatch = characterConfig.HeelsConfig.OrderBy(hc => hc.Slot).FirstOrDefault(hc => {
             if (!hc.Enabled) return false;
 
             switch (hc.Slot) {

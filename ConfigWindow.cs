@@ -592,8 +592,8 @@ public class ConfigWindow : Window {
                 if (shoeModelList.Value.ContainsKey((id, slot))) {
                     if (ImGui.Button($"Add an Entry for {GetModelName(id, slot)}")) {
                         characterConfig.HeelsConfig.Add(new HeelConfig() {
-                            ModelId = activeTop,
-                            Slot = ModelSlot.Top
+                            ModelId = id,
+                            Slot = slot
                         });
                     }
                     return true;
