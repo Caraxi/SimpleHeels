@@ -9,6 +9,8 @@ public static class Changelog {
     private static void Changelogs() {
         ChangelogFor(5.1f, "0.5.1.0", () => {
             C("Now allows assigning sitting offset to characters that have only their standing offset assigned by IPC.");
+            C("Now applies offsets to GPose and Cutscene actors.");
+            C("Due to the way the game handles cutscenes, cutscenes featuring non-standing poses will be incorrect.", indent: 1, color: ImGuiColors.DalamudGrey3);
         });
         ChangelogFor(5, "0.5.0.0", () => {
             C("Added support for assigning an offset when sitting in a chair.");

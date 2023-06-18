@@ -20,6 +20,8 @@ using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 namespace SimpleHeels;
 
 public unsafe class Plugin : IDalamudPlugin {
+    public const int ObjectLimit = 240;
+    
     public string Name => "Simple Heels";
     
     public PluginConfig Config { get; }
@@ -35,40 +37,41 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? 0F 28 74 24 ?? 80 3D", DetourName = nameof(SetDrawOffsetDetour))]
     private Hook<SetDrawOffset>? setDrawOffset;
 
+    private delegate void* CloneActor(Character* destination, Character* source, uint a3);
+    [Signature("E8 ?? ?? ?? ?? 0F B6 9F ?? ?? ?? ?? 48 8D 8F", DetourName = nameof(CloneActorDetour))]
+    private Hook<CloneActor>? cloneActor;
+
     private void SetDrawOffsetDetour(GameObject* gameObject, float x, float y, float z) {
         try {
-            if (gameObject->ObjectIndex < 200) {
-                if ((gameObject->ObjectKind == 1 && gameObject->SubKind == 4)) {
-                    var character = (Character*)gameObject;
-                    if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam == 2) {
-                        // Sitting
-                        if (TryGetSittingOffset(character, out var offsetY, out var offsetZ)) {
-                            PluginLog.LogDebug($"Applied Sitting Offset [{offsetY}, {offsetZ}]");
-                            managedIndex[gameObject->ObjectIndex] = false;
-                        
-                            if (gameObject->ObjectIndex == 0) {
-                                LegacyApiProvider.OnOffsetChange(0);
-                                ApiProvider.SittingPositionChanged(offsetY, offsetZ);
-                            }
-
-                            appliedSittingOffset[gameObject->ObjectIndex] = new Vector2(offsetY, offsetZ);
-                            setDrawOffset?.Original(gameObject, x, y + offsetY, z + offsetZ);
-                           
-                            return;
+            if (gameObject->IsCharacter() && gameObject->ObjectKind == 1 && gameObject->SubKind == 4) {
+                var character = (Character*)gameObject;
+                if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam == 2) {
+                    // Sitting
+                    if (TryGetSittingOffset(character, out var offsetY, out var offsetZ)) {
+                        PluginLog.LogDebug($"Applied Sitting Offset [{offsetY}, {offsetZ}]");
+                        ManagedIndex[gameObject->ObjectIndex] = false;
+                    
+                        if (gameObject->ObjectIndex == 0) {
+                            LegacyApiProvider.OnOffsetChange(0);
+                            ApiProvider.SittingPositionChanged(offsetY, offsetZ);
                         }
+
+                        AppliedSittingOffset[gameObject->ObjectIndex] = new Vector2(offsetY, offsetZ);
+                        setDrawOffset?.Original(gameObject, x, y + offsetY, z + offsetZ);
+                       
+                        return;
                     }
                 }
-
-                appliedSittingOffset[gameObject->ObjectIndex] = null;
             }
 
-            if (gameObject->ObjectIndex < 200 && managedIndex[gameObject->ObjectIndex]) {
+            AppliedSittingOffset[gameObject->ObjectIndex] = null;
+            if (gameObject->ObjectIndex < ObjectLimit && ManagedIndex[gameObject->ObjectIndex]) {
                 PluginLog.LogDebug("Game Applied Offset. Releasing Control");
                 if (gameObject->ObjectIndex == 0) {
                     LegacyApiProvider.OnOffsetChange(0);
                 }
 
-                managedIndex[gameObject->ObjectIndex] = false;
+                ManagedIndex[gameObject->ObjectIndex] = false;
             }
         } catch (Exception ex) {
             PluginLog.Error(ex, "Error handling SetDrawOffset");
@@ -77,8 +80,24 @@ public unsafe class Plugin : IDalamudPlugin {
         setDrawOffset?.Original(gameObject, x, y, z);
     }
 
-    public Plugin(DalamudPluginInterface pluginInterface) {
+    private void* CloneActorDetour(Character* destination, Character* source, uint copyFlags) {
+        try {
+            ActorMapping.Remove(destination->GameObject.ObjectIndex);
+            var name = MemoryHelper.ReadSeString(new nint(source->GameObject.GetName()), 64);
+            ActorMapping.Add(destination->GameObject.ObjectIndex, (name.TextValue, source->HomeWorld));
+            if (destination->GameObject.ObjectIndex < ObjectLimit && source->GameObject.ObjectIndex < ObjectLimit) {
+                ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
+            }
+            PluginLog.Verbose($"Game cloned Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex} [{name} @ {source->HomeWorld}]");
         
+        } catch (Exception ex) {
+            PluginLog.Error(ex, "Error handling CloneActor");
+        }
+        
+        return cloneActor!.Original(destination, source, copyFlags);
+    }
+    
+    public Plugin(DalamudPluginInterface pluginInterface) {
         pluginInterface.Create<PluginService>();
 
         Config = pluginInterface.GetPluginConfig() as PluginConfig ?? new PluginConfig();
@@ -119,39 +138,40 @@ public unsafe class Plugin : IDalamudPlugin {
         PluginService.Framework.Update += OnFrameworkUpdate;
         SignatureHelper.Initialise(this);
         setDrawOffset?.Enable();
+        cloneActor?.Enable();
         RequestUpdateAll();
     }
 
     private int nextUpdateIndex;
     private static bool _updateAll;
-    private readonly bool[] managedIndex = new bool[200];
-    private readonly Vector2?[] appliedSittingOffset = new Vector2?[200];
+    
+    public bool[] ManagedIndex { get; }= new bool[ObjectLimit];
+    public Vector2?[] AppliedSittingOffset { get; }= new Vector2?[ObjectLimit];
     
     public static void RequestUpdateAll() {
         _updateAll = true;
     }
 
     private void UpdateObjectIndex(int updateIndex) {
-        if (updateIndex is < 0 or >= 200) return;
-        var character = PluginService.Objects[updateIndex] as PlayerCharacter;
-        if (character == null) {
-            managedIndex[updateIndex] = false;
+        if (updateIndex is < 0 or >= ObjectLimit) return;
+
+        var obj = GameObjectManager.GetGameObjectByIndex(updateIndex);
+        if (obj == null || !obj->IsCharacter()) {
+            ManagedIndex[updateIndex] = false;
             return;
         }
-        var obj = (GameObject*)character.Address;
-        if (!managedIndex[updateIndex] && obj->DrawOffset.Y != 0) {
 
+        if (!ManagedIndex[updateIndex] && obj->DrawOffset.Y != 0) {
             if (updateIndex == 0) {
                 LegacyApiProvider.OnOffsetChange(0);
             }
             return;
         }
         
-        var chr = (Character*)character.Address;
-        var offset = GetOffset((GameObject*)character.Address);
+        var offset = GetOffset(obj);
         if (offset == null) {
-            if (managedIndex[updateIndex]) {
-                managedIndex[updateIndex] = true;
+            if (ManagedIndex[updateIndex]) {
+                ManagedIndex[updateIndex] = true;
                 setDrawOffset?.Original(obj, obj->DrawOffset.X, 0, obj->DrawOffset.Z);
             }
 
@@ -162,9 +182,8 @@ public unsafe class Plugin : IDalamudPlugin {
         }
         
         if (MathF.Abs(obj->DrawOffset.Y - offset.Value) > 0.00001f) {
-            PluginLog.Debug($"Update Player Offset: {character.Name.TextValue} => {offset} ({chr->Mode} / {chr->ModeParam})");
             setDrawOffset?.Original(obj, obj->DrawOffset.X, offset.Value, obj->DrawOffset.Z);
-            managedIndex[updateIndex] = true;
+            ManagedIndex[updateIndex] = true;
             if (updateIndex == 0) {
                 LegacyApiProvider.OnOffsetChange(offset.Value);
                 ApiProvider.StandingOffsetChanged(offset.Value);
@@ -175,7 +194,7 @@ public unsafe class Plugin : IDalamudPlugin {
     private void OnFrameworkUpdate(Framework framework) {
         if (_updateAll) {
             _updateAll = false;
-            for (var i = 0; i < 200; i++) {
+            for (var i = 0; i < ObjectLimit; i++) {
                 UpdateObjectIndex(i);
                 TryUpdateSittingPosition(i);
             }
@@ -184,15 +203,13 @@ public unsafe class Plugin : IDalamudPlugin {
         }
 
         if (!Config.Enabled) return;
-        
-        nextUpdateIndex %= 200;
+        nextUpdateIndex %= ObjectLimit;
         var updateIndex = nextUpdateIndex++;
-        if (updateIndex != 0 && !managedIndex[updateIndex]) {
-            UpdateObjectIndex(nextUpdateIndex++);
+        if (updateIndex != 0 && !ManagedIndex[updateIndex]) {
+            UpdateObjectIndex(updateIndex);
         }
-
-        for (var i = 0; i < 200; i++) {
-            if (i == 0 || managedIndex[i]) UpdateObjectIndex(i);
+        for (var i = 0; i < ObjectLimit; i++) {
+            if (i == 0 || ManagedIndex[i]) UpdateObjectIndex(i);
         }
         
     }
@@ -222,6 +239,8 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public static Dictionary<(string, uint), float> IpcAssignedOffset { get; } = new();
     public static Dictionary<(string, uint), AssignedData> IpcAssignedData { get; } = new();
+
+    public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
     
     private float? GetOffsetFromConfig(string name, uint homeWorld, Human* human) {
         if (isDisposing) return null;
@@ -282,8 +301,16 @@ public unsafe class Plugin : IDalamudPlugin {
             if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1 or 2 or 3) return null;
             if (character->Mode == Character.CharacterModes.EmoteLoop && character->ModeParam is 21) return null;
         }
-        var name = MemoryHelper.ReadSeString(new nint(gameObject->GetName()), 64);
-        var configuredOffset = GetOffsetFromConfig(name.TextValue, character->HomeWorld, human);
+        
+        var name = MemoryHelper.ReadSeString(new nint(gameObject->GetName()), 64).TextValue;
+        var homeWorld = character->HomeWorld;
+
+        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
+            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
+            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
+        }
+        
+        var configuredOffset = GetOffsetFromConfig(name, homeWorld, human);
         if (configuredOffset != null) return configuredOffset;
         
         if (Config.UseModelOffsets) {
@@ -322,8 +349,8 @@ public unsafe class Plugin : IDalamudPlugin {
         PluginService.Framework.Update -= OnFrameworkUpdate;
 
         for (var i = 0; i < 200; i++) {
-            if (i == 0 || managedIndex[i]) UpdateObjectIndex(i);
-            if (appliedSittingOffset[i] != null) TryUpdateSittingPosition(i);
+            if (i == 0 || ManagedIndex[i]) UpdateObjectIndex(i);
+            if (AppliedSittingOffset[i] != null) TryUpdateSittingPosition(i);
         }
         
         LegacyApiProvider.DeInit();
@@ -336,6 +363,10 @@ public unsafe class Plugin : IDalamudPlugin {
         setDrawOffset?.Disable();
         setDrawOffset?.Dispose();
         setDrawOffset = null!;
+        
+        cloneActor?.Disable();
+        cloneActor?.Dispose();
+        cloneActor = null!;
     }
 
     private readonly Stopwatch waitTimer = new Stopwatch();
@@ -362,16 +393,22 @@ public unsafe class Plugin : IDalamudPlugin {
         z = 0;
         if (isDisposing) return false;
         if (!bypassSittingCheck && (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 2)) return false;
-        var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64);
+        var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64).TextValue;
+        var homeWorld = character->HomeWorld;
 
-        if (IpcAssignedData.TryGetValue((name.TextValue, character->HomeWorld), out var data)) {
+        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
+            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
+            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
+        }
+        
+        if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) {
             if (data is { SittingPosition: 0, SittingHeight: 0 }) return false;
             y = data.SittingHeight;
             z = data.SittingPosition;
             return true;
         }
         
-        if (!Config.TryGetCharacterConfig(name.TextValue, character->HomeWorld, out var characterConfig) || characterConfig == null) return false;
+        if (!Config.TryGetCharacterConfig(name, homeWorld, out var characterConfig) || characterConfig == null) return false;
         if (characterConfig is { SittingOffsetY: 0, SittingOffsetZ: 0 }) return false;
         
         y = characterConfig.SittingOffsetY;
@@ -393,13 +430,12 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     public void TryUpdateSittingPosition(GameObject* gameObject) {
-        if (gameObject->ObjectIndex >= 200) return;
         if (gameObject->ObjectKind != 1 || gameObject->SubKind != 4) return;
         
         var character = (Character*)gameObject;
         if (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 2) return;
 
-        var currentOffset = appliedSittingOffset[gameObject->ObjectIndex];
+        var currentOffset = AppliedSittingOffset[gameObject->ObjectIndex];
         SetDrawOffsetDetour(gameObject, gameObject->DrawOffset.X, gameObject->DrawOffset.Y - (currentOffset?.X ?? 0), gameObject->DrawOffset.Z - (currentOffset?.Y ?? 0));
     }
     
