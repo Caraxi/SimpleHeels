@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Numerics;
+using Dalamud.Interface.Colors;
 using ImGuiNET;
 
 namespace SimpleHeels; 
@@ -7,14 +9,13 @@ public static class Changelog {
     private static void Changelogs() {
         
         ChangelogFor(4, "0.4.0.0", () => {
-            ImGui.Text("- Added support for Body and Legs equipment that hide shoes.");
+            C("Added support for Body and Legs equipment that hide shoes.");
         });
-        
     }
 
     
     private static bool _displayedTitle;
-    private static int _latestChangelog = 1;
+    private static float _latestChangelog = 1;
     private static PluginConfig? _config;
     private static bool _showAll;
 
@@ -34,7 +35,7 @@ public static class Changelog {
         ImGui.Separator();
     }
     
-    private static void ChangelogFor(int version, string label, Action draw) {
+    private static void ChangelogFor(float version, string label, Action draw) {
         if (version > _latestChangelog) _latestChangelog = version;
         if (!_showAll && _config != null && _config.DismissedChangelog >= version) return;
         Title();
@@ -42,6 +43,17 @@ public static class Changelog {
         ImGui.Indent();
         draw();
         ImGui.Unindent();
+    }
+
+    private static void C(string text, int indent = 0, Vector4? color = null) {
+        for (var i = 0; i < indent; i++) ImGui.Indent();
+        if (color != null) {
+            ImGui.TextColored(color.Value, $"- {text}");
+        } else {
+            ImGui.Text($"- {text}");
+        }
+        
+        for (var i = 0; i < indent; i++) ImGui.Unindent();
     }
     
     public static void Show(PluginConfig config, bool showAll = false) {

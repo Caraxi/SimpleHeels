@@ -15,7 +15,7 @@ public class PluginConfig : IPluginConfiguration {
 
     public string ModelEditorLastFolder = string.Empty;
     
-    public int DismissedChangelog = 0;
+    public float DismissedChangelog = 0;
 
     public bool TryGetCharacterConfig(string name, uint world, out CharacterConfig? characterConfig) {
         characterConfig = null;
