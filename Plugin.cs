@@ -109,6 +109,11 @@ public unsafe class Plugin : IDalamudPlugin {
             #endif
         };
         windowSystem.AddWindow(configWindow);
+#if DEBUG
+        windowSystem.AddWindow(new ExtraDebug(this, Config) {
+            IsOpen = Config.DebugOpenOnStartup
+        });
+#endif
         
         pluginInterface.UiBuilder.Draw += windowSystem.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += () => OnCommand(string.Empty, string.Empty);
