@@ -259,8 +259,8 @@ public class ConfigWindow : Window {
                     }
                     
                     ImGui.Text($"Assigned Offset: {offset}");
-                    ImGui.Text($"Sitting Height: Not Set");
-                    ImGui.Text($"Sitting Position: Not Set");
+                    ImGui.Separator();
+                    ShowSittingOffsetEditor(selectedCharacter);
                 } else {
                     DrawCharacterView(selectedCharacter);
                 }
@@ -657,6 +657,10 @@ public class ConfigWindow : Window {
         
         ImGui.Separator();
 
+        ShowSittingOffsetEditor(characterConfig);
+    }
+
+    private void ShowSittingOffsetEditor(CharacterConfig characterConfig) {
         var sittingPositionChanged = ImGui.DragFloat("Sitting Height Offset", ref characterConfig.SittingOffsetY, 0.001f, -1f, 1f);
         sittingPositionChanged |= ImGui.DragFloat("Sitting Position Offset", ref characterConfig.SittingOffsetZ, 0.001f, -1f, 1f);
 

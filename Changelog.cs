@@ -7,6 +7,9 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(5.1f, "0.5.1.0", () => {
+            C("Now allows assigning sitting offset to characters that have only their standing offset assigned by IPC.");
+        });
         ChangelogFor(5, "0.5.0.0", () => {
             C("Added support for assigning an offset when sitting in a chair.");
             C("This will not be synced until support is added through Mare Synchronos", indent: 1, color: ImGuiColors.DalamudGrey3);
