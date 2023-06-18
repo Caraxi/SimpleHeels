@@ -58,6 +58,8 @@ public static class LegacyApiProvider {
 
 
     private static float? _lastReportedOffset = null;
+
+    public static float? LastReportedOffset => _lastReportedOffset;
     
     public static void OnOffsetChange(float offset)
     {

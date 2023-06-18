@@ -18,7 +18,6 @@ using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
-using Action = System.Action;
 using World = Lumina.Excel.GeneratedSheets.World;
 
 namespace SimpleHeels; 
@@ -78,11 +77,11 @@ public class ConfigWindow : Window {
             ImGuiHelpers.ScaledDummy(10);
         }
 
-        if (Plugin.IsDebug && Plugin.IpcAssignedOffset.Count > 0) {
+        if (Plugin.IsDebug && (Plugin.IpcAssignedOffset.Count > 0 || Plugin.IpcAssignedData.Count > 0)) {
             ImGui.TextDisabled("[DEBUG] IPC Assignments");
             ImGui.Separator();
 
-            foreach (var (name, worldId) in Plugin.IpcAssignedOffset.Keys.ToArray()) {
+            foreach (var (name, worldId) in Plugin.IpcAssignedData.Keys.Union(Plugin.IpcAssignedOffset.Keys)) {
                 var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
                 if (world == null) continue;
                 if (ImGui.Selectable($"{name}##{world.Name.RawString}##ipc", selectedName == name && selectedWorld == worldId)) {
@@ -238,20 +237,33 @@ public class ConfigWindow : Window {
         if (ImGui.BeginChild("character_view", ImGuiHelpers.ScaledVector2(0), true)) {
             if (selectedCharacter != null) {
                 ShowDebugInfo();
-                if (Plugin.IpcAssignedOffset.TryGetValue((selectedName, selectedWorld), out var offset)) {
 
+                if (Plugin.IpcAssignedData.TryGetValue((selectedName, selectedWorld), out var data)) {
+                    ImGui.Text("This character's offset is currently assigned by another plugin.");
+                    if (Plugin.IsDebug && ImGui.Button("Clear IPC Assignment")) {
+                        Plugin.IpcAssignedData.Remove((selectedName, selectedWorld));
+                        Plugin.IpcAssignedOffset.Remove((selectedName, selectedWorld));
+                        Plugin.RequestUpdateAll();
+                    }
+                    
+                    ImGui.Text($"Assigned Offset: {data.Offset}");
+                    ImGui.Text($"Sitting Height: {data.SittingHeight}");
+                    ImGui.Text($"Sitting Position: {data.SittingPosition}");
+                    
+                } else if (Plugin.IpcAssignedOffset.TryGetValue((selectedName, selectedWorld), out var offset)) {
                     ImGui.Text("This character's offset is currently assigned by another plugin.");
                     if (Plugin.IsDebug && ImGui.Button("Clear IPC Assignment")) {
                         Plugin.IpcAssignedOffset.Remove((selectedName, selectedWorld));
+                        Plugin.IpcAssignedData.Remove((selectedName, selectedWorld));
+                        Plugin.RequestUpdateAll();
                     }
                     
                     ImGui.Text($"Assigned Offset: {offset}");
-                    
-                    
-                    return;
+                    ImGui.Text($"Sitting Height: Not Set");
+                    ImGui.Text($"Sitting Position: Not Set");
+                } else {
+                    DrawCharacterView(selectedCharacter);
                 }
-                
-                DrawCharacterView(selectedCharacter);
             } else {
 
                 Changelog.Show(config);
@@ -282,6 +294,24 @@ public class ConfigWindow : Window {
                 #if DEBUG
                 ImGui.Checkbox("[DEBUG] Open config window on startup", ref config.DebugOpenOnStartup);
                 #endif
+
+                if (Plugin.IsDebug) {
+                    if (ImGui.TreeNode("DEBUG")) {
+                        
+                        ImGui.Text("Last Reported Data:");
+                        ImGui.Indent();
+                        ImGui.Text(ApiProvider.LastReportedData);
+                        ImGui.Unindent();
+                        
+                        ImGui.Text("Last Reported Legacy Offset:");
+                        ImGui.Indent();
+                        ImGui.Text($"{LegacyApiProvider.LastReportedOffset}");
+                        ImGui.Unindent();
+                        
+                        ImGui.TreePop();
+                    }
+                }
+                
 
                 if (config.UseModelOffsets && ImGui.CollapsingHeader("Model Offset Editor")) {
                     ShowModelEditor();
@@ -603,27 +633,38 @@ public class ConfigWindow : Window {
 
             var _ = ShowAddButton(activeTop, ModelSlot.Top) || ShowAddButton(activeLegs, ModelSlot.Legs) || ShowAddButton(activeFootwear, ModelSlot.Feet);
 
-            if (characterConfig.HeelsConfig.Count > 0) return;
-            
-            heelsConfigPath ??= Path.Join(PluginService.PluginInterface.ConfigFile.DirectoryName, "HeelsPlugin.json");
-            heelsConfigExists ??= File.Exists(heelsConfigPath);
-            if (heelsConfigExists is true && ImGui.Button("Import from Heels Plugin")) {
-                var heelsJson = File.ReadAllText(heelsConfigPath);
-                var heelsConfig = JsonConvert.DeserializeObject<HeelsPlugin.Configuration>(heelsJson);
-                if (heelsConfig == null) {
-                    heelsConfigExists = false;
-                } else {
-                    foreach (var e in heelsConfig.Configs) {
-                        characterConfig.HeelsConfig.Add(new HeelConfig() {
-                            Enabled = e.Enabled,
-                            Label = e.Name ?? string.Empty,
-                            ModelId = (ushort)e.ModelMain,
-                            Offset = e.Offset,
-                        });
+            if (characterConfig.HeelsConfig.Count == 0) {
+                heelsConfigPath ??= Path.Join(PluginService.PluginInterface.ConfigFile.DirectoryName, "HeelsPlugin.json");
+                heelsConfigExists ??= File.Exists(heelsConfigPath);
+                if (heelsConfigExists is true && ImGui.Button("Import from Heels Plugin")) {
+                    var heelsJson = File.ReadAllText(heelsConfigPath);
+                    var heelsConfig = JsonConvert.DeserializeObject<HeelsPlugin.Configuration>(heelsJson);
+                    if (heelsConfig == null) {
+                        heelsConfigExists = false;
+                    } else {
+                        foreach (var e in heelsConfig.Configs) {
+                            characterConfig.HeelsConfig.Add(new HeelConfig() {
+                                Enabled = e.Enabled,
+                                Label = e.Name ?? string.Empty,
+                                ModelId = (ushort)e.ModelMain,
+                                Offset = e.Offset,
+                            });
+                        }
                     }
                 }
             }
         }
+        
+        ImGui.Separator();
+
+        var sittingPositionChanged = ImGui.DragFloat("Sitting Height Offset", ref characterConfig.SittingOffsetY, 0.001f, -1f, 1f);
+        sittingPositionChanged |= ImGui.DragFloat("Sitting Position Offset", ref characterConfig.SittingOffsetZ, 0.001f, -1f, 1f);
+
+        if (sittingPositionChanged) {
+            plugin.TryUpdateSittingPosition(selectedName, selectedWorld);
+        }
+        
+        
     }
 
     private string? heelsConfigPath;
