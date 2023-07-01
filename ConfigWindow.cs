@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -43,8 +44,8 @@ public class ConfigWindow : Window {
     private Vector2 iconButtonSize = new(16);
     private float checkboxSize = 36;
 
-    
-
+    private readonly Stopwatch holdingClick = Stopwatch.StartNew();
+    private readonly Stopwatch clickHoldThrottle = Stopwatch.StartNew();
 
     public void DrawCharacterList() {
 
@@ -183,6 +184,7 @@ public class ConfigWindow : Window {
     }
     
     public override void Draw() {
+        if (holdingClick.IsRunning && !ImGui.IsMouseDown(ImGuiMouseButton.Left)) holdingClick.Restart();
         if (!Plugin.IsEnabled) {
             ImGui.TextColored(ImGuiColors.DalamudRed, $"{plugin.Name} is currently disabled due to Heels Plugin being installed.\nPlease uninstall Heels Plugin to allow {plugin.Name} to run.");
             return;
@@ -475,17 +477,19 @@ public class ConfigWindow : Window {
                 ImGui.TableNextColumn();
 
                 if (plugin.Config.ShowPlusMinusButtons) {
-                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Minus)) {
+                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Minus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                        clickHoldThrottle.Restart();
                         heelConfig.Offset -= plugin.Config.PlusMinusDelta;
                         if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                     }
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetItemRectSize().X - ImGui.GetStyle().ItemSpacing.X);
-                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -1, 1, "%.4f", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -5, 5, "%.5f", ImGuiSliderFlags.AlwaysClamp)) {
                         if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                     }
                     ImGui.SameLine();
-                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus)) {
+                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                        clickHoldThrottle.Restart();
                         heelConfig.Offset += plugin.Config.PlusMinusDelta;
                         if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                     }
@@ -493,7 +497,7 @@ public class ConfigWindow : Window {
                     
                 } else {
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -1, 1, "%.4f", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -5, 5, "%.5f", ImGuiSliderFlags.AlwaysClamp)) {
                         if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                     }
                 }

@@ -7,6 +7,9 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(5.11f, "0.5.1.1", () => {
+            C("Increased maximum offset value.");
+        });
         ChangelogFor(5.1f, "0.5.1.0", () => {
             C("Now allows assigning sitting offset to characters that have only their standing offset assigned by IPC.");
             C("Now applies offsets to GPose and Cutscene actors.");
