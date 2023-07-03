@@ -1,12 +1,24 @@
 ﻿using System;
 using System.Numerics;
+using Dalamud.Interface;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Components;
 using ImGuiNET;
 
 namespace SimpleHeels; 
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(6.00f, "0.6.0.0", () => {
+            C("Added Groups (");
+            ImGui.SameLine();
+            ImGui.PushFont(UiBuilder.IconFont);
+            ImGui.Text($"{(char)FontAwesomeIcon.PeopleGroup}");
+            ImGui.PopFont();
+            ImGui.SameLine();
+            ImGui.Text(") to allow setting offsets to a range of characters");
+            
+        });
         ChangelogFor(5.11f, "0.5.1.1", () => {
             C("Increased maximum offset value.");
         });
@@ -68,7 +80,7 @@ public static class Changelog {
         for (var i = 0; i < indent; i++) ImGui.Unindent();
     }
     
-    public static void Show(PluginConfig config, bool showAll = false) {
+    public static bool Show(PluginConfig config, bool showAll = false) {
         _displayedTitle = false;
         _config = config;
         _showAll = showAll;
@@ -76,6 +88,10 @@ public static class Changelog {
         if (_displayedTitle) {
             ImGui.Spacing();
             ImGui.Spacing();
+            ImGui.Separator();
+            return true;
         }
+
+        return false;
     }
 }

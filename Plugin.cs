@@ -251,7 +251,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (isDisposing) return null;
         if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) return data.Offset;
         if (IpcAssignedOffset.TryGetValue((name, homeWorld), out var offset)) return offset;
-        if (!Config.TryGetCharacterConfig(name, homeWorld, out var characterConfig) || characterConfig == null) {
+        if (!Config.TryGetCharacterConfig(name, homeWorld, &human->CharacterBase.DrawObject, out var characterConfig) || characterConfig == null) {
             return null;
         }
 
@@ -397,6 +397,7 @@ public unsafe class Plugin : IDalamudPlugin {
         y = 0;
         z = 0;
         if (isDisposing) return false;
+        if (character == null) return false;
         if (!bypassSittingCheck && (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 2)) return false;
         var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64).TextValue;
         var homeWorld = character->HomeWorld;
@@ -413,7 +414,7 @@ public unsafe class Plugin : IDalamudPlugin {
             return true;
         }
         
-        if (!Config.TryGetCharacterConfig(name, homeWorld, out var characterConfig) || characterConfig == null) return false;
+        if (!Config.TryGetCharacterConfig(name, homeWorld, character->GameObject.DrawObject, out var characterConfig) || characterConfig == null) return false;
         if (characterConfig is { SittingOffsetY: 0, SittingOffsetZ: 0 }) return false;
         
         y = characterConfig.SittingOffsetY;
@@ -426,6 +427,12 @@ public unsafe class Plugin : IDalamudPlugin {
         var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
         if (player == null) return;
         TryUpdateSittingPosition((GameObject*) player.Address);
+    }
+
+    public void TryUpdateSittingPositions() {
+        foreach (var player in PluginService.Objects.Where(p => p is PlayerCharacter)) {
+            TryUpdateSittingPosition((GameObject*) player.Address);
+        }
     }
 
     public void TryUpdateSittingPosition(int index) {

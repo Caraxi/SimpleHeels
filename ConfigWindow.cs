@@ -47,7 +47,7 @@ public class ConfigWindow : Window {
     private readonly Stopwatch holdingClick = Stopwatch.StartNew();
     private readonly Stopwatch clickHoldThrottle = Stopwatch.StartNew();
 
-    public void DrawCharacterList() {
+    public unsafe void DrawCharacterList() {
 
         foreach (var (worldId, characters) in config.WorldCharacterDictionary.ToArray()) {
             var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
@@ -61,6 +61,7 @@ public class ConfigWindow : Window {
                     selectedCharacter = characterConfig;
                     selectedName = name;
                     selectedWorld = world.RowId;
+                    selectedGroup = null;
                 }
                 
                 if (ImGui.BeginPopupContextItem()) {
@@ -86,10 +87,11 @@ public class ConfigWindow : Window {
                 var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
                 if (world == null) continue;
                 if (ImGui.Selectable($"{name}##{world.Name.RawString}##ipc", selectedName == name && selectedWorld == worldId)) {
-                    config.TryGetCharacterConfig(name, worldId, out selectedCharacter);
+                    config.TryGetCharacterConfig(name, worldId, null, out selectedCharacter);
                     selectedCharacter ??= new CharacterConfig();
                     selectedName = name;
                     selectedWorld = world.RowId;
+                    selectedGroup = null;
                 }
                 ImGui.SameLine();
                 ImGui.TextDisabled(world.Name.ToDalamudString().TextValue);
@@ -98,12 +100,66 @@ public class ConfigWindow : Window {
             ImGuiHelpers.ScaledDummy(10);
         }
 
+
+        if (config.Groups.Count > 0) {
+            ImGui.TextDisabled($"Group Assignments");
+            ImGui.Separator();
+            var arr = config.Groups.ToArray();
+            
+            for(var i = 0; i < arr.Length; i++) {
+                var filterConfig = arr[i];
+                if (ImGui.Selectable($"{filterConfig.Label}##filterConfig_{i}", selectedGroup == filterConfig)) {
+                    selectedCharacter = null;
+                    selectedName = string.Empty;
+                    selectedWorld = 0;
+                    selectedGroup = filterConfig;
+                }
+                
+                if (ImGui.BeginPopupContextItem()) {
+                    if (config.Groups.Count > 1) {
+
+                        if (i > 0) {
+                            if (ImGui.Selectable($"Move Up")) {
+                                config.Groups.Remove(filterConfig);
+                                config.Groups.Insert(i - 1, filterConfig);
+                            }
+                        }
+
+                        if (i < config.Groups.Count - 1) {
+                            if (ImGui.Selectable($"Move Down")) {
+                                config.Groups.Remove(filterConfig);
+                                config.Groups.Insert(i + 1, filterConfig);
+                            }
+                        }
+                        
+                        
+                        
+
+                        ImGui.Separator();
+                    }
+
+                    ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGui.GetIO().KeyShift ? ImGuiCol.Text : ImGuiCol.TextDisabled));
+                    if (ImGui.Selectable($"Delete group '{filterConfig.Label}'") && ImGui.GetIO().KeyShift) {
+                        config.Groups.Remove(filterConfig);
+                    }
+                    ImGui.PopStyleColor();
+                    if (!ImGui.GetIO().KeyShift && ImGui.IsItemHovered()) {
+                        ImGui.SetTooltip("Hold SHIFT to delete.");
+                    }
+                    ImGui.EndPopup();
+                }
+                
+            }
+            ImGuiHelpers.ScaledDummy(10);
+        }
     }
 
     private CharacterConfig? selectedCharacter;
     private string selectedName = string.Empty;
     private uint selectedWorld;
 
+    private GroupConfig? selectedGroup;
+    
     private void ShowDebugInfo() {
         if (Plugin.IsDebug && ImGui.TreeNode("DEBUG INFO")) {
             try {
@@ -224,11 +280,23 @@ public class ConfigWindow : Window {
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip("Add targeted character");
                 ImGui.SameLine();
             }
+
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.PeopleGroup)) {
+                var newGroup = new GroupConfig();
+                selectedCharacter = null;
+                selectedName = string.Empty;
+                selectedWorld = 0;
+                selectedGroup = newGroup;
+                config.Groups.Add(newGroup);
+            }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Create new group assignment");
+            ImGui.SameLine();
             
             if (ImGuiComponents.IconButton(FontAwesomeIcon.Cog)) {
                 selectedCharacter = null;
                 selectedName = string.Empty;
                 selectedWorld = 0;
+                selectedGroup = null;
             }
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Plugin Options");
             iconButtonSize = ImGui.GetItemRectSize() + ImGui.GetStyle().ItemSpacing;
@@ -266,11 +334,72 @@ public class ConfigWindow : Window {
                 } else {
                     DrawCharacterView(selectedCharacter);
                 }
+            }
+            else if (selectedGroup != null) {
+
+                ImGui.InputText("Group Label", ref selectedGroup.Label, 50);
+                
+                ImGui.Separator();
+                
+                ImGui.Text("Apply group to characters using:");
+                ImGui.Indent();
+
+                if (ImGui.Checkbox("Masculine Model", ref selectedGroup.MatchMasculine)) {
+                    if (selectedGroup is { MatchFeminine: false, MatchMasculine: false}) {
+                        selectedGroup.MatchFeminine = true;
+                    }
+                }
+
+                if (ImGui.Checkbox("Feminine Model", ref selectedGroup.MatchFeminine)) {
+                    if (selectedGroup is { MatchFeminine: false, MatchMasculine: false}) {
+                        selectedGroup.MatchMasculine = true;
+                    }
+                }
+
+                ImGui.Unindent();
+                
+                ImGui.Text("Apply group to characters of the clans:");
+                ImGui.Indent();
+                if (ImGui.BeginTable("clanTable", 4)) {
+                    foreach (var clan in PluginService.Data.GetExcelSheet<Tribe>()!) {
+                        if (clan.RowId == 0) continue;
+                        
+                        var isEnabled = selectedGroup.Clans.Count == 0 || selectedGroup.Clans.Contains(clan.RowId);
+
+                        ImGui.TableNextColumn();
+                        
+                        ImGui.PushStyleColor(ImGuiCol.CheckMark, ImGui.GetColorU32(selectedGroup.Clans.Count == 0 ? ImGuiCol.TextDisabled : ImGuiCol.Text));
+                        if (ImGui.Checkbox($"{clan.Masculine.ToDalamudString().TextValue}", ref isEnabled)) {
+                            if (selectedGroup.Clans.Contains(clan.RowId)) {
+                                selectedGroup.Clans.Remove(clan.RowId);
+                            } else {
+                                selectedGroup.Clans.Add(clan.RowId);
+                            }
+                        }
+                        ImGui.PopStyleColor();
+
+                    }
+                    ImGui.EndTable();
+                }
+                
+                ImGui.Unindent();
+                
+                ImGui.Separator();
+                DrawCharacterView(selectedGroup);
             } else {
 
-                Changelog.Show(config);
+                var changelogVisible = Changelog.Show(config);
                 
                 ImGui.Text("SimpleHeels Options");
+
+                if (!changelogVisible) {
+                    ImGui.SameLine();
+                    ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - ImGui.CalcTextSize("changelogs").X - ImGui.GetStyle().FramePadding.X * 2);
+                    if (ImGui.SmallButton("changelogs")) {
+                        config.DismissedChangelog = 0f;
+                    }
+                }
+                
                 ImGui.Separator();
 
                 if (ImGui.Checkbox("Enabled", ref config.Enabled)) {
@@ -417,15 +546,27 @@ public class ConfigWindow : Window {
     
     private void DrawCharacterView(CharacterConfig? characterConfig) {
         if (characterConfig == null) return;
+
+        ushort activeFootwear = 0;
+        string? activeFootwearPath = null;
+
+        ushort activeTop = 0;
+        string? activeTopPath = null;
+
+        ushort activeLegs = 0;
+        string? activeLegsPath = null;
         
-        var activeFootwear = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
-        var activeFootwearPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
+        if (characterConfig is not GroupConfig) {
+            activeFootwear = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
+            activeFootwearPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
         
-        var activeTop = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Top);
-        var activeTopPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Top);
+            activeTop = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Top);
+            activeTopPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Top);
         
-        var activeLegs = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
-        var activeLegsPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
+            activeLegs = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
+            activeLegsPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
+        }
+        
         
         if (ImGui.BeginTable("OffsetsTable", 5)) {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 2 + 1);
@@ -601,15 +742,17 @@ public class ConfigWindow : Window {
                 
                 ImGui.TableNextColumn();
 
-                if ((heelConfig.Slot == ModelSlot.Feet && ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
-                    || (heelConfig.Slot == ModelSlot.Legs && ((heelConfig.PathMode == false && activeLegs == heelConfig.ModelId) || (heelConfig.PathMode && activeLegsPath != null && activeLegsPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
-                    || (heelConfig.Slot == ModelSlot.Top && ((heelConfig.PathMode == false && activeTop == heelConfig.ModelId) || (heelConfig.PathMode && activeTopPath != null && activeTopPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))))) {
+                if (characterConfig is not GroupConfig) {
+                    if ((heelConfig.Slot == ModelSlot.Feet && ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
+                        || (heelConfig.Slot == ModelSlot.Legs && ((heelConfig.PathMode == false && activeLegs == heelConfig.ModelId) || (heelConfig.PathMode && activeLegsPath != null && activeLegsPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
+                        || (heelConfig.Slot == ModelSlot.Top && ((heelConfig.PathMode == false && activeTop == heelConfig.ModelId) || (heelConfig.PathMode && activeTopPath != null && activeTopPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))))) {
                     
-                    ImGui.PushFont(UiBuilder.IconFont);
-                    ImGui.Text($"{(char)FontAwesomeIcon.ArrowLeft}");
-                    ImGui.PopFont();
-                    if (ImGui.IsItemHovered()) {
-                        ImGui.SetTooltip("Currently Wearing");
+                        ImGui.PushFont(UiBuilder.IconFont);
+                        ImGui.Text($"{(char)FontAwesomeIcon.ArrowLeft}");
+                        ImGui.PopFont();
+                        if (ImGui.IsItemHovered()) {
+                            ImGui.SetTooltip("Currently Wearing");
+                        }
                     }
                 }
 
@@ -635,8 +778,17 @@ public class ConfigWindow : Window {
                 return false;
             }
 
-            var _ = ShowAddButton(activeTop, ModelSlot.Top) || ShowAddButton(activeLegs, ModelSlot.Legs) || ShowAddButton(activeFootwear, ModelSlot.Feet);
-
+            if (characterConfig is not GroupConfig) {
+                var _ = ShowAddButton(activeTop, ModelSlot.Top) || ShowAddButton(activeLegs, ModelSlot.Legs) || ShowAddButton(activeFootwear, ModelSlot.Feet);
+            } else {
+                if (ImGui.Button($"Add New Entry")) {
+                    characterConfig.HeelsConfig.Add(new HeelConfig() {
+                        ModelId = 0,
+                        Slot = ModelSlot.Feet
+                    });
+                }
+            }
+            
             if (characterConfig.HeelsConfig.Count == 0) {
                 heelsConfigPath ??= Path.Join(PluginService.PluginInterface.ConfigFile.DirectoryName, "HeelsPlugin.json");
                 heelsConfigExists ??= File.Exists(heelsConfigPath);
@@ -665,11 +817,16 @@ public class ConfigWindow : Window {
     }
 
     private void ShowSittingOffsetEditor(CharacterConfig characterConfig) {
-        var sittingPositionChanged = ImGui.DragFloat("Sitting Height Offset", ref characterConfig.SittingOffsetY, 0.001f, -1f, 1f);
+        var sittingPositionChanged = ImGui.DragFloat("Sitting Height Offset", ref characterConfig.SittingOffsetY, 0.001f, -3f, 3f);
         sittingPositionChanged |= ImGui.DragFloat("Sitting Position Offset", ref characterConfig.SittingOffsetZ, 0.001f, -1f, 1f);
 
         if (sittingPositionChanged) {
-            plugin.TryUpdateSittingPosition(selectedName, selectedWorld);
+            if (characterConfig is GroupConfig) {
+                plugin.TryUpdateSittingPositions();
+            } else {
+                plugin.TryUpdateSittingPosition(selectedName, selectedWorld);
+            }
+            
         }
         
         
