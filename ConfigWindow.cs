@@ -625,7 +625,7 @@ public class ConfigWindow : Window {
                     }
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetItemRectSize().X - ImGui.GetStyle().ItemSpacing.X);
-                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -5, 5, "%.5f", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, float.MinValue, float.MaxValue, "%.5f")) {
                         if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                     }
                     ImGui.SameLine();
@@ -638,7 +638,7 @@ public class ConfigWindow : Window {
                     
                 } else {
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, -5, 5, "%.5f", ImGuiSliderFlags.AlwaysClamp)) {
+                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, float.MinValue, float.MaxValue, "%.5f")) {
                         if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                     }
                 }
