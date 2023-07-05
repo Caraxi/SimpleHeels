@@ -161,8 +161,12 @@ public unsafe class Plugin : IDalamudPlugin {
         if (updateIndex is < 0 or >= ObjectLimit) return true;
 
         var obj = GameObjectManager.GetGameObjectByIndex(updateIndex);
-        if (obj == null || obj->DrawObject == null || !obj->IsCharacter()) {
+        if (obj == null || !obj->IsCharacter()) {
             ManagedIndex[updateIndex] = false;
+            return false;
+        }
+
+        if (obj->DrawObject == null) {
             return false;
         }
 
