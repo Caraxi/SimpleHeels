@@ -20,7 +20,7 @@ using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 namespace SimpleHeels;
 
 public unsafe class Plugin : IDalamudPlugin {
-    public const int ObjectLimit = 240;
+    public const int ObjectLimit = 596;
     
     public string Name => "Simple Heels";
     
@@ -157,33 +157,33 @@ public unsafe class Plugin : IDalamudPlugin {
         _updateAll = true;
     }
 
-    private void UpdateObjectIndex(int updateIndex) {
-        if (updateIndex is < 0 or >= ObjectLimit) return;
+    private bool UpdateObjectIndex(int updateIndex) {
+        if (updateIndex is < 0 or >= ObjectLimit) return true;
 
         var obj = GameObjectManager.GetGameObjectByIndex(updateIndex);
-        if (obj == null || !obj->IsCharacter()) {
+        if (obj == null || obj->DrawObject == null || !obj->IsCharacter()) {
             ManagedIndex[updateIndex] = false;
-            return;
+            return false;
         }
 
         if (!ManagedIndex[updateIndex] && obj->DrawOffset.Y != 0) {
             if (updateIndex == 0) {
                 LegacyApiProvider.OnOffsetChange(0);
             }
-            return;
+            return false;
         }
         
         var offset = GetOffset(obj);
         if (offset == null) {
             if (ManagedIndex[updateIndex]) {
-                ManagedIndex[updateIndex] = true;
+                ManagedIndex[updateIndex] = false;
                 setDrawOffset?.Original(obj, obj->DrawOffset.X, 0, obj->DrawOffset.Z);
             }
 
             if (updateIndex == 0) {
                 LegacyApiProvider.OnOffsetChange(0);
             }
-            return;
+            return true;
         }
         
         if (MathF.Abs(obj->DrawOffset.Y - offset.Value) > 0.00001f) {
@@ -194,6 +194,8 @@ public unsafe class Plugin : IDalamudPlugin {
                 ApiProvider.StandingOffsetChanged(offset.Value);
             }
         }
+
+        return true;
     }
     
     private void OnFrameworkUpdate(Framework framework) {
@@ -208,10 +210,15 @@ public unsafe class Plugin : IDalamudPlugin {
         }
 
         if (!Config.Enabled) return;
-        nextUpdateIndex %= ObjectLimit;
-        var updateIndex = nextUpdateIndex++;
-        if (updateIndex != 0 && !ManagedIndex[updateIndex]) {
-            UpdateObjectIndex(updateIndex);
+
+        var throttle = 20;
+        while (throttle-- > 0) {
+            nextUpdateIndex %= ObjectLimit;
+            var updateIndex = nextUpdateIndex++;
+            if (updateIndex != 0 && !ManagedIndex[updateIndex]) {
+                if (UpdateObjectIndex(updateIndex)) 
+                    break;
+            }
         }
         for (var i = 0; i < ObjectLimit; i++) {
             if (i == 0 || ManagedIndex[i]) UpdateObjectIndex(i);
@@ -294,7 +301,6 @@ public unsafe class Plugin : IDalamudPlugin {
         if (isDisposing) return null;
         if (!Config.Enabled) return null;
         if (gameObject == null) return null;
-        if (!(gameObject->ObjectKind == 1 && gameObject->SubKind == 4)) return null;
         var drawObject = gameObject->DrawObject;
         if (drawObject == null) return null;
         if (drawObject->Object.GetObjectType() != ObjectType.CharacterBase) return null;
@@ -353,7 +359,7 @@ public unsafe class Plugin : IDalamudPlugin {
         PluginService.Framework.Update -= WaitForHeelsPlugin;
         PluginService.Framework.Update -= OnFrameworkUpdate;
 
-        for (var i = 0; i < 200; i++) {
+        for (var i = 0; i < ObjectLimit; i++) {
             if (i == 0 || ManagedIndex[i]) UpdateObjectIndex(i);
             if (AppliedSittingOffset[i] != null) TryUpdateSittingPosition(i);
         }

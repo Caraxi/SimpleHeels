@@ -544,29 +544,31 @@ public class ConfigWindow : Window {
 
     private string footwearSearch = string.Empty;
     
-    private void DrawCharacterView(CharacterConfig? characterConfig) {
+    private unsafe void DrawCharacterView(CharacterConfig? characterConfig) {
         if (characterConfig == null) return;
 
-        ushort activeFootwear = 0;
-        string? activeFootwearPath = null;
 
-        ushort activeTop = 0;
-        string? activeTopPath = null;
-
-        ushort activeLegs = 0;
-        string? activeLegsPath = null;
-        
-        if (characterConfig is not GroupConfig) {
-            activeFootwear = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
-            activeFootwearPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Feet);
-        
-            activeTop = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Top);
-            activeTopPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Top);
-        
-            activeLegs = GetModelIdForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
-            activeLegsPath = GetModelPathForPlayer(selectedName, selectedWorld, ModelSlot.Legs);
+        GameObject* activeCharacter = null;
+        if (characterConfig is GroupConfig) {
+            var target = PluginService.Targets.SoftTarget ?? PluginService.Targets.Target;
+            if (target is Dalamud.Game.ClientState.Objects.Types.Character) {
+                activeCharacter = (GameObject*)target.Address;
+            }
+        } else {
+            var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
+            if (player is PlayerCharacter) {
+                activeCharacter = (GameObject*)player.Address;
+            }
         }
         
+        var activeFootwear = GetModelIdForPlayer(activeCharacter, ModelSlot.Feet);
+        var activeFootwearPath = GetModelPathForPlayer(activeCharacter, ModelSlot.Feet);
+    
+        var activeTop = GetModelIdForPlayer(activeCharacter, ModelSlot.Top);
+        var activeTopPath = GetModelPathForPlayer(activeCharacter, ModelSlot.Top);
+    
+        var activeLegs = GetModelIdForPlayer(activeCharacter, ModelSlot.Legs);
+        var activeLegsPath = GetModelPathForPlayer(activeCharacter, ModelSlot.Legs);
         
         if (ImGui.BeginTable("OffsetsTable", 5)) {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 2 + 1);
@@ -602,7 +604,7 @@ public class ConfigWindow : Window {
                 ImGui.PopStyleVar();
                 if (ImGui.Checkbox("##enable", ref heelConfig.Enabled)) {
                     if (heelConfig.Enabled) {
-                        foreach (var heel in characterConfig.HeelsConfig.Where(h => h.ModelId == heelConfig.ModelId)) {
+                        foreach (var heel in characterConfig.HeelsConfig.Where(h => h.PathMode == heelConfig.PathMode && h.PathMode ? h.Path == heelConfig.Path : h.ModelId == heelConfig.ModelId)) {
                             heel.Enabled = false;
                         }
                         heelConfig.Enabled = true;
@@ -659,6 +661,7 @@ public class ConfigWindow : Window {
                         
                         if (ImGui.BeginTabItem((pathMode ? "Model Path" : "Model ID") + "###currentConfigType")) {
                             if (pathMode) {
+                                heelConfig.Path ??= string.Empty;
                                 ImGui.TextWrapped("Assign offset based on the file path of the model, this can be a game path or a penumbra mod path.");
                                 ImGui.TextDisabled("File Path:");
                                 ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
@@ -702,7 +705,7 @@ public class ConfigWindow : Window {
                                 if (ImGui.BeginChild("##footwearSelectScroll", new Vector2(-1, 200))) {
                                     foreach (var shoeModel in shoeModelList.Value.Values) {
                                         if (!string.IsNullOrWhiteSpace(footwearSearch)) {
-                                            if (!((shoeModel.Name ?? $"Unknown#{shoeModel.Id}").Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase) || shoeModel.Items.Any(shoeItem => shoeItem.Name.ToDalamudString().TextValue.Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase)))) {
+                                            if (!((ushort.TryParse(footwearSearch, out var searchId) && searchId == shoeModel.Id) || (shoeModel.Name ?? $"Unknown#{shoeModel.Id}").Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase) || shoeModel.Items.Any(shoeItem => shoeItem.Name.ToDalamudString().TextValue.Contains(footwearSearch, StringComparison.InvariantCultureIgnoreCase)))) {
                                                 continue;
                                             }
                                         }
@@ -778,14 +781,32 @@ public class ConfigWindow : Window {
                 return false;
             }
 
-            if (characterConfig is not GroupConfig) {
-                var _ = ShowAddButton(activeTop, ModelSlot.Top) || ShowAddButton(activeLegs, ModelSlot.Legs) || ShowAddButton(activeFootwear, ModelSlot.Feet);
-            } else {
-                if (ImGui.Button($"Add New Entry")) {
+            
+            void ShowAddPathButton(string? path, ModelSlot slot) {
+                if (ImGui.Button($"Add Path: {path}")) {
                     characterConfig.HeelsConfig.Add(new HeelConfig() {
-                        ModelId = 0,
-                        Slot = ModelSlot.Feet
+                        PathMode = true,
+                        Path = path,
+                        Slot = slot
                     });
+                }
+
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip($"{path}");
+                }
+                
+            }
+
+            if (ImGui.GetIO().KeyShift && (ImGui.GetIO().KeyCtrl ? activeLegsPath : ImGui.GetIO().KeyAlt ? activeTopPath : activeFootwearPath) != null) {
+                ShowAddPathButton(ImGui.GetIO().KeyCtrl ? activeLegsPath : ImGui.GetIO().KeyAlt ? activeTopPath : activeFootwearPath, ImGui.GetIO().KeyCtrl ? ModelSlot.Legs : ImGui.GetIO().KeyAlt ? ModelSlot.Top : ModelSlot.Feet);
+            } else {
+                if (!(ShowAddButton(activeTop, ModelSlot.Top) || ShowAddButton(activeLegs, ModelSlot.Legs) || ShowAddButton(activeFootwear, ModelSlot.Feet))) {
+                    if (ImGui.Button($"Add New Entry")) {
+                        characterConfig.HeelsConfig.Add(new HeelConfig() {
+                            ModelId = 0,
+                            Slot = ModelSlot.Feet
+                        });
+                    }
                 }
             }
             
@@ -900,28 +921,24 @@ public class ConfigWindow : Window {
         }
     }
 
-    private static unsafe ushort GetModelIdForPlayer(string name, uint world, ModelSlot slot) {
-        var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
-        if (player is not PlayerCharacter) return 0;
-        var obj = (GameObject*)player.Address;
-        if (obj->DrawObject == null) return 0;
-        if (obj->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return 0;
+    private static unsafe ushort GetModelIdForPlayer(GameObject* obj, ModelSlot slot) {
+        if (obj == null) return ushort.MaxValue;
+        if (obj->DrawObject == null) return ushort.MaxValue;
+        if (obj->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return ushort.MaxValue;
         var characterBase = (CharacterBase*)obj->DrawObject;
-        if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return 0;
+        if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return ushort.MaxValue;
         var human = (Human*)obj->DrawObject;
-        if (human == null) return 0;
+        if (human == null) return ushort.MaxValue;
         return slot switch {
             ModelSlot.Feet => human->Feet.Id,
             ModelSlot.Top => human->Top.Id,
             ModelSlot.Legs => human->Legs.Id,
-            _ => 0,
+            _ => ushort.MaxValue,
         };
     }
     
-    private static unsafe string? GetModelPathForPlayer(string name, uint world, ModelSlot slot) {
-        var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
-        if (player is not PlayerCharacter) return null;
-        var obj = (GameObject*)player.Address;
+    private static unsafe string? GetModelPathForPlayer(GameObject* obj, ModelSlot slot) {
+        if (obj == null) return null;
         if (obj->DrawObject == null) return null;
         if (obj->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return null;
         var characterBase = (CharacterBase*)obj->DrawObject;
