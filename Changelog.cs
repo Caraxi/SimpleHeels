@@ -9,6 +9,12 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(6.11f, "0.6.1.1", () => {
+            C("Fixed 0 offset not being reported correctly to other plugins.");
+        });
+        ChangelogFor(6.10f, "0.6.1.0", () => {
+            C("Allow NPC characters to have their offsets assigned by groups.");
+        });
         ChangelogFor(6.00f, "0.6.0.0", () => {
             C("Added Groups (");
             ImGui.SameLine();

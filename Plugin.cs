@@ -169,6 +169,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (!ManagedIndex[updateIndex] && obj->DrawOffset.Y != 0) {
             if (updateIndex == 0) {
                 LegacyApiProvider.OnOffsetChange(0);
+                ApiProvider.StandingOffsetChanged(0);
             }
             return false;
         }
@@ -182,6 +183,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
             if (updateIndex == 0) {
                 LegacyApiProvider.OnOffsetChange(0);
+                ApiProvider.StandingOffsetChanged(0);
             }
             return true;
         }
