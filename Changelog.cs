@@ -9,15 +9,10 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
-        ChangelogFor(6.12f, "0.6.1.2", () => {
-            C("Fixed plugin breaking when character is redrawn by Penumbra or Glamourer.");
-        });
-        ChangelogFor(6.11f, "0.6.1.1", () => {
-            C("Fixed 0 offset not being reported correctly to other plugins.");
-        });
-        ChangelogFor(6.10f, "0.6.1.0", () => {
-            C("Allow NPC characters to have their offsets assigned by groups.");
-        });
+        ChangelogFor(6.12f, "0.6.1.3", "Another attempt to fix offset getting stuck for some people.");
+        ChangelogFor(6.12f, "0.6.1.2", "Fixed plugin breaking when character is redrawn by Penumbra or Glamourer.");
+        ChangelogFor(6.11f, "0.6.1.1", "Fixed 0 offset not being reported correctly to other plugins.");
+        ChangelogFor(6.10f, "0.6.1.0", "Allow NPC characters to have their offsets assigned by groups.");
         ChangelogFor(6.00f, "0.6.0.0", () => {
             C("Added Groups (");
             ImGui.SameLine();
@@ -28,9 +23,7 @@ public static class Changelog {
             ImGui.Text(") to allow setting offsets to a range of characters");
             
         });
-        ChangelogFor(5.11f, "0.5.1.1", () => {
-            C("Increased maximum offset value.");
-        });
+        ChangelogFor(5.11f, "0.5.1.1", "Increased maximum offset value.");
         ChangelogFor(5.1f, "0.5.1.0", () => {
             C("Now allows assigning sitting offset to characters that have only their standing offset assigned by IPC.");
             C("Now applies offsets to GPose and Cutscene actors.");
@@ -41,9 +34,7 @@ public static class Changelog {
             C("This will not be synced until support is added through Mare Synchronos", indent: 1, color: ImGuiColors.DalamudGrey3);
         });
         
-        ChangelogFor(4, "0.4.0.0", () => {
-            C("Added support for Body and Legs equipment that hide shoes.");
-        });
+        ChangelogFor(4, "0.4.0.0", "Added support for Body and Legs equipment that hide shoes.");
     }
 
     
@@ -76,6 +67,10 @@ public static class Changelog {
         ImGui.Indent();
         draw();
         ImGui.Unindent();
+    }
+
+    private static void ChangelogFor(float version, string label, string singleLineChangelog) {
+        ChangelogFor(version, label, () => { C(singleLineChangelog); });
     }
 
     private static void C(string text, int indent = 0, Vector4? color = null) {
