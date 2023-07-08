@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -529,7 +530,7 @@ public class ConfigWindow : Window {
                             var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset="));
                         
                             if (offset != null) {
-                                if (!float.TryParse(offset[13..], out mdlEditorOffset)) {
+                                if (!float.TryParse(offset[13..], CultureInfo.InvariantCulture, out mdlEditorOffset)) {
                                     mdlEditorOffset = 0;
                                 }
                             }
