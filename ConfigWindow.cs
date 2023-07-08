@@ -195,6 +195,7 @@ public class ConfigWindow : Window {
                     ImGui.Text($"Expected Offset: {plugin.GetOffset(obj)}");
 
                     ImGui.Text($"Height: {obj->GetHeight()}");
+                    ImGui.Text($"Mode: {character->Mode}, {character->ModeParam}");
 
                     ImGui.Text($"Object Type: {obj->DrawObject->Object.GetObjectType()}");
                     if (obj->DrawObject->Object.GetObjectType() == ObjectType.CharacterBase) {

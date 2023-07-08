@@ -13,7 +13,7 @@ public class PluginConfig : IPluginConfiguration {
     
     public bool Enabled = true;
     public bool DebugOpenOnStartup = true;
-    public bool ShowPlusMinusButtons = false;
+    public bool ShowPlusMinusButtons = true;
     public float PlusMinusDelta = 0.001f;
     public bool UseModelOffsets = true;
 
