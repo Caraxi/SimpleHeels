@@ -482,27 +482,7 @@ public class ConfigWindow : Window {
                 ImGui.Text("Loaded File");
 
                 
-                if (config.ShowPlusMinusButtons) {
-                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Minus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
-                        clickHoldThrottle.Restart();
-                        mdlEditorOffset -= config.PlusMinusDelta;
-                    }
-
-                    s.X -= ImGui.GetItemRectSize().X * 2 + ImGui.GetStyle().ItemSpacing.X * 2;
-                    ImGui.SameLine();
-                    
-                }
-                ImGui.SetNextItemWidth(s.X);
-                ImGui.SliderFloat("##heelsOffset", ref mdlEditorOffset, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
-                if (config.ShowPlusMinusButtons) {
-                    ImGui.SameLine();
-                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
-                        clickHoldThrottle.Restart();
-                        mdlEditorOffset += config.PlusMinusDelta;
-                    }
-                }
-                ImGui.SameLine();
-                ImGui.Text("Heels Offset");
+                FloatEditor("Heels Offset", ref mdlEditorOffset, 0.001f, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
                 var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset="));
                 if (offset == null) {
                     ImGui.Text("Model has no offset assigned.");
@@ -645,30 +625,9 @@ public class ConfigWindow : Window {
                 
                 ImGui.TableNextColumn();
 
-                if (plugin.Config.ShowPlusMinusButtons) {
-                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Minus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
-                        clickHoldThrottle.Restart();
-                        heelConfig.Offset -= plugin.Config.PlusMinusDelta;
-                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
-                    }
-                    ImGui.SameLine();
-                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetItemRectSize().X - ImGui.GetStyle().ItemSpacing.X);
-                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, float.MinValue, float.MaxValue, "%.5f")) {
-                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
-                    }
-                    ImGui.SameLine();
-                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
-                        clickHoldThrottle.Restart();
-                        heelConfig.Offset += plugin.Config.PlusMinusDelta;
-                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
-                    }
-                    
-                    
-                } else {
-                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                    if (ImGui.DragFloat("##offset", ref heelConfig.Offset, 0.001f, float.MinValue, float.MaxValue, "%.5f")) {
-                        if (heelConfig.Enabled) Plugin.RequestUpdateAll();
-                    }
+                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                if (FloatEditor("##offset", ref heelConfig.Offset, 0.001f, float.MinValue, float.MaxValue, "%.5f")) {
+                    if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                 }
                 
                 ImGui.TableNextColumn();
@@ -864,8 +823,8 @@ public class ConfigWindow : Window {
     }
 
     private void ShowSittingOffsetEditor(CharacterConfig characterConfig) {
-        var sittingPositionChanged = ImGui.DragFloat("Sitting Height Offset", ref characterConfig.SittingOffsetY, 0.001f, -3f, 3f);
-        sittingPositionChanged |= ImGui.DragFloat("Sitting Position Offset", ref characterConfig.SittingOffsetZ, 0.001f, -1f, 1f);
+        var sittingPositionChanged = FloatEditor("Sitting Height Offset", ref characterConfig.SittingOffsetY, 0.001f, -3f, 3f);
+        sittingPositionChanged |= FloatEditor("Sitting Position Offset", ref characterConfig.SittingOffsetZ, 0.001f, -1f, 1f);
 
         if (sittingPositionChanged) {
             if (characterConfig is GroupConfig) {
@@ -1019,5 +978,38 @@ public class ConfigWindow : Window {
     public override void OnClose() {
         PluginService.PluginInterface.SavePluginConfig(config);
         base.OnClose();
+    }
+    
+    private bool FloatEditor(string label, ref float value, float speed = 1, float min = float.MinValue, float max = float.MaxValue, string format = "%.5f", ImGuiSliderFlags flags = ImGuiSliderFlags.None) {
+        var c = false;
+        var w = ImGui.CalcItemWidth();
+
+        if (config.ShowPlusMinusButtons) {
+            if (ImGuiComponents.IconButton($"##{label}_minus", FontAwesomeIcon.Minus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                clickHoldThrottle.Restart();
+                value -= config.PlusMinusDelta;
+                c = true;
+            }
+
+            w -= ImGui.GetItemRectSize().X * 2 + ImGui.GetStyle().ItemSpacing.X * 2;
+            ImGui.SameLine();
+                    
+        }
+        ImGui.SetNextItemWidth(w);
+        
+        c |= ImGui.DragFloat($"##{label}_slider", ref value, speed, min,  max, format, flags);
+        if (config.ShowPlusMinusButtons) {
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButton($"##{label}_plus", FontAwesomeIcon.Plus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                clickHoldThrottle.Restart();
+                value += MathF.Round(config.PlusMinusDelta, 5, MidpointRounding.AwayFromZero);
+                c = true;
+            }
+        }
+        ImGui.SameLine();
+        ImGui.Text(label.Split("##")[0]);
+        
+        
+        return c;
     }
 }
