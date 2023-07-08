@@ -476,9 +476,33 @@ public class ConfigWindow : Window {
                 var attributes = loadedFile.Attributes.ToList();
                 
                 
-                ImGui.InputText("Loaded File", ref loadedFilePath, 2048, ImGuiInputTextFlags.ReadOnly);
-                ImGui.SliderFloat("Heels Offset", ref mdlEditorOffset, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
+                ImGui.InputText("##loadedFile", ref loadedFilePath, 2048, ImGuiInputTextFlags.ReadOnly);
+                var s = ImGui.GetItemRectSize();
+                ImGui.SameLine();
+                ImGui.Text("Loaded File");
+
                 
+                if (config.ShowPlusMinusButtons) {
+                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Minus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                        clickHoldThrottle.Restart();
+                        mdlEditorOffset -= config.PlusMinusDelta;
+                    }
+
+                    s.X -= ImGui.GetItemRectSize().X * 2 + ImGui.GetStyle().ItemSpacing.X * 2;
+                    ImGui.SameLine();
+                    
+                }
+                ImGui.SetNextItemWidth(s.X);
+                ImGui.SliderFloat("##heelsOffset", ref mdlEditorOffset, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
+                if (config.ShowPlusMinusButtons) {
+                    ImGui.SameLine();
+                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                        clickHoldThrottle.Restart();
+                        mdlEditorOffset += config.PlusMinusDelta;
+                    }
+                }
+                ImGui.SameLine();
+                ImGui.Text("Heels Offset");
                 var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset="));
                 if (offset == null) {
                     ImGui.Text("Model has no offset assigned.");
