@@ -5,7 +5,7 @@ using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 namespace SimpleHeels;
 
 public class GroupConfig : CharacterConfig {
-    public List<uint> Clans = new List<uint>();
+    public HashSet<uint> Clans = new();
     public bool MatchMasculine = true;
     public bool MatchFeminine = true;
     public string Label = "New Group";
