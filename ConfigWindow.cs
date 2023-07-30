@@ -549,6 +549,10 @@ public class ConfigWindow : Window {
     }
 
     private string footwearSearch = string.Empty;
+
+    private int beginDrag = -1;
+    private int endDrag = -1;
+    private Vector2 endDragPosition = new();
     
     private unsafe void DrawCharacterView(CharacterConfig? characterConfig) {
         if (characterConfig == null) return;
@@ -577,7 +581,7 @@ public class ConfigWindow : Window {
         var activeLegsPath = GetModelPathForPlayer(activeCharacter, ModelSlot.Legs);
         
         if (ImGui.BeginTable("OffsetsTable", 5)) {
-            ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 2 + 1);
+            ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 3 + 2 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Footwear", ImGuiTableColumnFlags.WidthStretch);
@@ -586,24 +590,41 @@ public class ConfigWindow : Window {
 
             var deleteIndex = -1;
             for (var i = 0; i < characterConfig.HeelsConfig.Count; i++) {
+                ImGui.BeginDisabled(beginDrag == i);
                 ImGui.PushID($"heels_{i}");
                 var heelConfig = characterConfig.HeelsConfig[i];
                 heelConfig.Label ??= string.Empty;
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
 
-                ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, Vector2.One);
+                ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, Vector2.One * ImGuiHelpers.GlobalScale);
                 ImGui.PushFont(UiBuilder.IconFont);
 
                 if (ImGui.Button($"{(char)FontAwesomeIcon.Trash}##delete", new Vector2(checkboxSize)) && ImGui.GetIO().KeyShift) {
                     deleteIndex = i;
                 }
+                
+                if (beginDrag >= 0 && ImGui.IsMouseHoveringRect(ImGui.GetItemRectMin(), new Vector2(ImGui.GetWindowContentRegionMax().X, ImGui.GetItemRectMax().Y))) {
+                    endDrag = i;
+                    endDragPosition = ImGui.GetItemRectMin();
+                }
+                
 
                 if (ImGui.IsItemHovered() && !ImGui.GetIO().KeyShift) {
                     ImGui.PopFont();
                     ImGui.SetTooltip("Hold SHIFT to delete.");
                     ImGui.PushFont(UiBuilder.IconFont);
                 }
+
+                ImGui.SameLine();
+
+                ImGui.Button($"{(char)FontAwesomeIcon.ArrowsUpDown}", new Vector2(checkboxSize));
+                if (beginDrag == -1 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
+                    beginDrag = i;
+                    endDrag = i;
+                    endDragPosition = ImGui.GetItemRectMin();
+                }
+
 
                 ImGui.SameLine();
                 ImGui.PopFont();
@@ -745,6 +766,7 @@ public class ConfigWindow : Window {
                 }
 
                 ImGui.PopID();
+                ImGui.EndDisabled();
             }
 
             if (deleteIndex >= 0) {
@@ -753,6 +775,22 @@ public class ConfigWindow : Window {
 
             ImGui.EndTable();
 
+            if (beginDrag >= 0) {
+                if (!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
+                    if (endDrag != beginDrag) {
+                        var move = characterConfig.HeelsConfig[beginDrag];
+                        characterConfig.HeelsConfig.RemoveAt(beginDrag);
+                        characterConfig.HeelsConfig.Insert(endDrag, move);
+                    }
+
+                    beginDrag = -1;
+                    endDrag = -1;
+                } else {
+                    var dl = ImGui.GetWindowDrawList();
+                    dl.AddLine(endDragPosition, endDragPosition + new Vector2(ImGui.GetWindowContentRegionMax().X, 0), ImGui.GetColorU32(ImGuiCol.DragDropTarget), 2 * ImGuiHelpers.GlobalScale);
+                }
+            }
+            
             bool ShowAddButton(ushort id, ModelSlot slot) {
                 if (shoeModelList.Value.ContainsKey((id, slot))) {
                     if (ImGui.Button($"Add an Entry for {GetModelName(id, slot)}")) {

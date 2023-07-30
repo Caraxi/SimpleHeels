@@ -9,6 +9,9 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(6.2f, "0.6.2.0", () => {
+            C("Added a way to reorder heel config entries.");
+        });
         ChangelogFor(6.12f, "0.6.1.3", "Another attempt to fix offset getting stuck for some people.");
         ChangelogFor(6.12f, "0.6.1.2", "Fixed plugin breaking when character is redrawn by Penumbra or Glamourer.");
         ChangelogFor(6.11f, "0.6.1.1", "Fixed 0 offset not being reported correctly to other plugins.");
