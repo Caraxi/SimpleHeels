@@ -499,7 +499,7 @@ public class ConfigWindow : Window {
                     try {
                         _fileDialogManager.SaveFileDialog("Save MDL File...", "MDL File{.mdl}", "output.mdl", ".mdl", (b, files) => {
                             attributes.RemoveAll(a => a.StartsWith("heels_offset="));
-                            attributes.Add($"heels_offset={mdlEditorOffset}");
+                            attributes.Add($"heels_offset={mdlEditorOffset.ToString(CultureInfo.InvariantCulture)}");
                             loadedFile.Attributes = attributes.ToArray();
                             var outputBytes = loadedFile.Write();
                             File.WriteAllBytes(files, outputBytes);
