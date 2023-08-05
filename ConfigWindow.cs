@@ -62,6 +62,8 @@ public class ConfigWindow : Window {
                     selectedCharacter = characterConfig;
                     selectedName = name;
                     selectedWorld = world.RowId;
+                    newName = name;
+                    newWorld = world.RowId;
                     selectedGroup = null;
                 }
                 
@@ -92,6 +94,8 @@ public class ConfigWindow : Window {
                     selectedCharacter ??= new CharacterConfig();
                     selectedName = name;
                     selectedWorld = world.RowId;
+                    newName = string.Empty;
+                    newWorld = 0;
                     selectedGroup = null;
                 }
                 ImGui.SameLine();
@@ -113,6 +117,8 @@ public class ConfigWindow : Window {
                     selectedCharacter = null;
                     selectedName = string.Empty;
                     selectedWorld = 0;
+                    newName = string.Empty;
+                    newWorld = 0;
                     selectedGroup = filterConfig;
                 }
                 
@@ -158,6 +164,9 @@ public class ConfigWindow : Window {
     private CharacterConfig? selectedCharacter;
     private string selectedName = string.Empty;
     private uint selectedWorld;
+
+    private string newName = string.Empty;
+    private uint newWorld = 0;
 
     private GroupConfig? selectedGroup;
     
@@ -288,6 +297,8 @@ public class ConfigWindow : Window {
                 selectedCharacter = null;
                 selectedName = string.Empty;
                 selectedWorld = 0;
+                newName = string.Empty;
+                newWorld = 0;
                 selectedGroup = newGroup;
                 config.Groups.Add(newGroup);
             }
@@ -298,6 +309,8 @@ public class ConfigWindow : Window {
                 selectedCharacter = null;
                 selectedName = string.Empty;
                 selectedWorld = 0;
+                newName = string.Empty;
+                newWorld = 0;
                 selectedGroup = null;
             }
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Plugin Options");
@@ -310,6 +323,52 @@ public class ConfigWindow : Window {
             if (selectedCharacter != null) {
                 ShowDebugInfo();
 
+                if (newWorld != 0) {
+                    ImGui.InputText("Character Name", ref newName, 64);
+                    var worldName = PluginService.Data.GetExcelSheet<World>()!.GetRow(newWorld)!.Name.ToDalamudString().TextValue;
+                    if (ImGui.BeginCombo("World", worldName)) {
+
+                        foreach (var w in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPublic).OrderBy(w => w.Name.ToDalamudString().TextValue, StringComparer.OrdinalIgnoreCase)) {
+                            if (ImGui.Selectable($"{w.Name.ToDalamudString().TextValue}", w.RowId == newWorld)) {
+                                newWorld = w.RowId;
+                            }
+                        }
+                        ImGui.EndCombo();
+                    }
+
+                    if (newName != selectedName || newWorld != selectedWorld) {
+                        var newAlreadyExists = config.WorldCharacterDictionary.ContainsKey(newWorld) && config.WorldCharacterDictionary[newWorld].ContainsKey(newName);
+                        
+                        ImGui.BeginDisabled(newAlreadyExists);
+                        if (ImGui.Button("Move Character Config")) {
+                            if (config.TryAddCharacter(newName, newWorld)) {
+                                config.WorldCharacterDictionary[newWorld][newName] = selectedCharacter;
+                                config.WorldCharacterDictionary[selectedWorld].Remove(selectedName);
+                                if (config.WorldCharacterDictionary[selectedWorld].Count == 0) {
+                                    config.WorldCharacterDictionary.Remove(selectedWorld);
+                                }
+                                selectedName = newName;
+                                selectedWorld = newWorld;
+                            }
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button("Copy Character Config")) {
+                            if (config.TryAddCharacter(newName, newWorld)) {
+                                var j = JsonConvert.SerializeObject(selectedCharacter);
+                                config.WorldCharacterDictionary[newWorld][newName] = JsonConvert.DeserializeObject<CharacterConfig>(j) ?? new CharacterConfig();
+                            }
+                        }
+                        ImGui.EndDisabled();
+
+                        if (newAlreadyExists) {
+                            ImGui.SameLine();
+                            ImGui.TextDisabled("Character already exists in config.");
+                        }
+                    }
+                    
+                    ImGui.Separator();
+                }
+                
                 if (Plugin.IpcAssignedData.TryGetValue((selectedName, selectedWorld), out var data)) {
                     ImGui.Text("This character's offset is currently assigned by another plugin.");
                     if (Plugin.IsDebug && ImGui.Button("Clear IPC Assignment")) {
