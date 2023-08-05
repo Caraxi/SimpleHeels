@@ -350,7 +350,7 @@ public unsafe class Plugin : IDalamudPlugin {
                 foreach (var attr in modelResource->Attributes) {
                     var str = MemoryHelper.ReadStringNullTerminated(new nint(attr.Item1.Value));
                     if (str.StartsWith("heels_offset=", StringComparison.OrdinalIgnoreCase)) {
-                        if (float.TryParse(str[13..], CultureInfo.InvariantCulture, out var offsetAttr)) {
+                        if (float.TryParse(str[13..].Replace(',', '.'), CultureInfo.InvariantCulture, out var offsetAttr)) {
                             return offsetAttr * human->CharacterBase.DrawObject.Object.Scale.Y;
                         }
                     }
