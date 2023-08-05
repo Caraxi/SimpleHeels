@@ -582,7 +582,7 @@ public class ConfigWindow : Window {
         
         var windowMax = ImGui.GetWindowPos() + ImGui.GetWindowSize();
         if (ImGui.BeginTable("OffsetsTable", 5)) {
-            ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 3 + 2 * ImGuiHelpers.GlobalScale);
+            ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 4 + 3 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Footwear", ImGuiTableColumnFlags.WidthStretch);
@@ -601,8 +601,21 @@ public class ConfigWindow : Window {
                 ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, Vector2.One * ImGuiHelpers.GlobalScale);
                 ImGui.PushFont(UiBuilder.IconFont);
 
-                if (ImGui.Button($"{(char)FontAwesomeIcon.Trash}##delete", new Vector2(checkboxSize)) && ImGui.GetIO().KeyShift) {
-                    deleteIndex = i;
+                if (ImGui.Button($"{(char)(heelConfig.Locked ? FontAwesomeIcon.Lock : FontAwesomeIcon.LockOpen)}", new Vector2(checkboxSize))) {
+                    if (heelConfig.Locked == false || ImGui.GetIO().KeyShift)
+                        heelConfig.Locked = !heelConfig.Locked;
+                }
+                
+                if (ImGui.IsItemHovered()) {
+                    ImGui.PopFont();
+                    if (heelConfig.Locked && ImGui.GetIO().KeyShift) {
+                        ImGui.SetTooltip("Unlock Entry");
+                    } else if (heelConfig.Locked) {
+                        ImGui.SetTooltip("Hold SHIFT to unlock");
+                    } else {
+                        ImGui.SetTooltip("Lock Entry");
+                    }
+                    ImGui.PushFont(UiBuilder.IconFont);
                 }
                 
                 if (beginDrag >= 0 && MouseWithin(ImGui.GetItemRectMin(), new Vector2(windowMax.X, ImGui.GetItemRectMax().Y))) {
@@ -610,6 +623,13 @@ public class ConfigWindow : Window {
                     endDragPosition = ImGui.GetItemRectMin();
                 }
                 
+                ImGui.SameLine();
+
+                if (beginDrag != i && heelConfig.Locked) ImGui.BeginDisabled(heelConfig.Locked);
+                
+                if (ImGui.Button($"{(char)FontAwesomeIcon.Trash}##delete", new Vector2(checkboxSize)) && ImGui.GetIO().KeyShift) {
+                    deleteIndex = i;
+                }
 
                 if (ImGui.IsItemHovered() && !ImGui.GetIO().KeyShift) {
                     ImGui.PopFont();
@@ -620,7 +640,7 @@ public class ConfigWindow : Window {
                 ImGui.SameLine();
 
                 ImGui.Button($"{(char)FontAwesomeIcon.ArrowsUpDown}", new Vector2(checkboxSize));
-                if (beginDrag == -1 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
+                if (beginDrag == -1 && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
                     beginDrag = i;
                     endDrag = i;
                     endDragPosition = ImGui.GetItemRectMin();
@@ -694,7 +714,7 @@ public class ConfigWindow : Window {
                                         heelConfig.Path = activeSlotPath;
                                     }
 
-                                    if (ImGui.IsItemHovered()) {
+                                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
                                         ImGui.SetTooltip(activeSlotPath);
                                     }
                                 }
@@ -723,7 +743,7 @@ public class ConfigWindow : Window {
                                             ImGui.CloseCurrentPopup();
                                         }
 
-                                        if (ImGui.IsItemHovered() && shoeModel.Items.Count > 3) {
+                                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && shoeModel.Items.Count > 3) {
                                             ShowModelTooltip(shoeModel.Id, shoeModel.Slot);
                                         }
                                     }
@@ -760,7 +780,7 @@ public class ConfigWindow : Window {
                         ImGui.PushFont(UiBuilder.IconFont);
                         ImGui.Text($"{(char)FontAwesomeIcon.ArrowLeft}");
                         ImGui.PopFont();
-                        if (ImGui.IsItemHovered()) {
+                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
                             ImGui.SetTooltip("Currently Wearing");
                         }
                     }
@@ -815,7 +835,7 @@ public class ConfigWindow : Window {
                     });
                 }
 
-                if (ImGui.IsItemHovered()) {
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
                     ImGui.SetTooltip($"{path}");
                 }
                 

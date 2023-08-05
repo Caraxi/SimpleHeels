@@ -15,4 +15,5 @@ public class HeelConfig {
     public float Offset;
     public ModelSlot Slot = ModelSlot.Feet;
     public ModelSlot RevertSlot = ModelSlot.Feet;
+    public bool Locked;
 }
