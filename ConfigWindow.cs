@@ -580,6 +580,7 @@ public class ConfigWindow : Window {
         var activeLegs = GetModelIdForPlayer(activeCharacter, ModelSlot.Legs);
         var activeLegsPath = GetModelPathForPlayer(activeCharacter, ModelSlot.Legs);
         
+        var windowMax = ImGui.GetWindowPos() + ImGui.GetWindowSize();
         if (ImGui.BeginTable("OffsetsTable", 5)) {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 3 + 2 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
@@ -604,7 +605,7 @@ public class ConfigWindow : Window {
                     deleteIndex = i;
                 }
                 
-                if (beginDrag >= 0 && ImGui.IsMouseHoveringRect(ImGui.GetItemRectMin(), new Vector2(ImGui.GetWindowContentRegionMax().X, ImGui.GetItemRectMax().Y))) {
+                if (beginDrag >= 0 && MouseWithin(ImGui.GetItemRectMin(), new Vector2(windowMax.X, ImGui.GetItemRectMax().Y))) {
                     endDrag = i;
                     endDragPosition = ImGui.GetItemRectMin();
                 }
@@ -1049,5 +1050,10 @@ public class ConfigWindow : Window {
         
         
         return c;
+    }
+
+    private bool MouseWithin(Vector2 min, Vector2 max) {
+        var mousePos = ImGui.GetMousePos();
+        return mousePos.X >= min.X && mousePos.Y <= max.X && mousePos.Y >= min.Y && mousePos.Y <= max.Y;
     }
 }
