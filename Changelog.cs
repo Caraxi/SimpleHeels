@@ -2,16 +2,18 @@
 using System.Numerics;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
-using Dalamud.Interface.Components;
 using ImGuiNET;
 
-namespace SimpleHeels; 
+namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
-        ChangelogFor(6.2f, "0.6.2.0", () => {
-            C("Added a way to reorder heel config entries.");
+        ChangelogFor(6.3f, "0.6.3.0", () => {
+            C("Improved ordering method a bit");
+            C("Added a lock to entries");
+            C("Added method of renaming or copying character configs.");
         });
+        ChangelogFor(6.2f, "0.6.2.0", () => { C("Added a way to reorder heel config entries."); });
         ChangelogFor(6.12f, "0.6.1.3", "Another attempt to fix offset getting stuck for some people.");
         ChangelogFor(6.12f, "0.6.1.2", "Fixed plugin breaking when character is redrawn by Penumbra or Glamourer.");
         ChangelogFor(6.11f, "0.6.1.1", "Fixed 0 offset not being reported correctly to other plugins.");
@@ -24,7 +26,6 @@ public static class Changelog {
             ImGui.PopFont();
             ImGui.SameLine();
             ImGui.Text(") to allow setting offsets to a range of characters");
-            
         });
         ChangelogFor(5.11f, "0.5.1.1", "Increased maximum offset value.");
         ChangelogFor(5.1f, "0.5.1.0", () => {
@@ -36,17 +37,18 @@ public static class Changelog {
             C("Added support for assigning an offset when sitting in a chair.");
             C("This will not be synced until support is added through Mare Synchronos", indent: 1, color: ImGuiColors.DalamudGrey3);
         });
-        
+
         ChangelogFor(4, "0.4.0.0", "Added support for Body and Legs equipment that hide shoes.");
     }
 
-    
     private static bool _displayedTitle;
     private static float _latestChangelog = 1;
     private static PluginConfig? _config;
     private static bool _showAll;
 
-    
+    private static int _configIndex;
+    private static bool _isOldExpanded;
+
     private static void Title() {
         if (_displayedTitle) return;
         _displayedTitle = true;
@@ -61,10 +63,13 @@ public static class Changelog {
 
         ImGui.Separator();
     }
-    
+
     private static void ChangelogFor(float version, string label, Action draw) {
+        _configIndex++;
         if (version > _latestChangelog) _latestChangelog = version;
         if (!_showAll && _config != null && _config.DismissedChangelog >= version) return;
+        if (_configIndex == 4) _isOldExpanded = ImGui.TreeNodeEx("Old Versions", ImGuiTreeNodeFlags.NoTreePushOnOpen);
+        if (_configIndex >= 4 && _isOldExpanded == false) return;
         Title();
         ImGui.Text($"{label}:");
         ImGui.Indent();
@@ -83,14 +88,15 @@ public static class Changelog {
         } else {
             ImGui.Text($"- {text}");
         }
-        
+
         for (var i = 0; i < indent; i++) ImGui.Unindent();
     }
-    
+
     public static bool Show(PluginConfig config, bool showAll = false) {
         _displayedTitle = false;
         _config = config;
         _showAll = showAll;
+        _configIndex = 0;
         Changelogs();
         if (_displayedTitle) {
             ImGui.Spacing();
