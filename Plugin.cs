@@ -53,7 +53,6 @@ public unsafe class Plugin : IDalamudPlugin {
                         ManagedIndex[gameObject->ObjectIndex] = false;
                     
                         if (gameObject->ObjectIndex == 0) {
-                            LegacyApiProvider.OnOffsetChange(0);
                             ApiProvider.SittingPositionChanged(offsetY, offsetZ);
                         }
 
@@ -68,10 +67,6 @@ public unsafe class Plugin : IDalamudPlugin {
             AppliedSittingOffset[gameObject->ObjectIndex] = null;
             if (gameObject->ObjectIndex < ObjectLimit && ManagedIndex[gameObject->ObjectIndex]) {
                 PluginLog.LogDebug("Game Applied Offset. Releasing Control");
-                if (gameObject->ObjectIndex == 0) {
-                    LegacyApiProvider.OnOffsetChange(0);
-                }
-
                 ManagedIndex[gameObject->ObjectIndex] = false;
             }
         } catch (Exception ex) {
@@ -139,7 +134,6 @@ public unsafe class Plugin : IDalamudPlugin {
     private void EnablePlugin() {
         if (IsEnabled) return;
         IsEnabled = true;
-        LegacyApiProvider.Init(this);
         ApiProvider.Init(this);
         PluginService.Framework.Update += OnFrameworkUpdate;
         SignatureHelper.Initialise(this);
@@ -180,7 +174,6 @@ public unsafe class Plugin : IDalamudPlugin {
 
         if (!ManagedIndex[updateIndex] && obj->DrawOffset.Y != 0) {
             if (updateIndex == 0) {
-                LegacyApiProvider.OnOffsetChange(0);
                 ApiProvider.StandingOffsetChanged(0);
             }
             return false;
@@ -194,7 +187,6 @@ public unsafe class Plugin : IDalamudPlugin {
             }
 
             if (updateIndex == 0) {
-                LegacyApiProvider.OnOffsetChange(0);
                 ApiProvider.StandingOffsetChanged(0);
             }
             return true;
@@ -204,7 +196,6 @@ public unsafe class Plugin : IDalamudPlugin {
             setDrawOffset?.Original(obj, obj->DrawOffset.X, offset.Value, obj->DrawOffset.Z);
             ManagedIndex[updateIndex] = true;
             if (updateIndex == 0) {
-                LegacyApiProvider.OnOffsetChange(offset.Value);
                 ApiProvider.StandingOffsetChanged(offset.Value);
             }
         }
@@ -358,7 +349,6 @@ public unsafe class Plugin : IDalamudPlugin {
             if (AppliedSittingOffset[i] != null) TryUpdateSittingPosition(i);
         }
         
-        LegacyApiProvider.DeInit();
         ApiProvider.DeInit();
         PluginService.Commands.RemoveHandler("/heels");
         windowSystem.RemoveAllWindows();

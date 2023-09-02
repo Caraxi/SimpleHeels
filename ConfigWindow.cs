@@ -494,12 +494,7 @@ public class ConfigWindow : Window {
                         ImGui.Indent();
                         ImGui.Text(ApiProvider.LastReportedData);
                         ImGui.Unindent();
-                        
-                        ImGui.Text("Last Reported Legacy Offset:");
-                        ImGui.Indent();
-                        ImGui.Text($"{LegacyApiProvider.LastReportedOffset}");
-                        ImGui.Unindent();
-                        
+
                         ImGui.TreePop();
                     }
                 }
