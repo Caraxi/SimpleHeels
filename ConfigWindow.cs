@@ -613,11 +613,34 @@ public class ConfigWindow : Window {
     private int endDrag = -1;
     private Vector2 endDragPosition = new();
     
+    private Vector2 firstCheckboxScreenPosition = new(0);
     private unsafe void DrawCharacterView(CharacterConfig? characterConfig) {
         if (characterConfig == null) return;
 
+        var wearingMatchCount = 0;
+        
+        if (characterConfig.HeelsConfig.Count > 0 && !characterConfig.HeelsConfig.Any(hc => hc.Enabled)) {
+            ImGui.BeginGroup();
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudOrange);
+            ImGui.PushFont(UiBuilder.IconFont);
+            ImGui.Text(FontAwesomeIcon.ExclamationTriangle.ToIconString());
+            ImGui.PopFont();
+            ImGui.SameLine();
+            ImGui.TextWrapped("All heel config options are currently disabled on this character. Click the check box under the 'Enable' heading to enable an entry to begin applying heels offsets.");
+            ImGui.PopStyleColor();
+            ImGui.EndGroup();
+
+            if (ImGui.IsItemHovered() && firstCheckboxScreenPosition is not { X : 0, Y : 0 }) {
+                ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                var dl = ImGui.GetForegroundDrawList();
+                dl.AddLine(ImGui.GetMousePos(), firstCheckboxScreenPosition, ImGui.GetColorU32(ImGuiColors.DalamudOrange), 2);
+            }
+        }
 
         GameObject* activeCharacter = null;
+        HeelConfig? activeHeelConfig = null;
+        
+        
         if (characterConfig is GroupConfig) {
             var target = PluginService.Targets.SoftTarget ?? PluginService.Targets.Target;
             if (target is Dalamud.Game.ClientState.Objects.Types.Character) {
@@ -627,6 +650,13 @@ public class ConfigWindow : Window {
             var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
             if (player is PlayerCharacter) {
                 activeCharacter = (GameObject*)player.Address;
+
+                if (activeCharacter->DrawObject != null && activeCharacter->DrawObject->Object.GetObjectType() == ObjectType.CharacterBase) {
+                    var cb = (CharacterBase*)activeCharacter->DrawObject;
+                    if (cb->GetModelType() == CharacterBase.ModelType.Human) {
+                        activeHeelConfig = characterConfig.GetFirstMatch((Human*)cb);
+                    }
+                }
             }
         }
         
@@ -644,10 +674,10 @@ public class ConfigWindow : Window {
             ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 4 + 3 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
             ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
-            ImGui.TableSetupColumn("Footwear", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Clothing", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, checkboxSize);
-            ImGui.TableHeadersRow();
 
+            TableHeaderRow(TableHeaderAlign.Right, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Left);
             var deleteIndex = -1;
             for (var i = 0; i < characterConfig.HeelsConfig.Count; i++) {
                 ImGui.BeginDisabled(beginDrag == i);
@@ -697,7 +727,7 @@ public class ConfigWindow : Window {
                 }
 
                 ImGui.SameLine();
-
+                if (beginDrag != i && heelConfig.Locked) ImGui.EndDisabled();
                 ImGui.Button($"{(char)FontAwesomeIcon.ArrowsUpDown}", new Vector2(checkboxSize));
                 if (beginDrag == -1 && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
                     beginDrag = i;
@@ -711,15 +741,42 @@ public class ConfigWindow : Window {
                 ImGui.PopStyleVar();
                 if (ImGui.Checkbox("##enable", ref heelConfig.Enabled)) {
                     if (heelConfig.Enabled) {
-                        foreach (var heel in characterConfig.HeelsConfig.Where(h => h.PathMode == heelConfig.PathMode && h.PathMode ? h.Path == heelConfig.Path : h.ModelId == heelConfig.ModelId)) {
+                        foreach (var heel in characterConfig.GetDuplicates(heelConfig, true)) {
                             heel.Enabled = false;
                         }
                         heelConfig.Enabled = true;
                     }
                 }
 
+                if (i == 0) {
+                    firstCheckboxScreenPosition = ImGui.GetItemRectMin() + ImGui.GetItemRectSize() / 2;
+                }
+
+                if (ImGui.IsItemHovered()) {
+                    ImGui.BeginTooltip();
+
+                    if (heelConfig.Enabled) {
+                        ImGui.Text("Click to disable heel config entry.");
+                    } else {
+                        ImGui.Text("Click to enable heel config entry.");
+                        var match = characterConfig.GetDuplicates(heelConfig, true).FirstOrDefault();
+                        if (match != null) {
+                            if (!string.IsNullOrWhiteSpace(match.Label)) {
+                                ImGui.TextDisabled($"'{match.Label}' will be disabled as it affects the same items.");
+                            } else {
+                                ImGui.TextDisabled($"An entry affecting the same items will be disabled.");
+                            }
+                        }
+                    }
+                    
+                    ImGui.EndTooltip();
+                }
+                
+
                 if (i == 0) checkboxSize = ImGui.GetItemRectSize().X;
 
+                if (beginDrag != i && heelConfig.Locked) ImGui.BeginDisabled(heelConfig.Locked);
+                
                 ImGui.TableNextColumn();
                 ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
                 ImGui.InputText("##label", ref heelConfig.Label, 100);
@@ -824,29 +881,48 @@ public class ConfigWindow : Window {
                         ImGui.EndTabBar();
                     }
                     
-                    
-                    
                     ImGui.EndCombo();
                 }
                 
                 ImGui.TableNextColumn();
-
+                ImGui.EndDisabled();
                 if (characterConfig is not GroupConfig) {
                     if ((heelConfig.Slot == ModelSlot.Feet && ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
                         || (heelConfig.Slot == ModelSlot.Legs && ((heelConfig.PathMode == false && activeLegs == heelConfig.ModelId) || (heelConfig.PathMode && activeLegsPath != null && activeLegsPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
                         || (heelConfig.Slot == ModelSlot.Top && ((heelConfig.PathMode == false && activeTop == heelConfig.ModelId) || (heelConfig.PathMode && activeTopPath != null && activeTopPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))))) {
                     
                         ImGui.PushFont(UiBuilder.IconFont);
-                        ImGui.Text($"{(char)FontAwesomeIcon.ArrowLeft}");
+                        if (heelConfig.Enabled) {
+                            ImGui.TextColored(activeHeelConfig == heelConfig ? ImGuiColors.HealerGreen : ImGuiColors.DalamudYellow,$"{(char)FontAwesomeIcon.ArrowLeft}");
+                            
+                        } else {
+                            ImGui.TextDisabled($"{(char)FontAwesomeIcon.ArrowLeft}");
+                        }
+                        
                         ImGui.PopFont();
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
-                            ImGui.SetTooltip("Currently Wearing");
+                            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                            ImGui.BeginTooltip();
+                            ImGui.Text("Currently Wearing");
+                            if (heelConfig.Enabled) {
+                                
+                                if (activeHeelConfig == heelConfig) {
+                                    ImGui.TextColored(ImGuiColors.HealerGreen, "This entry is ACTIVE");
+                                } else {
+                                    ImGui.TextColored(ImGuiColors.DalamudYellow, "This entry is INACTIVE because another entry is applied first.");
+                                }
+                            } else {
+                                ImGui.TextDisabled("This entry is INACTIVE because it is disabled.");
+                            }
+                            ImGui.EndTooltip();
                         }
+
+                        if (heelConfig.Enabled) wearingMatchCount++;
                     }
                 }
 
                 ImGui.PopID();
-                ImGui.EndDisabled();
+                
             }
 
             if (deleteIndex >= 0) {
@@ -854,6 +930,28 @@ public class ConfigWindow : Window {
             }
 
             ImGui.EndTable();
+
+            if (wearingMatchCount > 1) {
+                ImGui.BeginGroup();
+                ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+                ImGui.PushFont(UiBuilder.IconFont);
+                ImGui.Text(FontAwesomeIcon.InfoCircle.ToIconString());
+                ImGui.PopFont();
+                ImGui.SameLine();
+                ImGui.TextWrapped("You are wearing items that match multiple enabled config entries.");
+                ImGui.PopStyleColor();
+                ImGui.EndGroup();
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                    ImGui.BeginTooltip();
+                    ImGui.Text("Offsets will be applied to: ");
+                    ImGui.Text(" - The first enabled '[Top]' option you are wearing.");
+                    ImGui.Text(" - Then the first enabled '[Legs]' option you are wearing.");
+                    ImGui.Text(" - Finally the first enabled feet option you are wearing.");
+                    ImGui.EndTooltip();
+                }
+            }
+            
 
             if (beginDrag >= 0) {
                 if (!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
@@ -876,7 +974,8 @@ public class ConfigWindow : Window {
                     if (ImGui.Button($"Add an Entry for {GetModelName(id, slot)}")) {
                         characterConfig.HeelsConfig.Add(new HeelConfig() {
                             ModelId = id,
-                            Slot = slot
+                            Slot = slot,
+                            Enabled = !characterConfig.HeelsConfig.Any(h => h is { PathMode: false } && h.ModelId == id)
                         });
                     }
                     return true;
@@ -890,7 +989,8 @@ public class ConfigWindow : Window {
                     characterConfig.HeelsConfig.Add(new HeelConfig() {
                         PathMode = true,
                         Path = path,
-                        Slot = slot
+                        Slot = slot,
+                        Enabled = !characterConfig.HeelsConfig.Any(h => h is {PathMode: true } && h.Path == path)
                     });
                 }
 
@@ -907,7 +1007,8 @@ public class ConfigWindow : Window {
                     if (ImGui.Button($"Add New Entry")) {
                         characterConfig.HeelsConfig.Add(new HeelConfig() {
                             ModelId = 0,
-                            Slot = ModelSlot.Feet
+                            Slot = ModelSlot.Feet,
+                            Enabled = !characterConfig.HeelsConfig.Any(h => h is { PathMode: false, ModelId: 0 })
                         });
                     }
                 }
@@ -1135,4 +1236,47 @@ public class ConfigWindow : Window {
         var mousePos = ImGui.GetMousePos();
         return mousePos.X >= min.X && mousePos.Y <= max.X && mousePos.Y >= min.Y && mousePos.Y <= max.Y;
     }
+
+
+    private enum TableHeaderAlign {
+        Left,
+        Center,
+        Right
+    }
+    
+    private void TableHeaderRow(params TableHeaderAlign[] aligns) {
+        ImGui.TableNextRow();
+        for (var i = 0; i < ImGui.TableGetColumnCount(); i++) {
+            ImGui.TableNextColumn();
+            var label = ImGui.TableGetColumnName(i);
+            ImGui.PushID($"TableHeader_{i}");
+            var align = aligns.Length <= i ? TableHeaderAlign.Left : aligns[i];
+
+            switch (align) {
+                case TableHeaderAlign.Center: {
+
+                    var textSize = ImGui.CalcTextSize(label);
+                    var space = ImGui.GetContentRegionAvail().X;
+                    ImGui.TableHeader("");
+                    ImGui.SameLine(space / 2f - textSize.X / 2f);
+                    ImGui.Text(label);
+
+                    break;
+                }
+                case TableHeaderAlign.Right: {
+                    ImGui.TableHeader("");
+                    var textSize = ImGui.CalcTextSize(label);
+                    var space = ImGui.GetContentRegionAvail().X;
+                    ImGui.SameLine(space - textSize.X);
+                    ImGui.Text(label);
+                    break;
+                }
+                default:
+                    ImGui.TableHeader(label);
+                    break;
+            }
+            ImGui.PopID();
+        }
+    }
+    
 }

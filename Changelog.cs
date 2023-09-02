@@ -8,6 +8,14 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(7f, "0.7.0.0", () => {
+            C("Defaulted new heel entries to enabled");
+            C("Improved UX");
+            C("Made it more clear when no config is enabled", 1);
+            C("Made it more clear which entry is currently active.", 1);
+            C("Added a note explaining conflicts when wearing multiple items that are configured", 1);
+            C("Entries can now be enabled or disabled when locked.");
+        });
         ChangelogFor(6.3f, "0.6.3.0", () => {
             C("Improved ordering method a bit");
             C("Added a lock to entries");

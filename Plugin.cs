@@ -276,27 +276,7 @@ public unsafe class Plugin : IDalamudPlugin {
             return null;
         }
 
-        string? feetModelPath = null;
-        string? topModelPath = null;
-        string? legsModelPath = null;
-
-        var firstMatch = characterConfig.HeelsConfig.OrderBy(hc => hc.Slot).FirstOrDefault(hc => {
-            if (!hc.Enabled) return false;
-
-            switch (hc.Slot) {
-                case ModelSlot.Feet:
-                    feetModelPath ??= GetModelPath(human, ModelSlot.Feet);
-                    return (hc.PathMode == false && hc.ModelId == human->Feet.Id) || (hc.PathMode && feetModelPath != null && feetModelPath.Equals(hc.Path));
-                case ModelSlot.Top:
-                    topModelPath ??= GetModelPath(human, ModelSlot.Top);
-                    return (hc.PathMode == false && hc.ModelId == human->Top.Id) || (hc.PathMode && topModelPath != null && topModelPath.Equals(hc.Path));
-                case ModelSlot.Legs:
-                    legsModelPath ??= GetModelPath(human, ModelSlot.Legs);
-                    return (hc.PathMode == false && hc.ModelId == human->Legs.Id) || (hc.PathMode && legsModelPath != null && legsModelPath.Equals(hc.Path));
-                default:
-                    return false;
-            }
-        });
+        var firstMatch = characterConfig.GetFirstMatch(human);
         return firstMatch?.Offset ?? null;
     }
 
