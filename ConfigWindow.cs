@@ -336,10 +336,28 @@ public class ConfigWindow : Window {
                         ImGui.EndCombo();
                     }
 
-                    if (newName != selectedName || newWorld != selectedWorld) {
+                    if (ImGui.Button("Create Group")) {
+                        var group = new GroupConfig() {
+                            Label = $"Group from {selectedName}@{worldName}", 
+                            SittingOffsetY = selectedCharacter.SittingOffsetY, 
+                            SittingOffsetZ = selectedCharacter.SittingOffsetZ, 
+                            HeelsConfig = selectedCharacter.HeelsConfig
+                        };
+                        var copy = JsonConvert.DeserializeObject<GroupConfig>(JsonConvert.SerializeObject(group));
+                        if (copy != null) {
+                            config.Groups.Add(copy);
+                            selectedCharacter = null;
+                            selectedName = string.Empty;
+                            selectedWorld = 0;
+                            selectedGroup = copy;
+                        }
+                    }
+                    ImGui.SameLine();
+                    var isModified = newName != selectedName || newWorld != selectedWorld; 
+                    {
                         var newAlreadyExists = config.WorldCharacterDictionary.ContainsKey(newWorld) && config.WorldCharacterDictionary[newWorld].ContainsKey(newName);
-                        
-                        ImGui.BeginDisabled(newAlreadyExists);
+                
+                        ImGui.BeginDisabled(isModified == false || newAlreadyExists);
                         if (ImGui.Button("Move Character Config")) {
                             if (config.TryAddCharacter(newName, newWorld)) {
                                 config.WorldCharacterDictionary[newWorld][newName] = selectedCharacter;
@@ -360,7 +378,7 @@ public class ConfigWindow : Window {
                         }
                         ImGui.EndDisabled();
 
-                        if (newAlreadyExists) {
+                        if (isModified && newAlreadyExists) {
                             ImGui.SameLine();
                             ImGui.TextDisabled("Character already exists in config.");
                         }
