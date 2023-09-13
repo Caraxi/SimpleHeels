@@ -16,6 +16,8 @@ public class PluginConfig : IPluginConfiguration {
     public bool ShowPlusMinusButtons = true;
     public float PlusMinusDelta = 0.001f;
     public bool UseModelOffsets = true;
+    public bool ConfigInGpose = true;
+    public bool ConfigInCutscene = false;
 
     public string ModelEditorLastFolder = string.Empty;
     

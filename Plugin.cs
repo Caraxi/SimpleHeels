@@ -98,6 +98,9 @@ public unsafe class Plugin : IDalamudPlugin {
 
         Config = pluginInterface.GetPluginConfig() as PluginConfig ?? new PluginConfig();
 
+        PluginService.PluginInterface.UiBuilder.DisableGposeUiHide = Config.ConfigInGpose;
+        PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = Config.ConfigInCutscene;
+        
         windowSystem = new WindowSystem(Assembly.GetExecutingAssembly().FullName);
         configWindow = new ConfigWindow($"{Name} | Config", this, Config) {
             #if DEBUG
@@ -249,7 +252,7 @@ public unsafe class Plugin : IDalamudPlugin {
                 RequestUpdateAll();
                 break;
             default:
-                configWindow.IsOpen = !configWindow.IsOpen;
+                configWindow.ToggleWithWarning();
                 break;
         }
     }

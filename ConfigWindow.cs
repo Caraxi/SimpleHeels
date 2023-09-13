@@ -5,7 +5,10 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
@@ -28,6 +31,12 @@ public class ConfigWindow : Window {
     private readonly PluginConfig config;
     private readonly Plugin plugin;
 
+    private DalamudLinkPayload clickAllowInGposePayload;
+    private DalamudLinkPayload clickAllowInCutscenePayload;
+    
+    private CancellationTokenSource? notVisibleWarningCancellationTokenSource;
+    private readonly Stopwatch hiddenStopwatch = Stopwatch.StartNew();
+    
     public ConfigWindow(string name, Plugin plugin, PluginConfig config) : base(name) {
         this.config = config;
         this.plugin = plugin;
@@ -40,6 +49,17 @@ public class ConfigWindow : Window {
         Size = ImGuiHelpers.ScaledVector2(1000, 500);
         SizeCondition = ImGuiCond.FirstUseEver;
 
+        clickAllowInGposePayload = PluginService.PluginInterface.AddChatLinkHandler(1000, (_, _) => {
+            config.ConfigInGpose = true;
+            PluginService.PluginInterface.UiBuilder.DisableGposeUiHide = true;
+            IsOpen = true;
+        });
+        
+        clickAllowInCutscenePayload = PluginService.PluginInterface.AddChatLinkHandler(1001, (_, _) => {
+            config.ConfigInCutscene = true;
+            PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = true;
+            IsOpen = true;
+        });
     }
     
     private Vector2 iconButtonSize = new(16);
@@ -47,6 +67,8 @@ public class ConfigWindow : Window {
 
     private readonly Stopwatch holdingClick = Stopwatch.StartNew();
     private readonly Stopwatch clickHoldThrottle = Stopwatch.StartNew();
+
+
 
     public unsafe void DrawCharacterList() {
 
@@ -251,6 +273,12 @@ public class ConfigWindow : Window {
     }
     
     public override void Draw() {
+        hiddenStopwatch.Restart();
+        if (notVisibleWarningCancellationTokenSource != null) {
+            notVisibleWarningCancellationTokenSource.Cancel();
+            notVisibleWarningCancellationTokenSource = null;
+        }
+        
         if (holdingClick.IsRunning && !ImGui.IsMouseDown(ImGuiMouseButton.Left)) holdingClick.Restart();
         if (!Plugin.IsEnabled) {
             ImGui.TextColored(ImGuiColors.DalamudRed, $"{plugin.Name} is currently disabled due to Heels Plugin being installed.\nPlease uninstall Heels Plugin to allow {plugin.Name} to run.");
@@ -501,6 +529,19 @@ public class ConfigWindow : Window {
                     ImGui.SliderFloat("Plus/Minus Button Delta", ref config.PlusMinusDelta, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags.AlwaysClamp);
                 }
                 
+                ImGui.Separator();
+                ImGui.Text("Bypass Dalamud's plugin UI hiding:");
+                ImGui.Indent();
+                if (ImGui.Checkbox("In GPose", ref config.ConfigInGpose)) {
+                    PluginService.PluginInterface.UiBuilder.DisableGposeUiHide = config.ConfigInGpose;
+                }
+
+                if (ImGui.Checkbox("In Cutscene", ref config.ConfigInCutscene)) {
+                    PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = config.ConfigInCutscene;
+                }
+                ImGui.Unindent();
+                ImGui.Separator();
+
                 #if DEBUG
                 ImGui.Checkbox("[DEBUG] Open config window on startup", ref config.DebugOpenOnStartup);
                 #endif
@@ -1292,4 +1333,47 @@ public class ConfigWindow : Window {
         }
     }
     
+    public void ToggleWithWarning() {
+        if (IsOpen && hiddenStopwatch.ElapsedMilliseconds < 1000) {
+            IsOpen = false;
+        } else {
+            IsOpen = true;
+            notVisibleWarningCancellationTokenSource?.Cancel();
+            notVisibleWarningCancellationTokenSource = new CancellationTokenSource();
+            PluginService.Framework.RunOnTick(() => {
+                if (notVisibleWarningCancellationTokenSource == null || notVisibleWarningCancellationTokenSource.IsCancellationRequested) return;
+                
+                
+                // UI Should be visible but was never drawn
+                var message = new SeStringBuilder();
+                message.AddText("[");
+                message.AddUiForeground($"{plugin.Name}", 48);
+                message.AddText("] The config window is currently hidden");
+                
+                if (PluginService.PluginInterface.UiBuilder.GposeActive) {
+                    message.AddText(" in GPose. ");
+                    message.AddUiForeground(37);
+                    message.Add(clickAllowInGposePayload);
+                    message.AddText("Click Here");
+                    message.Add(RawPayload.LinkTerminator);
+                    message.AddUiForegroundOff();
+                    message.AddText(" to allow the config window to be shown in GPose.");
+                } else if (PluginService.PluginInterface.UiBuilder.CutsceneActive) {
+                    message.AddText(" in cutscenes. ");
+                    message.AddUiForeground(37);
+                    message.Add(clickAllowInCutscenePayload);
+                    message.AddText("Click Here");
+                    message.Add(RawPayload.LinkTerminator);
+                    message.AddUiForegroundOff();
+                    message.AddText(" to allow the config window to be shown in cutscenes.");
+                } else {
+                    // Unknown reason, don't mention it at all
+                    return;
+                }
+                
+                PluginService.ChatGui.PrintError(message.Build());
+
+            }, TimeSpan.FromMilliseconds(250), cancellationToken: notVisibleWarningCancellationTokenSource.Token);
+        }
+    }
 }
