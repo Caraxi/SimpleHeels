@@ -8,6 +8,11 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(8f, "0.8.0.0", () => {
+            C("Added an option to create a group from a configured character.");
+            C("Added an option to ignore Dalamud's 'Hide UI while GPose is active' option.");
+            C("Added options to assign an offset for ground sitting and sleeping.");
+        });
         ChangelogFor(7f, "0.7.0.0", () => {
             C("Defaulted new heel entries to enabled");
             C("Improved UX");
