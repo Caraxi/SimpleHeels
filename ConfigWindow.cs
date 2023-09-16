@@ -694,6 +694,7 @@ public class ConfigWindow : Window {
         }
 
         GameObject* activeCharacter = null;
+        Character* activeCharacterAsCharacter = null;
         HeelConfig? activeHeelConfig = null;
         
         
@@ -701,11 +702,13 @@ public class ConfigWindow : Window {
             var target = PluginService.Targets.SoftTarget ?? PluginService.Targets.Target;
             if (target is Dalamud.Game.ClientState.Objects.Types.Character) {
                 activeCharacter = (GameObject*)target.Address;
+                activeCharacterAsCharacter = (Character*)activeCharacter;
             }
         } else {
             var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
             if (player is PlayerCharacter) {
                 activeCharacter = (GameObject*)player.Address;
+                activeCharacterAsCharacter = (Character*)activeCharacter;
 
                 if (activeCharacter->DrawObject != null && activeCharacter->DrawObject->Object.GetObjectType() == ObjectType.CharacterBase) {
                     var cb = (CharacterBase*)activeCharacter->DrawObject;
@@ -949,8 +952,11 @@ public class ConfigWindow : Window {
                     
                         ImGui.PushFont(UiBuilder.IconFont);
                         if (heelConfig.Enabled) {
-                            ImGui.TextColored(activeHeelConfig == heelConfig ? ImGuiColors.HealerGreen : ImGuiColors.DalamudYellow,$"{(char)FontAwesomeIcon.ArrowLeft}");
-                            
+                            if (activeCharacter->IsCharacter() && ((Character*)activeCharacter)->Mode == Character.CharacterModes.InPositionLoop) {
+                                ImGui.TextColored(ImGuiColors.DalamudViolet, $"{(char)FontAwesomeIcon.ArrowLeft}");
+                            } else {
+                                ImGui.TextColored(activeHeelConfig == heelConfig ? ImGuiColors.HealerGreen : ImGuiColors.DalamudYellow,$"{(char)FontAwesomeIcon.ArrowLeft}");
+                            }
                         } else {
                             ImGui.TextDisabled($"{(char)FontAwesomeIcon.ArrowLeft}");
                         }
@@ -961,8 +967,9 @@ public class ConfigWindow : Window {
                             ImGui.BeginTooltip();
                             ImGui.Text("Currently Wearing");
                             if (heelConfig.Enabled) {
-                                
-                                if (activeHeelConfig == heelConfig) {
+                                if (activeCharacter->IsCharacter() && ((Character*)activeCharacter)->Mode == Character.CharacterModes.InPositionLoop) {
+                                    ImGui.TextColored(ImGuiColors.DalamudViolet, $"This entry is INACTIVE because the character is {(((Character*)activeCharacter)->ModeParam is 1 or 2 ? "sitting" : "sleeping")}.");
+                                } else if (activeHeelConfig == heelConfig) {
                                     ImGui.TextColored(ImGuiColors.HealerGreen, "This entry is ACTIVE");
                                 } else {
                                     ImGui.TextColored(ImGuiColors.DalamudYellow, "This entry is INACTIVE because another entry is applied first.");
@@ -1096,11 +1103,50 @@ public class ConfigWindow : Window {
 
         ShowSittingOffsetEditor(characterConfig);
         
+        if (activeCharacterAsCharacter != null && activeCharacterAsCharacter->Mode == Character.CharacterModes.InPositionLoop && activeCharacterAsCharacter->ModeParam == 2) {
+            ImGui.SameLine();
+            ImGui.PushFont(UiBuilder.IconFont);
+            ImGui.TextColored(ImGuiColors.HealerGreen,$"{(char)FontAwesomeIcon.ArrowLeft}");
+            ImGui.PopFont();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
+                ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                ImGui.BeginTooltip();
+                ImGui.Text("Currently Active");
+                ImGui.EndTooltip();
+            }
+        }
+
         FloatEditor("Ground Sitting Offset", ref characterConfig.GroundSitOffset, 0.001f);
+        if (activeCharacterAsCharacter != null && activeCharacterAsCharacter->Mode == Character.CharacterModes.InPositionLoop && activeCharacterAsCharacter->ModeParam == 1) {
+            ImGui.SameLine();
+            ImGui.PushFont(UiBuilder.IconFont);
+            ImGui.TextColored(ImGuiColors.HealerGreen,$"{(char)FontAwesomeIcon.ArrowLeft}");
+            ImGui.PopFont();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
+                ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                ImGui.BeginTooltip();
+                ImGui.Text("Currently Active");
+                ImGui.EndTooltip();
+            }
+        }
+
         FloatEditor("Sleeping Offset", ref characterConfig.SleepOffset, 0.001f);
+        if (activeCharacterAsCharacter != null && activeCharacterAsCharacter->Mode == Character.CharacterModes.InPositionLoop && activeCharacterAsCharacter->ModeParam == 3) {
+            ImGui.SameLine();
+            ImGui.PushFont(UiBuilder.IconFont);
+            ImGui.TextColored(ImGuiColors.HealerGreen,$"{(char)FontAwesomeIcon.ArrowLeft}");
+            ImGui.PopFont();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
+                ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                ImGui.BeginTooltip();
+                ImGui.Text("Currently Active");
+                ImGui.EndTooltip();
+            }
+        }
     }
 
     private void ShowSittingOffsetEditor(CharacterConfig characterConfig) {
+        ImGui.BeginGroup();
         var sittingPositionChanged = FloatEditor("Sitting Height Offset", ref characterConfig.SittingOffsetY, 0.001f, -3f, 3f);
         sittingPositionChanged |= FloatEditor("Sitting Position Offset", ref characterConfig.SittingOffsetZ, 0.001f, -1f, 1f);
 
@@ -1113,7 +1159,7 @@ public class ConfigWindow : Window {
             
         }
         
-        
+        ImGui.EndGroup();
     }
 
     private string? heelsConfigPath;
