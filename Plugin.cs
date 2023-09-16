@@ -257,7 +257,6 @@ public unsafe class Plugin : IDalamudPlugin {
         }
     }
 
-    public static Dictionary<(string, uint), float> IpcAssignedOffset { get; } = new();
     public static Dictionary<(string, uint), AssignedData> IpcAssignedData { get; } = new();
 
     public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
@@ -265,7 +264,6 @@ public unsafe class Plugin : IDalamudPlugin {
     private float? GetOffsetFromConfig(string name, uint homeWorld, Human* human) {
         if (isDisposing) return null;
         if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) return data.Offset;
-        if (IpcAssignedOffset.TryGetValue((name, homeWorld), out var offset)) return offset;
         if (!Config.TryGetCharacterConfig(name, homeWorld, &human->CharacterBase.DrawObject, out var characterConfig) || characterConfig == null) {
             return null;
         }

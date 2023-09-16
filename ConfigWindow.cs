@@ -104,11 +104,11 @@ public class ConfigWindow : Window {
             ImGuiHelpers.ScaledDummy(10);
         }
 
-        if (Plugin.IsDebug && (Plugin.IpcAssignedOffset.Count > 0 || Plugin.IpcAssignedData.Count > 0)) {
+        if (Plugin.IsDebug && Plugin.IpcAssignedData.Count > 0) {
             ImGui.TextDisabled("[DEBUG] IPC Assignments");
             ImGui.Separator();
 
-            foreach (var (name, worldId) in Plugin.IpcAssignedData.Keys.Union(Plugin.IpcAssignedOffset.Keys)) {
+            foreach (var (name, worldId) in Plugin.IpcAssignedData.Keys) {
                 var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
                 if (world == null) continue;
                 if (ImGui.Selectable($"{name}##{world.Name.RawString}##ipc", selectedName == name && selectedWorld == worldId)) {
@@ -419,7 +419,6 @@ public class ConfigWindow : Window {
                     ImGui.Text("This character's offset is currently assigned by another plugin.");
                     if (Plugin.IsDebug && ImGui.Button("Clear IPC Assignment")) {
                         Plugin.IpcAssignedData.Remove((selectedName, selectedWorld));
-                        Plugin.IpcAssignedOffset.Remove((selectedName, selectedWorld));
                         Plugin.RequestUpdateAll();
                     }
                     
@@ -429,17 +428,6 @@ public class ConfigWindow : Window {
                     ImGui.Text($"GroundSit Height: {data.GroundSitHeight}");
                     ImGui.Text($"Sleep Height: {data.SleepHeight}");
                     
-                } else if (Plugin.IpcAssignedOffset.TryGetValue((selectedName, selectedWorld), out var offset)) {
-                    ImGui.Text("This character's offset is currently assigned by another plugin.");
-                    if (Plugin.IsDebug && ImGui.Button("Clear IPC Assignment")) {
-                        Plugin.IpcAssignedOffset.Remove((selectedName, selectedWorld));
-                        Plugin.IpcAssignedData.Remove((selectedName, selectedWorld));
-                        Plugin.RequestUpdateAll();
-                    }
-                    
-                    ImGui.Text($"Assigned Offset: {offset}");
-                    ImGui.Separator();
-                    ShowSittingOffsetEditor(selectedCharacter);
                 } else {
                     DrawCharacterView(selectedCharacter);
                 }
