@@ -426,6 +426,8 @@ public class ConfigWindow : Window {
                     ImGui.Text($"Assigned Offset: {data.Offset}");
                     ImGui.Text($"Sitting Height: {data.SittingHeight}");
                     ImGui.Text($"Sitting Position: {data.SittingPosition}");
+                    ImGui.Text($"GroundSit Height: {data.GroundSitHeight}");
+                    ImGui.Text($"Sleep Height: {data.SleepHeight}");
                     
                 } else if (Plugin.IpcAssignedOffset.TryGetValue((selectedName, selectedWorld), out var offset)) {
                     ImGui.Text("This character's offset is currently assigned by another plugin.");
@@ -1093,6 +1095,9 @@ public class ConfigWindow : Window {
         ImGui.Separator();
 
         ShowSittingOffsetEditor(characterConfig);
+        
+        FloatEditor("Ground Sitting Offset", ref characterConfig.GroundSitOffset, 0.001f);
+        FloatEditor("Sleeping Offset", ref characterConfig.SleepOffset, 0.001f);
     }
 
     private void ShowSittingOffsetEditor(CharacterConfig characterConfig) {

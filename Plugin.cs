@@ -297,7 +297,15 @@ public unsafe class Plugin : IDalamudPlugin {
         var human = (Human*)characterBase;
         var character = (Character*)gameObject;
         if (!bypassStandingCheck) {
-            if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1 or 2 or 3) return null;
+            if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 2) return null;
+            if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1) {
+                if (TryGetGroundSitOffset(gameObject, out var gsOffset)) return gsOffset;
+                return null;
+            };
+            if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 3) {
+                if (TryGetSleepOffset(gameObject, out var sleepOffset)) return sleepOffset;
+                return null;
+            };
             if (character->Mode == Character.CharacterModes.EmoteLoop && character->ModeParam is 21) return null;
         }
         
@@ -414,6 +422,72 @@ public unsafe class Plugin : IDalamudPlugin {
         z = characterConfig.SittingOffsetZ;
         return true;
 
+    }
+    
+    public bool TryGetGroundSitOffset(GameObject* gameObject, out float y, bool bypassSittingCheck = false) {
+        y = 0;
+        if (gameObject == null) return false;
+        if (!(gameObject->ObjectKind == 1 && gameObject->SubKind == 4 )) return false;
+        return TryGetGroundSitOffset((Character*)gameObject, out y, bypassSittingCheck);
+    }
+    
+    public bool TryGetGroundSitOffset(Character* character, out float y, bool bypassSittingCheck = false) {
+        y = 0;
+        if (isDisposing) return false;
+        if (character == null) return false;
+        if (!bypassSittingCheck && (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 1)) return false;
+        var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64).TextValue;
+        var homeWorld = character->HomeWorld;
+
+        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
+            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
+            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
+        }
+        
+        if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) {
+            if (data is { SittingPosition: 0, SittingHeight: 0 }) return false;
+            y = data.GroundSitHeight;
+            return true;
+        }
+        
+        if (!Config.TryGetCharacterConfig(name, homeWorld, character->GameObject.DrawObject, out var characterConfig) || characterConfig == null) return false;
+        if (characterConfig is { GroundSitOffset: 0 }) return false;
+
+        y = characterConfig.GroundSitOffset;
+        return true;
+    }
+    
+    public bool TryGetSleepOffset(GameObject* gameObject, out float y, bool bypassSleepingCheck = false) {
+        y = 0;
+        if (gameObject == null) return false;
+        if (!(gameObject->ObjectKind == 1 && gameObject->SubKind == 4 )) return false;
+        return TryGetSleepOffset((Character*)gameObject, out y, bypassSleepingCheck);
+    }
+    
+    public bool TryGetSleepOffset(Character* character, out float y, bool bypassSleepingCheck = false) {
+        y = 0;
+        if (isDisposing) return false;
+        if (character == null) return false;
+        if (!bypassSleepingCheck && (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 3)) return false;
+        var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64).TextValue;
+        var homeWorld = character->HomeWorld;
+
+        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
+            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
+            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
+        }
+        
+        if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) {
+            if (data is { SleepHeight: 0 }) return false;
+            y = data.SleepHeight;
+            return true;
+        }
+        
+        if (!Config.TryGetCharacterConfig(name, homeWorld, character->GameObject.DrawObject, out var characterConfig) || characterConfig == null) return false;
+        if (characterConfig is { SleepOffset: 0 }) return false;
+
+        y = characterConfig.SleepOffset;
+        return true;
     }
 
     public void TryUpdateSittingPosition(string name, uint world) {

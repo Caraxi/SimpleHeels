@@ -17,6 +17,9 @@ public class AssignedData {
     public float Offset;
     public float SittingHeight;
     public float SittingPosition;
+
+    public float GroundSitHeight;
+    public float SleepHeight;
     
     public AssignedData() {}
 
@@ -24,6 +27,8 @@ public class AssignedData {
         var obj = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)gameObject.Address;
         Offset = plugin.GetOffset(obj, true) ?? 0;
         plugin.TryGetSittingOffset(obj, out SittingHeight, out SittingPosition, true);
+        plugin.TryGetGroundSitOffset(obj, out GroundSitHeight, true);
+        plugin.TryGetSleepOffset(obj, out SleepHeight, true);
     }
 
     public static AssignedData? FromString(string json) {
@@ -37,21 +42,26 @@ public class AssignedData {
     }
 
     public override string ToString() {
-        if (this is { Offset: 0, SittingHeight: 0, SittingPosition: 0 }) return string.Empty;
+        if (this is { Offset: 0, SittingHeight: 0, SittingPosition: 0, GroundSitHeight: 0, SleepHeight: 0 }) return string.Empty;
         return JsonConvert.SerializeObject(this, Formatting.None, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.None });
     }
 
     public override bool Equals(object? obj) {
         if (obj is not AssignedData ad) return false;
-        return Math.Abs(ad.SittingHeight - SittingHeight) < FloatDifferenceDelta && Math.Abs(ad.SittingPosition - SittingPosition) < FloatDifferenceDelta && Math.Abs(ad.Offset - Offset) < FloatDifferenceDelta;
+        return Equals(ad);
     }
 
     protected bool Equals(AssignedData ad) {
-        return Math.Abs(ad.SittingHeight - SittingHeight) < FloatDifferenceDelta && Math.Abs(ad.SittingPosition - SittingPosition) < FloatDifferenceDelta && Math.Abs(ad.Offset - Offset) < FloatDifferenceDelta;
+        return 
+            Math.Abs(ad.SittingHeight - SittingHeight) < FloatDifferenceDelta && 
+            Math.Abs(ad.SittingPosition - SittingPosition) < FloatDifferenceDelta && 
+            Math.Abs(ad.GroundSitHeight - GroundSitHeight) < FloatDifferenceDelta && 
+            Math.Abs(ad.SleepHeight - SleepHeight) < FloatDifferenceDelta && 
+            Math.Abs(ad.Offset - Offset) < FloatDifferenceDelta;
     }
 
     public override int GetHashCode() {
-        return HashCode.Combine(Offset, SittingHeight, SittingPosition);
+        return HashCode.Combine(Offset, SittingHeight, SittingPosition, GroundSitHeight, SleepHeight);
     }
 }
 
@@ -127,6 +137,18 @@ public static class ApiProvider {
 
     public static void StandingOffsetChanged(float y) {
         if (_lastReported == null || Math.Abs(_lastReported.Offset - y) > AssignedData.FloatDifferenceDelta) {
+            OnChanged();
+        }
+    }
+
+    public static void GroundSitOffsetChanged(float y) {
+        if (_lastReported == null || Math.Abs(_lastReported.GroundSitHeight - y) > AssignedData.FloatDifferenceDelta) {
+            OnChanged();
+        }
+    }
+    
+    public static void SleepOffsetChanged(float y) {
+        if (_lastReported == null || Math.Abs(_lastReported.SleepHeight - y) > AssignedData.FloatDifferenceDelta) {
             OnChanged();
         }
     }

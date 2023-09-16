@@ -10,6 +10,9 @@ public class CharacterConfig {
     public float SittingOffsetZ = 0f;
     public float SittingOffsetY = 0f;
 
+    public float GroundSitOffset = 0f;
+    public float SleepOffset = 0f;
+
 
     public unsafe HeelConfig? GetFirstMatch(Human* human) {
         string? feetModelPath = null;
