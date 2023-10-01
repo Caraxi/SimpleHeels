@@ -18,6 +18,7 @@ public class PluginConfig : IPluginConfiguration {
     public bool UseModelOffsets = true;
     public bool ConfigInGpose = true;
     public bool ConfigInCutscene = false;
+    public bool HideKofi = false;
 
     public string ModelEditorLastFolder = string.Empty;
     

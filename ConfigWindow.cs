@@ -37,7 +37,7 @@ public class ConfigWindow : Window {
     private CancellationTokenSource? notVisibleWarningCancellationTokenSource;
     private readonly Stopwatch hiddenStopwatch = Stopwatch.StartNew();
     
-    public ConfigWindow(string name, Plugin plugin, PluginConfig config) : base(name) {
+    public ConfigWindow(string name, Plugin plugin, PluginConfig config) : base(name, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse) {
         this.config = config;
         this.plugin = plugin;
         
@@ -271,6 +271,8 @@ public class ConfigWindow : Window {
         }
                 
     }
+
+    private float kofiButtonOffset = 0f;
     
     public override void Draw() {
         hiddenStopwatch.Restart();
@@ -300,6 +302,8 @@ public class ConfigWindow : Window {
                 DrawCharacterList();
             }
             ImGui.EndChild();
+
+            var charaListPos = ImGui.GetItemRectSize().X;
 
             if (PluginService.ClientState.LocalPlayer != null) {
                 if (ImGuiComponents.IconButton(FontAwesomeIcon.User)) {
@@ -343,6 +347,18 @@ public class ConfigWindow : Window {
             }
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Plugin Options");
             iconButtonSize = ImGui.GetItemRectSize() + ImGui.GetStyle().ItemSpacing;
+
+            if (!config.HideKofi) {
+                ImGui.SameLine();
+                if (kofiButtonOffset > 0) ImGui.SetCursorPosX(MathF.Max(ImGui.GetCursorPosX(), charaListPos - kofiButtonOffset + ImGui.GetStyle().WindowPadding.X));
+                if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.Coffee, "Support", new Vector4(1, 0.35f, 0.35f, 1f), new Vector4(1, 0.35f, 0.35f, 0.9f), new Vector4(1, 0.35f, 0.35f, 75f))) {
+                    Util.OpenLink("https://ko-fi.com/Caraxi");
+                }
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Support on Ko-fi");
+                }
+                kofiButtonOffset = ImGui.GetItemRectSize().X;
+            }
         }
         ImGui.EndGroup();
         
@@ -504,6 +520,7 @@ public class ConfigWindow : Window {
                 }
                 ImGui.SameLine();
                 ImGuiComponents.HelpMarker("Can be toggled using commands:\n\t/heels toggle\n\t/heels enable\n\t/heels disable");
+                ImGui.Checkbox("Hide Ko-fi Support button", ref config.HideKofi);
                 if (ImGui.Checkbox("Use model assigned offsets", ref config.UseModelOffsets)) {
                     Plugin.RequestUpdateAll();
                 }
