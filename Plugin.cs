@@ -13,6 +13,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using Dalamud.Memory;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -49,7 +50,7 @@ public unsafe class Plugin : IDalamudPlugin {
                 if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam == 2) {
                     // Sitting
                     if (TryGetSittingOffset(character, out var offsetY, out var offsetZ)) {
-                        PluginLog.LogDebug($"Applied Sitting Offset [{offsetY}, {offsetZ}]");
+                        PluginService.Log.Debug($"Applied Sitting Offset [{offsetY}, {offsetZ}]");
                         ManagedIndex[gameObject->ObjectIndex] = false;
                     
                         if (gameObject->ObjectIndex == 0) {
@@ -66,11 +67,11 @@ public unsafe class Plugin : IDalamudPlugin {
 
             AppliedSittingOffset[gameObject->ObjectIndex] = null;
             if (gameObject->ObjectIndex < ObjectLimit && ManagedIndex[gameObject->ObjectIndex]) {
-                PluginLog.LogDebug("Game Applied Offset. Releasing Control");
+                PluginService.Log.Debug("Game Applied Offset. Releasing Control");
                 ManagedIndex[gameObject->ObjectIndex] = false;
             }
         } catch (Exception ex) {
-            PluginLog.Error(ex, "Error handling SetDrawOffset");
+            PluginService.Log.Error(ex, "Error handling SetDrawOffset");
         }
         
         setDrawOffset?.Original(gameObject, x, y, z);
@@ -84,10 +85,10 @@ public unsafe class Plugin : IDalamudPlugin {
             if (destination->GameObject.ObjectIndex < ObjectLimit && source->GameObject.ObjectIndex < ObjectLimit) {
                 ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
             }
-            PluginLog.Verbose($"Game cloned Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex} [{name} @ {source->HomeWorld}]");
+            PluginService.Log.Verbose($"Game cloned Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex} [{name} @ {source->HomeWorld}]");
         
         } catch (Exception ex) {
-            PluginLog.Error(ex, "Error handling CloneActor");
+            PluginService.Log.Error(ex, "Error handling CloneActor");
         }
         
         return cloneActor!.Original(destination, source, copyFlags);
@@ -126,12 +127,9 @@ public unsafe class Plugin : IDalamudPlugin {
         IsDebug = true;
         #endif
 
-        if (PluginService.Commands.Commands.ContainsKey("/xlheels")) {
-            PluginService.ChatGui.PrintError($"{Name} cannot be started while 'Heels Plugin' is installed. Please uninstall Heels Plugin");
-            PluginService.Framework.Update += WaitForHeelsPlugin;
-        } else {
-            EnablePlugin();
-        }
+
+        EnablePlugin();
+        
     }
 
     private void EnablePlugin() {
@@ -139,7 +137,7 @@ public unsafe class Plugin : IDalamudPlugin {
         IsEnabled = true;
         ApiProvider.Init(this);
         PluginService.Framework.Update += OnFrameworkUpdate;
-        SignatureHelper.Initialise(this);
+        PluginService.HoodProvider.InitializeFromAttributes(this);
         setDrawOffset?.Enable();
         cloneActor?.Enable();
         RequestUpdateAll();
@@ -206,7 +204,7 @@ public unsafe class Plugin : IDalamudPlugin {
         return true;
     }
     
-    private void OnFrameworkUpdate(Framework framework) {
+    private void OnFrameworkUpdate(IFramework framework) {
         if (_updateAll) {
             _updateAll = false;
             for (var i = 0; i < ObjectLimit; i++) {
@@ -349,8 +347,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public void Dispose() {
         isDisposing = true;
-        PluginLog.Verbose($"Dispose");
-        PluginService.Framework.Update -= WaitForHeelsPlugin;
+        PluginService.Log.Verbose($"Dispose");
         PluginService.Framework.Update -= OnFrameworkUpdate;
 
         for (var i = 0; i < ObjectLimit; i++) {
@@ -374,15 +371,6 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private readonly Stopwatch waitTimer = new Stopwatch();
-    private void WaitForHeelsPlugin(Framework framework) {
-        if (!waitTimer.IsRunning) waitTimer.Restart();
-        if (waitTimer.ElapsedMilliseconds < 1000) return;
-        waitTimer.Restart();
-        if (PluginService.Commands.Commands.ContainsKey("/xlheels")) return;
-        PluginService.Framework.Update -= WaitForHeelsPlugin;
-        waitTimer.Stop();
-        EnablePlugin();
-    }
 
     public bool TryGetSittingOffset(GameObject* gameObject, out float y, out float z, bool bypassSittingCheck = false) {
         y = 0;

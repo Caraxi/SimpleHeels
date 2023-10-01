@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
-using Dalamud.Game;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Logging;
 using Dalamud.Plugin.Ipc;
 using Newtonsoft.Json;
 
@@ -36,7 +33,7 @@ public class AssignedData {
             if (string.IsNullOrWhiteSpace(json)) return new AssignedData();
             return JsonConvert.DeserializeObject<AssignedData>(json);
         } catch (Exception ex) {
-            PluginLog.LogError(ex, "Error decoding AssignedData");
+            PluginService.Log.Error(ex, "Error decoding AssignedData");
         }
         return null;
     }

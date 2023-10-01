@@ -13,8 +13,8 @@ using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -387,7 +387,7 @@ public class ConfigWindow : Window {
                 
                         ImGui.BeginDisabled(isModified == false || newAlreadyExists);
                         if (ImGui.Button("Move Character Config")) {
-                            if (config.TryAddCharacter(newName, newWorld)) {
+                            if (selectedCharacter != null && config.TryAddCharacter(newName, newWorld)) {
                                 config.WorldCharacterDictionary[newWorld][newName] = selectedCharacter;
                                 config.WorldCharacterDictionary[selectedWorld].Remove(selectedName);
                                 if (config.WorldCharacterDictionary[selectedWorld].Count == 0) {
@@ -628,7 +628,7 @@ public class ConfigWindow : Window {
                         _fileDialogManager.OpenFileDialog("Select MDL File...", "MDL File{.mdl}", (b, files) => {
                             if (files.Count != 1) return;
                             loadedFilePath = files[0];
-                            PluginLog.Log($"Loading MDL: {loadedFilePath}");
+                            PluginService.Log.Info($"Loading MDL: {loadedFilePath}");
                            
                             config.ModelEditorLastFolder = Path.GetDirectoryName(loadedFilePath) ?? string.Empty;
                             var bytes = File.ReadAllBytes(loadedFilePath);
@@ -1389,7 +1389,7 @@ public class ConfigWindow : Window {
                 message.AddUiForeground($"{plugin.Name}", 48);
                 message.AddText("] The config window is currently hidden");
                 
-                if (PluginService.PluginInterface.UiBuilder.GposeActive) {
+                if (PluginService.ClientState.IsGPosing) {
                     message.AddText(" in GPose. ");
                     message.AddUiForeground(37);
                     message.Add(clickAllowInGposePayload);
