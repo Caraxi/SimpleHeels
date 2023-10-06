@@ -8,6 +8,7 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(8.11f, "0.8.1.1", "Fixed offsets not applying in gpose and cutscenes.");
         ChangelogFor(8f, "0.8.0.0", () => {
             C("Added an option to create a group from a configured character.");
             C("Added an option to ignore Dalamud's 'Hide UI while GPose is active' option.");

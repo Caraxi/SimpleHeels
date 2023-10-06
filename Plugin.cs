@@ -39,7 +39,7 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? 0F 28 74 24 ?? 80 3D", DetourName = nameof(SetDrawOffsetDetour))]
     private Hook<SetDrawOffset>? setDrawOffset;
 
-    private delegate void* CloneActor(Character* destination, Character* source, uint a3);
+    private delegate void* CloneActor(Character** destination, Character* source, uint a3);
     [Signature("E8 ?? ?? ?? ?? 0F B6 9F ?? ?? ?? ?? 48 8D 8F", DetourName = nameof(CloneActorDetour))]
     private Hook<CloneActor>? cloneActor;
 
@@ -77,8 +77,14 @@ public unsafe class Plugin : IDalamudPlugin {
         setDrawOffset?.Original(gameObject, x, y, z);
     }
 
-    private void* CloneActorDetour(Character* destination, Character* source, uint copyFlags) {
+    private void* CloneActorDetour(Character** destinationArray, Character* source, uint copyFlags) {
         try {
+            var destination = destinationArray[1];
+            if (destination == null) return cloneActor!.Original(destinationArray, source, copyFlags);
+            if (destination->GameObject.ObjectIndex < 200) {
+                PluginService.Log.Warning($"Game attempting to clone Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex}. Something seems wrong.");
+                return cloneActor!.Original(destinationArray, source, copyFlags);
+            }
             ActorMapping.Remove(destination->GameObject.ObjectIndex);
             var name = MemoryHelper.ReadSeString(new nint(source->GameObject.GetName()), 64);
             ActorMapping.Add(destination->GameObject.ObjectIndex, (name.TextValue, source->HomeWorld));
@@ -91,7 +97,7 @@ public unsafe class Plugin : IDalamudPlugin {
             PluginService.Log.Error(ex, "Error handling CloneActor");
         }
         
-        return cloneActor!.Original(destination, source, copyFlags);
+        return cloneActor!.Original(destinationArray, source, copyFlags);
     }
     
     public Plugin(DalamudPluginInterface pluginInterface) {
