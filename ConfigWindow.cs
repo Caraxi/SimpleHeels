@@ -68,7 +68,8 @@ public class ConfigWindow : Window {
     private readonly Stopwatch holdingClick = Stopwatch.StartNew();
     private readonly Stopwatch clickHoldThrottle = Stopwatch.StartNew();
 
-
+    private string groupNameMatchingNewInput = string.Empty;
+    private string groupNameMatchingWorldSearch = string.Empty;
 
     public unsafe void DrawCharacterList() {
 
@@ -142,6 +143,7 @@ public class ConfigWindow : Window {
                     newName = string.Empty;
                     newWorld = 0;
                     selectedGroup = filterConfig;
+                    selectedGroup.Characters.RemoveAll(c => string.IsNullOrWhiteSpace(c.Name));
                 }
                 
                 if (ImGui.BeginPopupContextItem()) {
@@ -471,7 +473,13 @@ public class ConfigWindow : Window {
 
                 ImGui.Unindent();
                 
-                ImGui.Text("Apply group to characters of the clans:");
+                ImGui.TextColored(ImGui.ColorConvertU32ToFloat4(selectedGroup.Clans.Count == 0 ? ImGui.GetColorU32(ImGuiCol.TextDisabled) : ImGui.GetColorU32(ImGuiCol.Text)),"Apply group to characters of the clans:");
+
+                if (selectedGroup.Clans.Count == 0) {
+                    ImGui.SameLine();
+                    ImGuiComponents.HelpMarker($"This group will apply to all characters{(selectedGroup.MatchFeminine && selectedGroup.MatchMasculine ? "" : selectedGroup.MatchFeminine ? " using a feminine model" : " using a masculine model") } as no clan is selected.");
+                }
+                
                 ImGui.Indent();
                 if (ImGui.BeginTable("clanTable", 4)) {
                     foreach (var clan in PluginService.Data.GetExcelSheet<Tribe>()!) {
@@ -496,7 +504,89 @@ public class ConfigWindow : Window {
                 }
                 
                 ImGui.Unindent();
-                
+
+                if (ImGui.CollapsingHeader("Name Matching")) {
+
+                    var nameMatchCharacter = -1;
+                    foreach (var c in selectedGroup.Characters.ToArray()) {
+                        ImGui.PushID($"group_character_{++nameMatchCharacter}");
+
+                        ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * 140);
+                        ImGui.InputText("##name", ref c.Name, 32);
+                        
+                        ImGui.SameLine();
+                        ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * 140);
+                        if (ImGui.BeginCombo("##world", c.World == ushort.MaxValue ? "Non Player" : PluginService.Data.GetExcelSheet<World>()?.GetRow(c.World)?.Name.RawString ?? $"World#{c.World}", ImGuiComboFlags.HeightLargest)) {
+
+                            var appearing = ImGui.IsWindowAppearing();
+                            
+                            if (appearing) {
+                                groupNameMatchingWorldSearch = string.Empty;
+                                ImGui.SetKeyboardFocusHere();
+                            }
+                            ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * 140);
+                            ImGui.InputTextWithHint("##search", "Search...", ref groupNameMatchingWorldSearch, 25);
+                            var s = ImGui.GetItemRectSize();
+                            ImGui.Separator();
+                            
+                            if (ImGui.BeginChild("worldScroll", new Vector2(s.X, ImGuiHelpers.GlobalScale * 250))) {
+
+                                var lastDc = uint.MaxValue;
+                                void World(string name, uint worldId, WorldDCGroupType? dc = null) {
+
+
+                                    if (!string.IsNullOrWhiteSpace(groupNameMatchingWorldSearch)) {
+                                        if (!name.Contains(groupNameMatchingWorldSearch, StringComparison.InvariantCultureIgnoreCase)) return;
+                                    }
+                                    
+                                    if (dc != null) {
+                                        if (lastDc != dc.RowId) {
+                                            lastDc = dc.RowId;
+                                            ImGui.TextDisabled($"{dc.Name.RawString}");
+                                        }
+                                    }
+                                    
+                                    if (ImGui.Selectable($"    {name}", c.World == worldId)) {
+                                        c.World = worldId;
+                                        ImGui.CloseCurrentPopup();
+                                    }
+                                    
+                                    if (appearing && c.World == worldId) {
+                                        ImGui.SetScrollHereY();
+                                    }
+                                    
+                                }
+
+                                World("Non Player", ushort.MaxValue);
+                                foreach (var w in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPublic).OrderBy(w => w.DataCenter.Value?.Name.RawString).ThenBy(w => w.Name.RawString)) {
+                                    World(w.Name.RawString, w.RowId, w.DataCenter.Value);
+                                }
+                            }
+                            ImGui.EndChild();
+                            ImGui.EndCombo();
+                        }
+                        
+                        ImGui.SameLine();
+                        if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash)) {
+                            selectedGroup.Characters.RemoveAt(nameMatchCharacter);
+                        }
+                        
+                        ImGui.PopID();
+                    }
+                    
+                    ImGui.PushID($"group_character_{++nameMatchCharacter}");
+                    ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * 140);
+                    if (ImGui.InputText("##name", ref groupNameMatchingNewInput, 32)) {
+                        var c = new GroupCharacter() {
+                            Name = groupNameMatchingNewInput,
+                        };
+                        selectedGroup.Characters.Add(c);
+                        groupNameMatchingNewInput = string.Empty;
+                    }
+                    
+                    ImGui.PopID();
+                }
+
                 ImGui.Separator();
                 DrawCharacterView(selectedGroup);
             } else {

@@ -8,6 +8,10 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(8.2f, "0.8.2.0", () => {
+            C("Added name filtering for groups.");
+            C("A character can appear in multiple groups, the top group will be applied first.", 1);
+        });
         ChangelogFor(8.11f, "0.8.1.1", "Fixed offsets not applying in gpose and cutscenes.");
         ChangelogFor(8f, "0.8.0.0", () => {
             C("Added an option to create a group from a configured character.");

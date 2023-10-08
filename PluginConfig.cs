@@ -32,7 +32,7 @@ public class PluginConfig : IPluginConfiguration {
             }
         }
 
-        characterConfig = Groups.FirstOrDefault(g => g.Matches(drawObject));
+        characterConfig = Groups.FirstOrDefault(g => g.Matches(drawObject, name, world));
         return characterConfig != null;
     }
 
