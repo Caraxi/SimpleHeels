@@ -8,6 +8,7 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(8.3f, "0.8.3.0", "Reapers will no longer have their offset changed while under the effect of Enshroud.");
         ChangelogFor(8.2f, "0.8.2.0", () => {
             C("Added name filtering for groups.");
             C("A character can appear in multiple groups, the top group will be applied first.", 1);

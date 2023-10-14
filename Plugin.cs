@@ -186,6 +186,10 @@ public unsafe class Plugin : IDalamudPlugin {
             return false;
         }
         
+        var character = (Character*)obj;
+        var reaperShroud = (ReaperShroud*)&character->ReaperShroud;
+        if (reaperShroud->ShroudFlags != 0) return true; // Ignore all changes when Reaper Shroud is active.
+
         var offset = GetOffset(obj);
         if (offset == null) {
             if (ManagedIndex[updateIndex]) {
