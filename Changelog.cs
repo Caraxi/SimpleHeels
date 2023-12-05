@@ -80,7 +80,7 @@ public static class Changelog {
             }
         }
 
-        ImGui.Separator();
+        ImGuiExt.Separator();
     }
 
     private static void ChangelogFor(float version, string label, Action draw) {
@@ -120,7 +120,7 @@ public static class Changelog {
         if (_displayedTitle) {
             ImGui.Spacing();
             ImGui.Spacing();
-            ImGui.Separator();
+            ImGuiExt.Separator();
             return true;
         }
 

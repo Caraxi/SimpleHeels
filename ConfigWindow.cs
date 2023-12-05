@@ -78,7 +78,7 @@ public class ConfigWindow : Window {
             if (world == null) continue;
             
             ImGui.TextDisabled($"{world.Name.RawString}");
-            ImGui.Separator();
+            ImGuiExt.Separator();
 
             foreach (var (name, characterConfig) in characters.ToArray()) {
                 if (ImGui.Selectable($"{name}##{world.Name.RawString}", selectedCharacter == characterConfig)) {
@@ -107,7 +107,7 @@ public class ConfigWindow : Window {
 
         if (Plugin.IsDebug && Plugin.IpcAssignedData.Count > 0) {
             ImGui.TextDisabled("[DEBUG] IPC Assignments");
-            ImGui.Separator();
+            ImGuiExt.Separator();
 
             foreach (var (name, worldId) in Plugin.IpcAssignedData.Keys) {
                 var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
@@ -131,7 +131,7 @@ public class ConfigWindow : Window {
 
         if (config.Groups.Count > 0) {
             ImGui.TextDisabled($"Group Assignments");
-            ImGui.Separator();
+            ImGuiExt.Separator();
             var arr = config.Groups.ToArray();
             
             for(var i = 0; i < arr.Length; i++) {
@@ -166,7 +166,7 @@ public class ConfigWindow : Window {
                         
                         
 
-                        ImGui.Separator();
+                        ImGuiExt.Separator();
                     }
 
                     ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGui.GetIO().KeyShift ? ImGuiCol.Text : ImGuiCol.TextDisabled));
@@ -430,7 +430,7 @@ public class ConfigWindow : Window {
                         }
                     }
                     
-                    ImGui.Separator();
+                    ImGuiExt.Separator();
                 }
                 
                 if (Plugin.IpcAssignedData.TryGetValue((selectedName, selectedWorld), out var data)) {
@@ -454,7 +454,7 @@ public class ConfigWindow : Window {
 
                 ImGui.InputText("Group Label", ref selectedGroup.Label, 50);
                 
-                ImGui.Separator();
+                ImGuiExt.Separator();
                 
                 ImGui.Text("Apply group to characters using:");
                 ImGui.Indent();
@@ -527,7 +527,7 @@ public class ConfigWindow : Window {
                             ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * 140);
                             ImGui.InputTextWithHint("##search", "Search...", ref groupNameMatchingWorldSearch, 25);
                             var s = ImGui.GetItemRectSize();
-                            ImGui.Separator();
+                            ImGuiExt.Separator();
                             
                             if (ImGui.BeginChild("worldScroll", new Vector2(s.X, ImGuiHelpers.GlobalScale * 250))) {
 
@@ -587,7 +587,7 @@ public class ConfigWindow : Window {
                     ImGui.PopID();
                 }
 
-                ImGui.Separator();
+                ImGuiExt.Separator();
                 DrawCharacterView(selectedGroup);
             } else {
 
@@ -603,7 +603,7 @@ public class ConfigWindow : Window {
                     }
                 }
                 
-                ImGui.Separator();
+                ImGuiExt.Separator();
 
                 if (ImGui.Checkbox("Enabled", ref config.Enabled)) {
                     Plugin.RequestUpdateAll();
@@ -626,7 +626,7 @@ public class ConfigWindow : Window {
                     ImGui.SliderFloat("Plus/Minus Button Delta", ref config.PlusMinusDelta, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags.AlwaysClamp);
                 }
                 
-                ImGui.Separator();
+                ImGuiExt.Separator();
                 ImGui.Text("Bypass Dalamud's plugin UI hiding:");
                 ImGui.Indent();
                 if (ImGui.Checkbox("In GPose", ref config.ConfigInGpose)) {
@@ -637,7 +637,7 @@ public class ConfigWindow : Window {
                     PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = config.ConfigInCutscene;
                 }
                 ImGui.Unindent();
-                ImGui.Separator();
+                ImGuiExt.Separator();
 
                 #if DEBUG
                 ImGui.Checkbox("[DEBUG] Open config window on startup", ref config.DebugOpenOnStartup);
@@ -1194,7 +1194,7 @@ public class ConfigWindow : Window {
             }
         }
         
-        ImGui.Separator();
+        ImGuiExt.Separator();
 
         ShowSittingOffsetEditor(characterConfig);
         
