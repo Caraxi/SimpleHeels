@@ -7,6 +7,8 @@ namespace SimpleHeels;
 public class CharacterConfig {
     public List<HeelConfig> HeelsConfig = new();
 
+    public float DefaultOffset = 0f;
+    
     public float SittingOffsetZ = 0f;
     public float SittingOffsetY = 0f;
 

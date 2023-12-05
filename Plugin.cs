@@ -269,10 +269,11 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
     
-    private float? GetOffsetFromConfig(string name, uint homeWorld, Human* human) {
+    private float? GetOffsetFromConfig(string name, uint homeWorld, Human* human, out CharacterConfig? characterConfig) {
+        characterConfig = null;
         if (isDisposing) return null;
         if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) return data.Offset;
-        if (!Config.TryGetCharacterConfig(name, homeWorld, &human->CharacterBase.DrawObject, out var characterConfig) || characterConfig == null) {
+        if (!Config.TryGetCharacterConfig(name, homeWorld, &human->CharacterBase.DrawObject, out characterConfig) || characterConfig == null) {
             return null;
         }
 
@@ -292,6 +293,8 @@ public unsafe class Plugin : IDalamudPlugin {
     }
     
     public float? GetOffset(GameObject* gameObject, bool bypassStandingCheck = false) {
+        using var _ = PerformanceMonitors.Run("GetOffset");
+        
         if (isDisposing) return null;
         if (!Config.Enabled) return null;
         if (gameObject == null) return null;
@@ -323,7 +326,7 @@ public unsafe class Plugin : IDalamudPlugin {
             if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
         }
         
-        var configuredOffset = GetOffsetFromConfig(name, homeWorld, human);
+        var configuredOffset = GetOffsetFromConfig(name, homeWorld, human, out var characterConfig);
         if (configuredOffset != null) return configuredOffset;
         
         if (Config.UseModelOffsets) {
@@ -347,10 +350,10 @@ public unsafe class Plugin : IDalamudPlugin {
                 return null;
             }
 
-            return CheckModelSlot(ModelSlot.Top) ?? CheckModelSlot(ModelSlot.Legs) ?? CheckModelSlot(ModelSlot.Feet);
+            return CheckModelSlot(ModelSlot.Top) ?? CheckModelSlot(ModelSlot.Legs) ?? CheckModelSlot(ModelSlot.Feet) ?? characterConfig?.DefaultOffset;
         }
 
-        return null;
+        return characterConfig?.DefaultOffset;
     }
     
     private bool isDisposing;

@@ -653,6 +653,13 @@ public class ConfigWindow : Window {
 
                         ImGui.TreePop();
                     }
+
+                    if (ImGui.TreeNode("PERFORMANCE")) {
+                        PerformanceMonitors.DrawTable();
+                        ImGui.TreePop();
+                    }
+                    
+                    
                 }
                 
 
@@ -769,6 +776,7 @@ public class ConfigWindow : Window {
         if (characterConfig == null) return;
 
         var wearingMatchCount = 0;
+        var usingDefault = true;
         
         if (characterConfig.HeelsConfig.Count > 0 && !characterConfig.HeelsConfig.Any(hc => hc.Enabled)) {
             ImGui.BeginGroup();
@@ -1075,7 +1083,10 @@ public class ConfigWindow : Window {
                             ImGui.EndTooltip();
                         }
 
-                        if (heelConfig.Enabled) wearingMatchCount++;
+                        if (heelConfig.Enabled) {
+                            wearingMatchCount++;
+                            usingDefault = false;
+                        }
                     }
                 }
 
@@ -1199,6 +1210,7 @@ public class ConfigWindow : Window {
         ShowSittingOffsetEditor(characterConfig);
         
         if (activeCharacterAsCharacter != null && activeCharacterAsCharacter->Mode == Character.CharacterModes.InPositionLoop && activeCharacterAsCharacter->ModeParam == 2) {
+            usingDefault = false;
             ImGui.SameLine();
             ImGui.PushFont(UiBuilder.IconFont);
             ImGui.TextColored(ImGuiColors.HealerGreen,$"{(char)FontAwesomeIcon.ArrowLeft}");
@@ -1213,6 +1225,7 @@ public class ConfigWindow : Window {
 
         FloatEditor("Ground Sitting Offset", ref characterConfig.GroundSitOffset, 0.001f);
         if (activeCharacterAsCharacter != null && activeCharacterAsCharacter->Mode == Character.CharacterModes.InPositionLoop && activeCharacterAsCharacter->ModeParam == 1) {
+            usingDefault = false;
             ImGui.SameLine();
             ImGui.PushFont(UiBuilder.IconFont);
             ImGui.TextColored(ImGuiColors.HealerGreen,$"{(char)FontAwesomeIcon.ArrowLeft}");
@@ -1227,6 +1240,7 @@ public class ConfigWindow : Window {
 
         FloatEditor("Sleeping Offset", ref characterConfig.SleepOffset, 0.001f);
         if (activeCharacterAsCharacter != null && activeCharacterAsCharacter->Mode == Character.CharacterModes.InPositionLoop && activeCharacterAsCharacter->ModeParam == 3) {
+            usingDefault = false;
             ImGui.SameLine();
             ImGui.PushFont(UiBuilder.IconFont);
             ImGui.TextColored(ImGuiColors.HealerGreen,$"{(char)FontAwesomeIcon.ArrowLeft}");
@@ -1238,6 +1252,29 @@ public class ConfigWindow : Window {
                 ImGui.EndTooltip();
             }
         }
+        
+        
+        ImGuiExt.Separator();
+
+        FloatEditor("Default Offset", ref characterConfig.DefaultOffset, 0.001f);
+        ImGui.SameLine();
+        ImGuiComponents.HelpMarker("The default offset will be used for all footwear that has not been configured.");
+        
+        if (activeCharacterAsCharacter != null && usingDefault) {
+            ImGui.SameLine();
+            ImGui.PushFont(UiBuilder.IconFont);
+            ImGui.TextColored(ImGuiColors.HealerGreen,$"{(char)FontAwesomeIcon.ArrowLeft}");
+            ImGui.PopFont();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
+                ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                ImGui.BeginTooltip();
+                ImGui.Text("Currently Active");
+                ImGui.EndTooltip();
+            }
+        }
+        
+        
+        
     }
 
     private void ShowSittingOffsetEditor(CharacterConfig characterConfig) {
