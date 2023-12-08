@@ -36,6 +36,7 @@ public class ConfigWindow : Window {
     
     private CancellationTokenSource? notVisibleWarningCancellationTokenSource;
     private readonly Stopwatch hiddenStopwatch = Stopwatch.StartNew();
+    private string? PenumbraModFolder;
     
     public ConfigWindow(string name, Plugin plugin, PluginConfig config) : base(name, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse) {
         this.config = config;
@@ -60,6 +61,21 @@ public class ConfigWindow : Window {
             PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = true;
             IsOpen = true;
         });
+    }
+
+    public override void OnOpen() {
+        UpdatePenumbraModFolder();
+    }
+
+    private void UpdatePenumbraModFolder() {
+        try {
+            var getModDir = PluginService.PluginInterface.GetIpcSubscriber<string>("Penumbra.GetModDirectory");
+            PenumbraModFolder = getModDir.InvokeFunc();
+            PenumbraModFolder = PenumbraModFolder.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Trim(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            PluginService.Log.Debug($"Penumbra Folder: {PenumbraModFolder}");
+        } catch {
+            PenumbraModFolder = null;
+        }
     }
     
     private Vector2 iconButtonSize = new(16);
@@ -954,8 +970,17 @@ public class ConfigWindow : Window {
                 ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
                 
                 var pathMode = heelConfig.PathMode;
+                var pathDisplay = heelConfig.Path ?? string.Empty;
+                if (pathMode) {
+                    pathDisplay = pathDisplay.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                    if (!string.IsNullOrWhiteSpace(PenumbraModFolder) && !string.IsNullOrWhiteSpace(pathDisplay) && pathDisplay.StartsWith(PenumbraModFolder, StringComparison.InvariantCultureIgnoreCase)) {
+                        pathDisplay = "[Penumbra] " + (heelConfig.Slot != ModelSlot.Feet ? $"[{heelConfig.Slot}] " : "") + pathDisplay.Remove(0, PenumbraModFolder.Length);
+                    } else {
+                        pathDisplay = (heelConfig.Slot != ModelSlot.Feet ? $"[{heelConfig.Slot}] " : "") + pathDisplay;
+                    }
+                }
                 
-                if (ImGui.BeginCombo("##footwear", pathMode ? ((heelConfig.Slot != ModelSlot.Feet ? $"[{heelConfig.Slot}] " : "") + heelConfig.Path) : GetModelName(heelConfig.ModelId, heelConfig.Slot), ImGuiComboFlags.HeightLargest)) {
+                if (ImGui.BeginCombo("##footwear", pathMode ? pathDisplay : GetModelName(heelConfig.ModelId, heelConfig.Slot), ImGuiComboFlags.HeightLargest)) {
                     if (ImGui.BeginTabBar("##footwear_tabs")) {
                         if (pathMode) {
                             if (ImGui.TabItemButton("Model ID")) {
