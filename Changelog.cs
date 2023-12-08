@@ -10,6 +10,7 @@ public static class Changelog {
     private static void Changelogs() {
         ChangelogFor(8.4f, "0.8.4.0", () => {
             C("Added a 'Default Offset' to apply to all unconfigured footwear.");
+            C("Offset will no longer be applied while crafting.");
         }); 
         ChangelogFor(8.3f, "0.8.3.0", "Reapers will no longer have their offset changed while under the effect of Enshroud.");
         ChangelogFor(8.2f, "0.8.2.0", () => {

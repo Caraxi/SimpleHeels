@@ -306,6 +306,7 @@ public unsafe class Plugin : IDalamudPlugin {
         var human = (Human*)characterBase;
         var character = (Character*)gameObject;
         if (!bypassStandingCheck) {
+            if (character->Mode == Character.CharacterModes.Crafting) return null;
             if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 2) return null;
             if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1) {
                 if (TryGetGroundSitOffset(gameObject, out var gsOffset)) return gsOffset;
