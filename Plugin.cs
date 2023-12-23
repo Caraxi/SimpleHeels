@@ -331,6 +331,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (configuredOffset != null) return configuredOffset;
         
         if (Config.UseModelOffsets) {
+            using var useModelOffsetsPerformance = PerformanceMonitors.Run("CheckModelOffsets");
             float? CheckModelSlot(ModelSlot slot) {
                 var modelArray = human->CharacterBase.Models;
                 if (modelArray == null) return null;
@@ -344,6 +345,24 @@ public unsafe class Plugin : IDalamudPlugin {
                     if (str.StartsWith("heels_offset=", StringComparison.OrdinalIgnoreCase)) {
                         if (float.TryParse(str[13..].Replace(',', '.'), CultureInfo.InvariantCulture, out var offsetAttr)) {
                             return offsetAttr * human->CharacterBase.DrawObject.Object.Scale.Y;
+                        }
+                    } else if (str.StartsWith("heels_offset_", StringComparison.OrdinalIgnoreCase)) {
+                        var valueStr = str[13..]
+                            .Replace("n_", "-")
+                            .Replace('a', '0')
+                            .Replace('b', '1')
+                            .Replace('c', '2')
+                            .Replace('d', '3')
+                            .Replace('e', '4')
+                            .Replace('f', '5')
+                            .Replace('g', '6')
+                            .Replace('h', '7')
+                            .Replace('i', '8')
+                            .Replace('j', '9')
+                            .Replace('_', '.');
+                        
+                        if (float.TryParse(valueStr, CultureInfo.InvariantCulture, out var value)) {
+                            return value * human->CharacterBase.DrawObject.Object.Scale.Y;
                         }
                     }
                 }

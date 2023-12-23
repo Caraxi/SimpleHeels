@@ -8,6 +8,9 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(8.41f, "0.8.4.1", () => {
+            C("Improved support for baked in model offsets, allowing mod developers to define offsets in TexTools.");
+        });
         ChangelogFor(8.4f, "0.8.4.0", () => {
             C("Added a 'Default Offset' to apply to all unconfigured footwear.");
             C("Offset will no longer be applied while crafting.");

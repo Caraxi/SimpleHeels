@@ -693,6 +693,7 @@ public class ConfigWindow : Window {
     private Exception? mdlEditorException;
     private MdlFile? loadedFile;
     private string loadedFilePath = string.Empty;
+    private bool useTextoolSafeAttribute = true;
     
     private void ShowModelEditor() {
         if (mdlEditorException != null) {
@@ -713,6 +714,7 @@ public class ConfigWindow : Window {
                 var s = ImGui.GetItemRectSize();
                 ImGui.SameLine();
                 ImGui.Text("Loaded File");
+                ImGui.Checkbox("Use TexTools safe attribute", ref useTextoolSafeAttribute);
 
                 
                 FloatEditor("Heels Offset", ref mdlEditorOffset, 0.001f, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
@@ -731,8 +733,27 @@ public class ConfigWindow : Window {
 
                     try {
                         _fileDialogManager.SaveFileDialog("Save MDL File...", "MDL File{.mdl}", "output.mdl", ".mdl", (b, files) => {
-                            attributes.RemoveAll(a => a.StartsWith("heels_offset="));
-                            attributes.Add($"heels_offset={mdlEditorOffset.ToString(CultureInfo.InvariantCulture)}");
+                            attributes.RemoveAll(a => a.StartsWith("heels_offset"));
+                            if (useTextoolSafeAttribute) {
+                                var valueStr = mdlEditorOffset.ToString(CultureInfo.InvariantCulture)
+                                    .Replace("-", "n_")
+                                    .Replace(".","_")
+                                    .Replace("0","a")
+                                    .Replace("1","b")
+                                    .Replace("2","c")
+                                    .Replace("3","d")
+                                    .Replace("4","e")
+                                    .Replace("5","f")
+                                    .Replace("6","g")
+                                    .Replace("7","h")
+                                    .Replace("8","i")
+                                    .Replace("9","j");
+                                
+                                attributes.Add($"heels_offset_{valueStr}");
+                            } else {
+                                attributes.Add($"heels_offset={mdlEditorOffset.ToString(CultureInfo.InvariantCulture)}");
+                            }
+                            
                             loadedFile.Attributes = attributes.ToArray();
                             var outputBytes = loadedFile.Write();
                             File.WriteAllBytes(files, outputBytes);
@@ -764,11 +785,36 @@ public class ConfigWindow : Window {
                             var bytes = File.ReadAllBytes(loadedFilePath);
                             loadedFile = new MdlFile(bytes);
                             var attributes = loadedFile.Attributes.ToList();
-                            var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset="));
+                            var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset") && a.Length > 13);
                         
                             if (offset != null) {
-                                if (!float.TryParse(offset[13..], CultureInfo.InvariantCulture, out mdlEditorOffset)) {
-                                    mdlEditorOffset = 0;
+
+                                if (offset[12] == '_') {
+                                    // TexTools safe attribute
+                                    useTextoolSafeAttribute = true;
+                                    
+                                    var str = offset[13..]
+                                        .Replace("n_", "-")
+                                        .Replace('a', '0')
+                                        .Replace('b', '1')
+                                        .Replace('c', '2')
+                                        .Replace('d', '3')
+                                        .Replace('e', '4')
+                                        .Replace('f', '5')
+                                        .Replace('g', '6')
+                                        .Replace('h', '7')
+                                        .Replace('i', '8')
+                                        .Replace('j', '9')
+                                        .Replace('_', '.');
+                                    
+                                    if (!float.TryParse(str, CultureInfo.InvariantCulture, out mdlEditorOffset)) {
+                                        mdlEditorOffset = 0;
+                                    }
+                                } else if (offset[12] == '=') {
+                                    useTextoolSafeAttribute = false;
+                                    if (!float.TryParse(offset[13..], CultureInfo.InvariantCulture, out mdlEditorOffset)) {
+                                        mdlEditorOffset = 0;
+                                    }
                                 }
                             }
 
