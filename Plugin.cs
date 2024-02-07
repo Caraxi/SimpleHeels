@@ -463,7 +463,7 @@ public unsafe class Plugin : IDalamudPlugin {
         }
         
         if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) {
-            if (data is { SittingPosition: 0, SittingHeight: 0 }) return false;
+            if (data is { GroundSitHeight: 0 }) return false;
             y = data.GroundSitHeight;
             return true;
         }

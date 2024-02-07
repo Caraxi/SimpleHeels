@@ -8,6 +8,7 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(8.42f, "0.8.4.2", "Fixed an issue causing synced ground sitting offset from not appearing when chair sitting offsets are at zero.");
         ChangelogFor(8.41f, "0.8.4.1", () => {
             C("Improved support for baked in model offsets, allowing mod developers to define offsets in TexTools.");
         });
