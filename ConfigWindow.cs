@@ -14,6 +14,7 @@ using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Utility;
@@ -399,22 +400,31 @@ public class ConfigWindow : Window {
                         ImGui.EndCombo();
                     }
 
-                    if (ImGui.Button("Create Group")) {
-                        var group = new GroupConfig() {
-                            Label = $"Group from {selectedName}@{worldName}", 
-                            SittingOffsetY = selectedCharacter.SittingOffsetY, 
-                            SittingOffsetZ = selectedCharacter.SittingOffsetZ, 
-                            HeelsConfig = selectedCharacter.HeelsConfig
-                        };
-                        var copy = JsonConvert.DeserializeObject<GroupConfig>(JsonConvert.SerializeObject(group));
-                        if (copy != null) {
-                            config.Groups.Add(copy);
-                            selectedCharacter = null;
-                            selectedName = string.Empty;
-                            selectedWorld = 0;
-                            selectedGroup = copy;
+                    using (ImRaii.Disabled(!ImGui.GetIO().KeyShift)) {
+                        if (ImGui.Button("Create Group")) {
+                            var group = new GroupConfig() {
+                                Label = $"Group from {selectedName}@{worldName}", 
+                                SittingOffsetY = selectedCharacter.SittingOffsetY, 
+                                SittingOffsetZ = selectedCharacter.SittingOffsetZ, 
+                                SleepOffset = selectedCharacter.SleepOffset,
+                                GroundSitOffset = selectedCharacter.GroundSitOffset,
+                                HeelsConfig = selectedCharacter.HeelsConfig
+                            };
+                            var copy = JsonConvert.DeserializeObject<GroupConfig>(JsonConvert.SerializeObject(group));
+                            if (copy != null) {
+                                config.Groups.Add(copy);
+                                selectedCharacter = null;
+                                selectedName = string.Empty;
+                                selectedWorld = 0;
+                                selectedGroup = copy;
+                            }
                         }
                     }
+                    
+                    if (!ImGui.GetIO().KeyShift && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
+                        ImGui.SetTooltip("Hold SHIFT\n\nCreates a new Group Assignment from this character's config.");
+                    }
+                    
                     ImGui.SameLine();
                     var isModified = newName != selectedName || newWorld != selectedWorld; 
                     {
