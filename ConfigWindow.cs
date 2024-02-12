@@ -15,6 +15,7 @@ using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
+using Dalamud.IoC;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -636,6 +637,8 @@ public class ConfigWindow : Window {
                     Util.OpenLink("https://github.com/Caraxi/SimpleHeels/blob/master/modguide.md");
                 }
 
+                ImGui.Checkbox("Prefer model paths when creating new entries", ref config.PreferModelPath);
+
                 ImGui.Checkbox("Show Plus/Minus buttons for offset adjustments", ref config.ShowPlusMinusButtons);
                 if (config.ShowPlusMinusButtons) {
                     ImGui.SetNextItemWidth(200 * ImGuiHelpers.GlobalScale);
@@ -863,26 +866,36 @@ public class ConfigWindow : Window {
         HeelConfig? activeHeelConfig = null;
         
         
-        if (characterConfig is GroupConfig) {
-            var target = PluginService.Targets.SoftTarget ?? PluginService.Targets.Target;
+        if (characterConfig is GroupConfig gc) {
+            var target = new[] {
+                PluginService.Targets.SoftTarget,
+                PluginService.Targets.Target,
+                PluginService.ClientState.LocalPlayer
+            }.FirstOrDefault(t => t is Dalamud.Game.ClientState.Objects.Types.Character character && gc.Matches(((GameObject*)character.Address)->DrawObject, character.Name.TextValue, (character is PlayerCharacter pc) ? pc.HomeWorld.Id : ushort.MaxValue));
             if (target is Dalamud.Game.ClientState.Objects.Types.Character) {
                 activeCharacter = (GameObject*)target.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;
+                if (target is PlayerCharacter pc) {
+                    ImGui.TextDisabled($"Preview displays based on {target.Name.TextValue} ({pc.HomeWorld?.GameData?.Name.RawString})");
+                } else {
+                    ImGui.TextDisabled($"Preview displays based on {target.Name.TextValue} (NPC)");
+                }
             }
         } else {
             var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
             if (player is PlayerCharacter) {
                 activeCharacter = (GameObject*)player.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;
-
-                if (activeCharacter->DrawObject != null && activeCharacter->DrawObject->Object.GetObjectType() == ObjectType.CharacterBase) {
-                    var cb = (CharacterBase*)activeCharacter->DrawObject;
-                    if (cb->GetModelType() == CharacterBase.ModelType.Human) {
-                        activeHeelConfig = characterConfig.GetFirstMatch((Human*)cb);
-                    }
-                }
             }
         }
+        
+        if (activeCharacter != null && activeCharacter->DrawObject != null && activeCharacter->DrawObject->Object.GetObjectType() == ObjectType.CharacterBase) {
+            var cb = (CharacterBase*)activeCharacter->DrawObject;
+            if (cb->GetModelType() == CharacterBase.ModelType.Human) {
+                activeHeelConfig = characterConfig.GetFirstMatch((Human*)cb);
+            }
+        }
+        
         
         var activeFootwear = GetModelIdForPlayer(activeCharacter, ModelSlot.Feet);
         var activeFootwearPath = GetModelPathForPlayer(activeCharacter, ModelSlot.Feet);
@@ -1119,45 +1132,44 @@ public class ConfigWindow : Window {
                 
                 ImGui.TableNextColumn();
                 ImGui.EndDisabled();
-                if (characterConfig is not GroupConfig) {
-                    if ((heelConfig.Slot == ModelSlot.Feet && ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
-                        || (heelConfig.Slot == ModelSlot.Legs && ((heelConfig.PathMode == false && activeLegs == heelConfig.ModelId) || (heelConfig.PathMode && activeLegsPath != null && activeLegsPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
-                        || (heelConfig.Slot == ModelSlot.Top && ((heelConfig.PathMode == false && activeTop == heelConfig.ModelId) || (heelConfig.PathMode && activeTopPath != null && activeTopPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))))) {
+
+                if ((heelConfig.Slot == ModelSlot.Feet && ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
+                    || (heelConfig.Slot == ModelSlot.Legs && ((heelConfig.PathMode == false && activeLegs == heelConfig.ModelId) || (heelConfig.PathMode && activeLegsPath != null && activeLegsPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) 
+                    || (heelConfig.Slot == ModelSlot.Top && ((heelConfig.PathMode == false && activeTop == heelConfig.ModelId) || (heelConfig.PathMode && activeTopPath != null && activeTopPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))))) {
+                
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    if (heelConfig.Enabled) {
+                        if (activeCharacter->IsCharacter() && ((Character*)activeCharacter)->Mode == Character.CharacterModes.InPositionLoop) {
+                            ImGui.TextColored(ImGuiColors.DalamudViolet, $"{(char)FontAwesomeIcon.ArrowLeft}");
+                        } else {
+                            ImGui.TextColored(activeHeelConfig == heelConfig ? ImGuiColors.HealerGreen : ImGuiColors.DalamudYellow,$"{(char)FontAwesomeIcon.ArrowLeft}");
+                        }
+                    } else {
+                        ImGui.TextDisabled($"{(char)FontAwesomeIcon.ArrowLeft}");
+                    }
                     
-                        ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.PopFont();
+                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
+                        ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                        ImGui.BeginTooltip();
+                        ImGui.Text("Currently Wearing");
                         if (heelConfig.Enabled) {
                             if (activeCharacter->IsCharacter() && ((Character*)activeCharacter)->Mode == Character.CharacterModes.InPositionLoop) {
-                                ImGui.TextColored(ImGuiColors.DalamudViolet, $"{(char)FontAwesomeIcon.ArrowLeft}");
+                                ImGui.TextColored(ImGuiColors.DalamudViolet, $"This entry is INACTIVE because the character is {(((Character*)activeCharacter)->ModeParam is 1 or 2 ? "sitting" : "sleeping")}.");
+                            } else if (activeHeelConfig == heelConfig) {
+                                ImGui.TextColored(ImGuiColors.HealerGreen, "This entry is ACTIVE");
                             } else {
-                                ImGui.TextColored(activeHeelConfig == heelConfig ? ImGuiColors.HealerGreen : ImGuiColors.DalamudYellow,$"{(char)FontAwesomeIcon.ArrowLeft}");
+                                ImGui.TextColored(ImGuiColors.DalamudYellow, "This entry is INACTIVE because another entry is applied first.");
                             }
                         } else {
-                            ImGui.TextDisabled($"{(char)FontAwesomeIcon.ArrowLeft}");
+                            ImGui.TextDisabled("This entry is INACTIVE because it is disabled.");
                         }
-                        
-                        ImGui.PopFont();
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
-                            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
-                            ImGui.BeginTooltip();
-                            ImGui.Text("Currently Wearing");
-                            if (heelConfig.Enabled) {
-                                if (activeCharacter->IsCharacter() && ((Character*)activeCharacter)->Mode == Character.CharacterModes.InPositionLoop) {
-                                    ImGui.TextColored(ImGuiColors.DalamudViolet, $"This entry is INACTIVE because the character is {(((Character*)activeCharacter)->ModeParam is 1 or 2 ? "sitting" : "sleeping")}.");
-                                } else if (activeHeelConfig == heelConfig) {
-                                    ImGui.TextColored(ImGuiColors.HealerGreen, "This entry is ACTIVE");
-                                } else {
-                                    ImGui.TextColored(ImGuiColors.DalamudYellow, "This entry is INACTIVE because another entry is applied first.");
-                                }
-                            } else {
-                                ImGui.TextDisabled("This entry is INACTIVE because it is disabled.");
-                            }
-                            ImGui.EndTooltip();
-                        }
+                        ImGui.EndTooltip();
+                    }
 
-                        if (heelConfig.Enabled) {
-                            wearingMatchCount++;
-                            usingDefault = false;
-                        }
+                    if (heelConfig.Enabled) {
+                        wearingMatchCount++;
+                        usingDefault = false;
                     }
                 }
 
@@ -1225,7 +1237,17 @@ public class ConfigWindow : Window {
 
             
             void ShowAddPathButton(string? path, ModelSlot slot) {
-                if (ImGui.Button($"Add Path: {path}")) {
+
+                var pathDisplay = path ?? string.Empty;
+
+                pathDisplay = pathDisplay.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                if (!string.IsNullOrWhiteSpace(PenumbraModFolder) && !string.IsNullOrWhiteSpace(pathDisplay) && pathDisplay.StartsWith(PenumbraModFolder, StringComparison.InvariantCultureIgnoreCase)) {
+                    pathDisplay = "[Penumbra] " + (slot != ModelSlot.Feet ? $"[{slot}] " : "") + pathDisplay.Remove(0, PenumbraModFolder.Length);
+                } else {
+                    pathDisplay = (slot != ModelSlot.Feet ? $"[{slot}] " : "") + pathDisplay;
+                }
+                
+                if (ImGui.Button($"Add Path: {pathDisplay}")) {
                     characterConfig.HeelsConfig.Add(new HeelConfig() {
                         PathMode = true,
                         Path = path,
@@ -1240,7 +1262,7 @@ public class ConfigWindow : Window {
                 
             }
 
-            if (ImGui.GetIO().KeyShift && (ImGui.GetIO().KeyCtrl ? activeLegsPath : ImGui.GetIO().KeyAlt ? activeTopPath : activeFootwearPath) != null) {
+            if (ImGui.GetIO().KeyShift != config.PreferModelPath && (ImGui.GetIO().KeyCtrl ? activeLegsPath : ImGui.GetIO().KeyAlt ? activeTopPath : activeFootwearPath) != null) {
                 ShowAddPathButton(ImGui.GetIO().KeyCtrl ? activeLegsPath : ImGui.GetIO().KeyAlt ? activeTopPath : activeFootwearPath, ImGui.GetIO().KeyCtrl ? ModelSlot.Legs : ImGui.GetIO().KeyAlt ? ModelSlot.Top : ModelSlot.Feet);
             } else {
                 if (!(ShowAddButton(activeTop, ModelSlot.Top) || ShowAddButton(activeLegs, ModelSlot.Legs) || ShowAddButton(activeFootwear, ModelSlot.Feet))) {

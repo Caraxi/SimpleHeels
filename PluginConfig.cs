@@ -19,6 +19,7 @@ public class PluginConfig : IPluginConfiguration {
     public bool ConfigInGpose = true;
     public bool ConfigInCutscene = false;
     public bool HideKofi = false;
+    public bool PreferModelPath = false;
 
     public string ModelEditorLastFolder = string.Empty;
     
