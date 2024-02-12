@@ -16,7 +16,6 @@ using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
-using Dalamud.IoC;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -672,7 +671,8 @@ public class ConfigWindow : Window {
                 ImGui.Checkbox("Prefer model paths when creating new entries", ref config.PreferModelPath);
 
                 ImGui.Checkbox("Show Plus/Minus buttons for offset adjustments", ref config.ShowPlusMinusButtons);
-                if (config.ShowPlusMinusButtons) {
+                using (ImRaii.Disabled(!config.ShowPlusMinusButtons))
+                using (ImRaii.PushIndent()) {
                     ImGui.SetNextItemWidth(200 * ImGuiHelpers.GlobalScale);
                     ImGui.SliderFloat("Plus/Minus Button Delta", ref config.PlusMinusDelta, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags.AlwaysClamp);
                 }
