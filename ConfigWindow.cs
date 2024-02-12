@@ -386,7 +386,7 @@ public class ConfigWindow : Window {
             if (selectedCharacter != null) {
                 ShowDebugInfo();
 
-                if (newWorld != 0) {
+                if (config.ShowCopyUi && newWorld != 0) {
                     ImGui.InputText("Character Name", ref newName, 64);
                     var worldName = PluginService.Data.GetExcelSheet<World>()!.GetRow(newWorld)!.Name.ToDalamudString().TextValue;
                     if (ImGui.BeginCombo("World", worldName)) {
@@ -676,6 +676,8 @@ public class ConfigWindow : Window {
                     ImGui.SetNextItemWidth(200 * ImGuiHelpers.GlobalScale);
                     ImGui.SliderFloat("Plus/Minus Button Delta", ref config.PlusMinusDelta, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags.AlwaysClamp);
                 }
+
+                ImGui.Checkbox("Show Config Copy UI", ref config.ShowCopyUi);
                 
                 ImGuiExt.Separator();
                 ImGui.Text("Bypass Dalamud's plugin UI hiding:");

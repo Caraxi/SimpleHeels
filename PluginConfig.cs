@@ -20,6 +20,7 @@ public class PluginConfig : IPluginConfiguration {
     public bool ConfigInCutscene = false;
     public bool HideKofi = false;
     public bool PreferModelPath = false;
+    public bool ShowCopyUi = false;
 
     public string ModelEditorLastFolder = string.Empty;
     
