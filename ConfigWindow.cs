@@ -408,7 +408,8 @@ public class ConfigWindow : Window {
                                 SittingOffsetZ = selectedCharacter.SittingOffsetZ, 
                                 SleepOffset = selectedCharacter.SleepOffset,
                                 GroundSitOffset = selectedCharacter.GroundSitOffset,
-                                HeelsConfig = selectedCharacter.HeelsConfig
+                                HeelsConfig = selectedCharacter.HeelsConfig,
+                                Enabled = false,
                             };
                             var copy = JsonConvert.DeserializeObject<GroupConfig>(JsonConvert.SerializeObject(group));
                             if (copy != null) {
@@ -458,6 +459,17 @@ public class ConfigWindow : Window {
                     }
                     
                     ImGuiExt.Separator();
+
+                    if (selectedCharacter != null && ImGui.Checkbox($"Enable offsets for {selectedName}", ref selectedCharacter.Enabled)) {
+                        Plugin.RequestUpdateAll();
+                    }
+
+                    if (selectedCharacter is { Enabled: false }) {
+                        ImGui.SameLine();
+                        ImGui.TextColored(ImGuiColors.DalamudRed, "This config is disabled.");
+                    }
+                    
+                    ImGuiExt.Separator();
                 }
                 
                 if (Plugin.IpcAssignedData.TryGetValue((selectedName, selectedWorld), out var data)) {
@@ -479,6 +491,16 @@ public class ConfigWindow : Window {
             }
             else if (selectedGroup != null) {
 
+                if (ImGui.Checkbox($"Enable Offsets for Group", ref selectedGroup.Enabled)) {
+                    Plugin.RequestUpdateAll();
+                }
+                
+                if (selectedGroup is { Enabled: false }) {
+                    ImGui.SameLine();
+                    ImGui.TextColored(ImGuiColors.DalamudRed, "This config is disabled.");
+                }
+                
+                
                 ImGui.InputText("Group Label", ref selectedGroup.Label, 50);
                 
                 ImGuiExt.Separator();

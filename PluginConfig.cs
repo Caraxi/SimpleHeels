@@ -28,7 +28,7 @@ public class PluginConfig : IPluginConfiguration {
     public unsafe bool TryGetCharacterConfig(string name, uint world, DrawObject* drawObject, out CharacterConfig? characterConfig) {
         characterConfig = null;
         if (WorldCharacterDictionary.TryGetValue(world, out var w)) {
-            if (w.TryGetValue(name, out characterConfig)) {
+            if (w.TryGetValue(name, out characterConfig) && characterConfig.Enabled) {
                 return true;
             }
         }

@@ -18,6 +18,7 @@ public class GroupConfig : CharacterConfig {
     public List<GroupCharacter> Characters = new();
 
     public unsafe bool Matches(DrawObject* drawObject, string name, uint world) {
+        if (!Enabled) return false;
         if (drawObject == null) return false;
         if (drawObject->Object.GetObjectType() != ObjectType.CharacterBase) return false;
         var characterBase = (CharacterBase*)drawObject;

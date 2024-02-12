@@ -5,6 +5,8 @@ using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 namespace SimpleHeels; 
 
 public class CharacterConfig {
+    public bool Enabled = true;
+    
     public List<HeelConfig> HeelsConfig = new();
 
     public float DefaultOffset = 0f;
@@ -17,6 +19,7 @@ public class CharacterConfig {
 
 
     public unsafe HeelConfig? GetFirstMatch(Human* human) {
+        if (!Enabled) return null;
         string? feetModelPath = null;
         string? topModelPath = null;
         string? legsModelPath = null;
