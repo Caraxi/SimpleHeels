@@ -44,11 +44,11 @@ public class ConfigWindow : Window {
         this.plugin = plugin;
         
         SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = ImGuiHelpers.ScaledVector2(800, 400),
+            MinimumSize = new Vector2(800, 400),
             MaximumSize = new Vector2(float.MaxValue)
         };
 
-        Size = ImGuiHelpers.ScaledVector2(1000, 500);
+        Size = new Vector2(1000, 500);
         SizeCondition = ImGuiCond.FirstUseEver;
 
         clickAllowInGposePayload = PluginService.PluginInterface.AddChatLinkHandler(1000, (_, _) => {
