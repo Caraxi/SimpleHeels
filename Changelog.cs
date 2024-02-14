@@ -8,6 +8,14 @@ namespace SimpleHeels;
 
 public static class Changelog {
     private static void Changelogs() {
+        ChangelogFor(8.50f, "0.8.5.0", () => {
+            C("Added ability to disable processing of config groups.");
+            C("Added ability to toggle visibility of the 'Move/Copy' UI in character configs.");
+            C("Fixed issue causing config window to be larger than intended on higher resolution screens.");
+            C("The 'Create Group' option from an existing character config now requires holding SHIFT.");
+            C("Improved 'active offset' displays for groups.");
+            C("Added option to prefer model paths over equipment ID when adding new entries.");
+        });
         ChangelogFor(8.42f, "0.8.4.2", "Fixed an issue causing synced ground sitting offset from not appearing when chair sitting offsets are at zero.");
         ChangelogFor(8.41f, "0.8.4.1", () => {
             C("Improved support for baked in model offsets, allowing mod developers to define offsets in TexTools.");
