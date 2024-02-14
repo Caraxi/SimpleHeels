@@ -459,18 +459,19 @@ public class ConfigWindow : Window {
                     
                     ImGuiExt.Separator();
 
-                    if (selectedCharacter != null && ImGui.Checkbox($"Enable offsets for {selectedName}", ref selectedCharacter.Enabled)) {
-                        Plugin.RequestUpdateAll();
-                    }
-
-                    if (selectedCharacter is { Enabled: false }) {
-                        ImGui.SameLine();
-                        ImGui.TextColored(ImGuiColors.DalamudRed, "This config is disabled.");
-                    }
                     
-                    ImGuiExt.Separator();
                 }
                 
+                if (selectedCharacter != null && ImGui.Checkbox($"Enable offsets for {selectedName}", ref selectedCharacter.Enabled)) {
+                    Plugin.RequestUpdateAll();
+                }
+
+                if (selectedCharacter is { Enabled: false }) {
+                    ImGui.SameLine();
+                    ImGui.TextColored(ImGuiColors.DalamudRed, "This config is disabled.");
+                }
+                    
+                ImGuiExt.Separator();
                 if (Plugin.IpcAssignedData.TryGetValue((selectedName, selectedWorld), out var data)) {
                     ImGui.Text("This character's offset is currently assigned by another plugin.");
                     if (Plugin.IsDebug && ImGui.Button("Clear IPC Assignment")) {
