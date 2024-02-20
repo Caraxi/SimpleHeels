@@ -11,11 +11,11 @@ public class GroupCharacter {
 }
 
 public class GroupConfig : CharacterConfig {
-    public HashSet<uint> Clans = new();
-    public bool MatchMasculine = true;
-    public bool MatchFeminine = true;
-    public string Label = "New Group";
     public List<GroupCharacter> Characters = new();
+    public HashSet<uint> Clans = new();
+    public string Label = "New Group";
+    public bool MatchFeminine = true;
+    public bool MatchMasculine = true;
 
     public unsafe bool Matches(DrawObject* drawObject, string name, uint world) {
         if (!Enabled) return false;
@@ -29,9 +29,7 @@ public class GroupConfig : CharacterConfig {
         if (human->Customize.Sex == 1 && MatchFeminine == false) return false;
         if (Clans.Count >= 1 && Clans.All(c => c != human->Customize.Clan)) return false;
 
-        if (Characters.Any(c => !string.IsNullOrWhiteSpace(c.Name)) && !Characters.Any(c => c.World == world && c.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase))) {
-            return false;
-        }
+        if (Characters.Any(c => !string.IsNullOrWhiteSpace(c.Name)) && !Characters.Any(c => c.World == world && c.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase))) return false;
 
         return true;
     }

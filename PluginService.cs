@@ -1,14 +1,10 @@
-﻿using Dalamud.Data;
-using Dalamud.Game;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
+﻿using Dalamud.Game.ClientState.Objects;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 
-namespace SimpleHeels; 
+namespace SimpleHeels;
+
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
 public class PluginService {
     [PluginService] public static DalamudPluginInterface PluginInterface { get; private set; } = null!;
@@ -21,4 +17,6 @@ public class PluginService {
     [PluginService] public static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] public static IPluginLog Log { get; private set; } = null!;
     [PluginService] public static IGameInteropProvider HoodProvider { get; private set; } = null!;
+    [PluginService] public static ITextureProvider TextureProvider { get; private set; } = null!;
+    [PluginService] public static ICondition Condition { get; private set; } = null!;
 }

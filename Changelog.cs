@@ -7,7 +7,23 @@ using ImGuiNET;
 namespace SimpleHeels;
 
 public static class Changelog {
+    private static bool _displayedTitle;
+    private static float _latestChangelog = 1;
+    private static PluginConfig? _config;
+    private static bool _showAll;
+
+    private static int _configIndex;
+    private static bool _isOldExpanded;
+
     private static void Changelogs() {
+        ChangelogFor(9.0f, "0.9.0.0", () => {
+            C("Major rework of internals");
+            C("Added 'Emote Offsets'");
+            C("Allows Full 3D positioning while performing emotes.", 1);
+            C("Allows rotation while performing emotes.", 1);
+            C("Different Sitting and Sleeping poses can be assigned individual offsets.", 1);
+            C("");
+        });
         ChangelogFor(8.50f, "0.8.5.0", () => {
             C("Added ability to disable processing of config groups.");
             C("Added ability to toggle visibility of the 'Move/Copy' UI in character configs.");
@@ -17,13 +33,11 @@ public static class Changelog {
             C("Added option to prefer model paths over equipment ID when adding new entries.");
         });
         ChangelogFor(8.42f, "0.8.4.2", "Fixed an issue causing synced ground sitting offset from not appearing when chair sitting offsets are at zero.");
-        ChangelogFor(8.41f, "0.8.4.1", () => {
-            C("Improved support for baked in model offsets, allowing mod developers to define offsets in TexTools.");
-        });
+        ChangelogFor(8.41f, "0.8.4.1", () => { C("Improved support for baked in model offsets, allowing mod developers to define offsets in TexTools."); });
         ChangelogFor(8.4f, "0.8.4.0", () => {
             C("Added a 'Default Offset' to apply to all unconfigured footwear.");
             C("Offset will no longer be applied while crafting.");
-        }); 
+        });
         ChangelogFor(8.3f, "0.8.3.0", "Reapers will no longer have their offset changed while under the effect of Enshroud.");
         ChangelogFor(8.2f, "0.8.2.0", () => {
             C("Added name filtering for groups.");
@@ -66,23 +80,15 @@ public static class Changelog {
         ChangelogFor(5.1f, "0.5.1.0", () => {
             C("Now allows assigning sitting offset to characters that have only their standing offset assigned by IPC.");
             C("Now applies offsets to GPose and Cutscene actors.");
-            C("Due to the way the game handles cutscenes, cutscenes featuring non-standing poses will be incorrect.", indent: 1, color: ImGuiColors.DalamudGrey3);
+            C("Due to the way the game handles cutscenes, cutscenes featuring non-standing poses will be incorrect.", 1, ImGuiColors.DalamudGrey3);
         });
         ChangelogFor(5, "0.5.0.0", () => {
             C("Added support for assigning an offset when sitting in a chair.");
-            C("This will not be synced until support is added through Mare Synchronos", indent: 1, color: ImGuiColors.DalamudGrey3);
+            C("This will not be synced until support is added through Mare Synchronos", 1, ImGuiColors.DalamudGrey3);
         });
 
         ChangelogFor(4, "0.4.0.0", "Added support for Body and Legs equipment that hide shoes.");
     }
-
-    private static bool _displayedTitle;
-    private static float _latestChangelog = 1;
-    private static PluginConfig? _config;
-    private static bool _showAll;
-
-    private static int _configIndex;
-    private static bool _isOldExpanded;
 
     private static void Title() {
         if (_displayedTitle) return;
@@ -91,9 +97,7 @@ public static class Changelog {
 
         if (!_showAll && _config != null) {
             ImGui.SameLine();
-            if (ImGui.SmallButton("Dismiss")) {
-                _config.DismissedChangelog = _latestChangelog;
-            }
+            if (ImGui.SmallButton("Dismiss")) _config.DismissedChangelog = _latestChangelog;
         }
 
         ImGuiExt.Separator();
@@ -118,11 +122,10 @@ public static class Changelog {
 
     private static void C(string text, int indent = 0, Vector4? color = null) {
         for (var i = 0; i < indent; i++) ImGui.Indent();
-        if (color != null) {
+        if (color != null)
             ImGui.TextColored(color.Value, $"- {text}");
-        } else {
+        else
             ImGui.Text($"- {text}");
-        }
 
         for (var i = 0; i < indent; i++) ImGui.Unindent();
     }

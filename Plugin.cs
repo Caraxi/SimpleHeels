@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using Dalamud.Game;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Hooking;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using Dalamud.Memory;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -22,59 +22,183 @@ using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 namespace SimpleHeels;
 
 public unsafe class Plugin : IDalamudPlugin {
-    public const int ObjectLimit = 596;
-    
-    public string Name => "Simple Heels";
-    
-    public PluginConfig Config { get; }
-    
+    internal static bool IsDebug;
+    private static bool _updateAll;
+
     private readonly ConfigWindow configWindow;
+    private readonly ExtraDebug extraDebug;
     private readonly WindowSystem windowSystem;
 
-    internal static bool IsDebug;
-    internal static bool IsEnabled;
+    public Dictionary<uint, Vector3> BaseOffsets = new();
 
-    private delegate void SetDrawOffset(GameObject* gameObject, float x, float y, float z);
+    [Signature("E8 ?? ?? ?? ?? 0F B6 9F ?? ?? ?? ?? 48 8D 8F", DetourName = nameof(CloneActorDetour))]
+    private Hook<CloneActor>? cloneActor;
+
+    private bool isDisposing;
+
+    private uint nextUpdateIndex;
 
     [Signature("E8 ?? ?? ?? ?? 0F 28 74 24 ?? 80 3D", DetourName = nameof(SetDrawOffsetDetour))]
     private Hook<SetDrawOffset>? setDrawOffset;
 
-    private delegate void* CloneActor(Character** destination, Character* source, uint a3);
-    [Signature("E8 ?? ?? ?? ?? 0F B6 9F ?? ?? ?? ?? 48 8D 8F", DetourName = nameof(CloneActorDetour))]
-    private Hook<CloneActor>? cloneActor;
+    [Signature("E8 ?? ?? ?? ?? 83 FE 01 75 0D", DetourName = nameof(SetDrawRotationDetour))]
+    private Hook<SetDrawRotation>? setDrawRotationHook;
+
+    [Signature("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 80 89 ?? ?? ?? ?? ?? 48 8B D9", DetourName = nameof(TerminateCharacterDetour))]
+    private Hook<TerminateCharacter>? terminateCharacterHook;
+
+    public Plugin(DalamudPluginInterface pluginInterface) {
+#if DEBUG
+        IsDebug = true;
+#endif
+        using var _ = PerformanceMonitors.Run("Plugin Startup");
+        pluginInterface.Create<PluginService>();
+        
+        DoConfigBackup(pluginInterface);
+
+        Config = pluginInterface.GetPluginConfig() as PluginConfig ?? new PluginConfig();
+        Config.Initialize();
+
+        PluginService.PluginInterface.UiBuilder.DisableGposeUiHide = Config.ConfigInGpose;
+        PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = Config.ConfigInCutscene;
+
+        windowSystem = new WindowSystem(Assembly.GetExecutingAssembly().FullName);
+        configWindow = new ConfigWindow($"{Name} | Config", this, Config) {
+#if DEBUG
+            IsOpen = Config.DebugOpenOnStartup
+#endif
+        };
+        windowSystem.AddWindow(configWindow);
+
+        extraDebug = new ExtraDebug(this, Config) { IsOpen = Config.ExtendedDebugOpen };
+        windowSystem.AddWindow(extraDebug);
+
+        pluginInterface.UiBuilder.Draw += windowSystem.Draw;
+        pluginInterface.UiBuilder.OpenConfigUi += () => OnCommand(string.Empty, string.Empty);
+
+        PluginService.Commands.AddHandler("/heels", new CommandInfo(OnCommand) { HelpMessage = $"Open the {Name} config window.", ShowInHelp = true });
+        
+        ApiProvider.Init(this);
+        PluginService.Framework.Update += OnFrameworkUpdate;
+        PluginService.HoodProvider.InitializeFromAttributes(this);
+        setDrawOffset?.Enable();
+        cloneActor?.Enable();
+        setDrawRotationHook?.Enable();
+        terminateCharacterHook?.Enable();
+        RequestUpdateAll();
+
+        for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
+    }
+
+    public string Name => "Simple Heels";
+
+    public static PluginConfig Config { get; private set; }
+
+    public bool[] ManagedIndex { get; } = new bool[Constants.ObjectLimit];
+    public static bool[] NeedsUpdate { get; } = new bool[Constants.ObjectLimit];
+
+    private float[] RotationOffsets { get; } = new float[Constants.ObjectLimit];
+
+    public static Dictionary<uint, IpcCharacterConfig> IpcAssignedData { get; } = new();
+
+    public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
+
+    public void Dispose() {
+        isDisposing = true;
+        PluginService.Log.Verbose("Dispose");
+        PluginService.Framework.Update -= OnFrameworkUpdate;
+
+        for (var i = 0U; i < Constants.ObjectLimit; i++)
+            if (i == 0 || ManagedIndex[i])
+                UpdateObjectIndex(i);
+
+        ApiProvider.DeInit();
+        PluginService.Commands.RemoveHandler("/heels");
+        windowSystem.RemoveAllWindows();
+
+        PluginService.PluginInterface.SavePluginConfig(Config);
+
+        setDrawOffset?.Disable();
+        setDrawOffset?.Dispose();
+        setDrawOffset = null!;
+
+        cloneActor?.Disable();
+        cloneActor?.Dispose();
+        cloneActor = null!;
+
+        setDrawRotationHook?.Disable();
+        setDrawRotationHook?.Dispose();
+        setDrawRotationHook = null;
+
+        terminateCharacterHook?.Disable();
+        terminateCharacterHook?.Dispose();
+        terminateCharacterHook = null;
+    }
+
+    private void* TerminateCharacterDetour(Character* character) {
+        if (character->GameObject.ObjectIndex < Constants.ObjectLimit) {
+            if (ManagedIndex[character->GameObject.ObjectIndex])
+                PluginService.Log.Debug($"Managed Character#{character->GameObject.ObjectIndex} Destroyed");
+            ManagedIndex[character->GameObject.ObjectIndex] = false;
+            BaseOffsets.Remove(character->GameObject.ObjectIndex);
+            NeedsUpdate[character->GameObject.ObjectIndex] = false;
+        }
+
+        return terminateCharacterHook!.Original(character);
+    }
+
+    public bool TryGetCharacterConfig(PlayerCharacter playerCharacter, out CharacterConfig? characterConfig, bool allowIpc = true) {
+        var character = (Character*)playerCharacter.Address;
+        if (character == null) {
+            characterConfig = null;
+            return false;
+        }
+
+        return TryGetCharacterConfig(character, out characterConfig, allowIpc);
+    }
+
+    public bool TryGetCharacterConfig(Character* character, [NotNullWhen(true)] out CharacterConfig? characterConfig, bool allowIpc = true) {
+        using var performance = PerformanceMonitors.Run("TryGetCharacterConfig");
+
+        if (allowIpc && character->GameObject.ObjectID != Constants.InvalidObjectId && IpcAssignedData.TryGetValue(character->GameObject.ObjectID, out var ipcCharacterConfig)) {
+            characterConfig = ipcCharacterConfig;
+            return true;
+        }
+
+        string name;
+        ushort homeWorld;
+        if (ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mappedActor)) {
+            name = mappedActor.name;
+            homeWorld = mappedActor.homeWorld;
+        } else {
+            name = MemoryHelper.ReadSeString((nint)character->GameObject.Name, 64).TextValue;
+            homeWorld = character->HomeWorld;
+        }
+
+        if (Config.TryGetCharacterConfig(name, homeWorld, character->GameObject.DrawObject, out characterConfig) && characterConfig != null) return true;
+
+        characterConfig = null;
+        return false;
+    }
 
     private void SetDrawOffsetDetour(GameObject* gameObject, float x, float y, float z) {
         try {
-            if (gameObject->IsCharacter() && gameObject->ObjectKind == 1 && gameObject->SubKind == 4) {
-                var character = (Character*)gameObject;
-                if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam == 2) {
-                    // Sitting
-                    if (TryGetSittingOffset(character, out var offsetY, out var offsetZ)) {
-                        PluginService.Log.Debug($"Applied Sitting Offset [{offsetY}, {offsetZ}]");
-                        ManagedIndex[gameObject->ObjectIndex] = false;
-                    
-                        if (gameObject->ObjectIndex == 0) {
-                            ApiProvider.SittingPositionChanged(offsetY, offsetZ);
-                        }
-
-                        AppliedSittingOffset[gameObject->ObjectIndex] = new Vector2(offsetY, offsetZ);
-                        setDrawOffset?.Original(gameObject, x, y + offsetY, z + offsetZ);
-                       
-                        return;
-                    }
-                }
-            }
-
-            AppliedSittingOffset[gameObject->ObjectIndex] = null;
-            if (gameObject->ObjectIndex < ObjectLimit && ManagedIndex[gameObject->ObjectIndex]) {
-                PluginService.Log.Debug("Game Applied Offset. Releasing Control");
-                ManagedIndex[gameObject->ObjectIndex] = false;
+            BaseOffsets[gameObject->ObjectIndex] = new Vector3(x, y, z);
+            if (ManagedIndex[gameObject->ObjectIndex]) {
+                UpdateObjectIndex(gameObject->ObjectIndex);
+                return;
             }
         } catch (Exception ex) {
-            PluginService.Log.Error(ex, "Error handling SetDrawOffset");
+            PluginService.Log.Error(ex, "Error within SetDrawOffsetDetour");
         }
-        
+
         setDrawOffset?.Original(gameObject, x, y, z);
+    }
+
+    private void* SetDrawRotationDetour(GameObject* gameObject, float rotation) {
+        if (ManagedIndex[gameObject->ObjectIndex])
+            rotation += RotationOffsets[gameObject->ObjectIndex];
+        return setDrawRotationHook!.Original(gameObject, rotation);
     }
 
     private void* CloneActorDetour(Character** destinationArray, Character* source, uint copyFlags) {
@@ -85,166 +209,137 @@ public unsafe class Plugin : IDalamudPlugin {
                 PluginService.Log.Warning($"Game attempting to clone Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex}. Something seems wrong.");
                 return cloneActor!.Original(destinationArray, source, copyFlags);
             }
+
             ActorMapping.Remove(destination->GameObject.ObjectIndex);
             var name = MemoryHelper.ReadSeString(new nint(source->GameObject.GetName()), 64);
             ActorMapping.Add(destination->GameObject.ObjectIndex, (name.TextValue, source->HomeWorld));
-            if (destination->GameObject.ObjectIndex < ObjectLimit && source->GameObject.ObjectIndex < ObjectLimit) {
-                ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
-            }
+            if (destination->GameObject.ObjectIndex < Constants.ObjectLimit && source->GameObject.ObjectIndex < Constants.ObjectLimit) ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
             PluginService.Log.Verbose($"Game cloned Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex} [{name} @ {source->HomeWorld}]");
-        
         } catch (Exception ex) {
             PluginService.Log.Error(ex, "Error handling CloneActor");
         }
-        
+
         return cloneActor!.Original(destinationArray, source, copyFlags);
     }
-    
-    public Plugin(DalamudPluginInterface pluginInterface) {
-        pluginInterface.Create<PluginService>();
 
-        Config = pluginInterface.GetPluginConfig() as PluginConfig ?? new PluginConfig();
+    private void DoConfigBackup(DalamudPluginInterface pluginInterface) {
+        try {
+            var configFile = pluginInterface.ConfigFile;
+            if (!configFile.Exists) return;
 
-        PluginService.PluginInterface.UiBuilder.DisableGposeUiHide = Config.ConfigInGpose;
-        PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = Config.ConfigInCutscene;
-        
-        windowSystem = new WindowSystem(Assembly.GetExecutingAssembly().FullName);
-        configWindow = new ConfigWindow($"{Name} | Config", this, Config) {
-            #if DEBUG
-            IsOpen = Config.DebugOpenOnStartup
-            #endif
-        };
-        windowSystem.AddWindow(configWindow);
-#if DEBUG
-        windowSystem.AddWindow(new ExtraDebug(this, Config) {
-            IsOpen = Config.DebugOpenOnStartup
-        });
-#endif
-        
-        pluginInterface.UiBuilder.Draw += windowSystem.Draw;
-        pluginInterface.UiBuilder.OpenConfigUi += () => OnCommand(string.Empty, string.Empty);
+            var backupDir = Path.Join(configFile.Directory!.Parent!.FullName, "backups", "SimpleHeels");
+            var dir = new DirectoryInfo(backupDir);
+            if (!dir.Exists) dir.Create();
+            if (!dir.Exists) throw new Exception("Backup Directory does not exist");
 
-        PluginService.Commands.AddHandler("/heels", new CommandInfo(OnCommand) {
-            HelpMessage = $"Open the {Name} config window.",
-            ShowInHelp = true
-        });
-        
-        #if DEBUG
-        IsDebug = true;
-        #endif
+            var latestFile = new FileInfo(Path.Join(backupDir, "SimpleHeels.latest.json"));
 
+            var needsBackup = false;
 
-        EnablePlugin();
-        
+            if (latestFile.Exists) {
+                var latest = File.ReadAllText(latestFile.FullName);
+                var current = File.ReadAllText(configFile.FullName);
+                if (current != latest) needsBackup = true;
+            } else {
+                needsBackup = true;
+            }
+
+            if (needsBackup) {
+                if (latestFile.Exists) {
+                    var t = latestFile.LastWriteTime;
+                    File.Move(latestFile.FullName, Path.Join(backupDir, $"SimpleHeels.{t.Year}{t.Month:00}{t.Day:00}{t.Hour:00}{t.Minute:00}{t.Second:00}.json"));
+                }
+
+                File.Copy(configFile.FullName, latestFile.FullName);
+                var allBackups = dir.GetFiles().Where(f => f.Name.StartsWith("SimpleHeels.2") && f.Name.EndsWith(".json")).OrderBy(f => f.LastWriteTime.Ticks).ToList();
+                if (allBackups.Count > 10) {
+                    PluginService.Log.Debug($"Removing Oldest Backup: {allBackups[0].FullName}");
+                    File.Delete(allBackups[0].FullName);
+                }
+            }
+        } catch (Exception exception) {
+            PluginService.Log.Warning(exception, "Backup Skipped");
+        }
     }
 
-    private void EnablePlugin() {
-        if (IsEnabled) return;
-        IsEnabled = true;
-        ApiProvider.Init(this);
-        PluginService.Framework.Update += OnFrameworkUpdate;
-        PluginService.HoodProvider.InitializeFromAttributes(this);
-        setDrawOffset?.Enable();
-        cloneActor?.Enable();
-        RequestUpdateAll();
-    }
-
-    private int nextUpdateIndex;
-    private static bool _updateAll;
-    
-    public bool[] ManagedIndex { get; }= new bool[ObjectLimit];
-    public Vector2?[] AppliedSittingOffset { get; }= new Vector2?[ObjectLimit];
-    
     public static void RequestUpdateAll() {
+        for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
         _updateAll = true;
     }
 
-    private bool UpdateObjectIndex(int updateIndex) {
-        if (updateIndex is < 0 or >= ObjectLimit) return true;
+    private bool UpdateObjectIndex(uint updateIndex) {
+        if (updateIndex >= Constants.ObjectLimit) return true;
+        NeedsUpdate[updateIndex] = false;
 
-        var obj = GameObjectManager.GetGameObjectByIndex(updateIndex);
-        if (obj == null) {
+        var obj = GameObjectManager.GetGameObjectByIndex((int)updateIndex);
+        if (isDisposing || obj == null || !obj->IsCharacter() || Config.Enabled == false) {
+            if (obj != null && ManagedIndex[updateIndex] && BaseOffsets.TryGetValue(obj->ObjectIndex, out var baseOffset)) setDrawOffset!.Original(obj, baseOffset.X, baseOffset.Y, baseOffset.Z);
             ManagedIndex[updateIndex] = false;
-            return false;
-        }
-        
-        if (!obj->IsCharacter()) {
-            if (ManagedIndex[updateIndex]) 
-                setDrawOffset?.Original(obj, obj->DrawOffset.X, 0, obj->DrawOffset.Z);
-            ManagedIndex[updateIndex] = false;
+            BaseOffsets.Remove(updateIndex);
             return false;
         }
 
-        if (obj->DrawObject == null) {
-            return false;
-        }
-
-        if (!ManagedIndex[updateIndex] && obj->DrawOffset.Y != 0) {
-            if (updateIndex == 0) {
-                ApiProvider.StandingOffsetChanged(0);
-            }
-            return false;
-        }
-        
         var character = (Character*)obj;
         if (character->ReaperShroud.Flags != 0) return true; // Ignore all changes when Reaper Shroud is active.
 
-        var offset = GetOffset(obj);
-        if (offset == null) {
-            if (ManagedIndex[updateIndex]) {
-                ManagedIndex[updateIndex] = false;
-                setDrawOffset?.Original(obj, obj->DrawOffset.X, 0, obj->DrawOffset.Z);
-            }
+        using var performance = PerformanceMonitors.Run("UpdateObject");
+        using var performance2 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);
 
-            if (updateIndex == 0) {
-                ApiProvider.StandingOffsetChanged(0);
-            }
-            return true;
-        }
-        
-        if (MathF.Abs(obj->DrawOffset.Y - offset.Value) > 0.00001f) {
-            setDrawOffset?.Original(obj, obj->DrawOffset.X, offset.Value, obj->DrawOffset.Z);
-            ManagedIndex[updateIndex] = true;
-            if (updateIndex == 0) {
-                ApiProvider.StandingOffsetChanged(offset.Value);
-            }
+        if (!TryGetCharacterConfig(character, out var characterConfig)) return false;
+
+        if (!characterConfig.TryGetFirstMatch(character, out var offsetProvider)) return false;
+
+        if (!BaseOffsets.TryGetValue(updateIndex, out var offset)) {
+            var baseOffset = new Vector3(character->GameObject.DrawOffset.X, character->GameObject.DrawOffset.Y, character->GameObject.DrawOffset.Z);
+            BaseOffsets[updateIndex] = baseOffset;
+            offset = baseOffset;
         }
 
+        var appliedOffset = offsetProvider.GetOffset();
+        offset += appliedOffset;
+
+        setDrawOffset!.Original(obj, offset.X, offset.Y, offset.Z);
+        ManagedIndex[obj->ObjectIndex] = true;
+        RotationOffsets[obj->ObjectIndex] = offsetProvider.GetRotation();
+
+        if (updateIndex == 0) ApiProvider.UpdateLocal(appliedOffset, RotationOffsets[obj->ObjectIndex]);
         return true;
     }
-    
+
     private void OnFrameworkUpdate(IFramework framework) {
+        using var frameworkPerformance = PerformanceMonitors.Run("Framework Update");
         if (_updateAll) {
             _updateAll = false;
-            for (var i = 0; i < ObjectLimit; i++) {
-                UpdateObjectIndex(i);
-                TryUpdateSittingPosition(i);
-            }
+            for (var i = 0U; i < Constants.ObjectLimit; i++) UpdateObjectIndex(i);
 
             return;
         }
 
         if (!Config.Enabled) return;
 
-        var throttle = 20;
-        while (throttle-- > 0) {
-            nextUpdateIndex %= ObjectLimit;
-            var updateIndex = nextUpdateIndex++;
-            if (updateIndex != 0 && !ManagedIndex[updateIndex]) {
-                if (UpdateObjectIndex(updateIndex)) 
-                    break;
+        if (!PluginService.Condition[ConditionFlag.InCombat]) {
+            var throttle = 10;
+            while (throttle-- > 0) {
+                nextUpdateIndex %= Constants.ObjectLimit;
+                var updateIndex = nextUpdateIndex++;
+                if (updateIndex != 0 && !ManagedIndex[updateIndex])
+                    if (UpdateObjectIndex(updateIndex))
+                        break;
             }
         }
-        for (var i = 0; i < ObjectLimit; i++) {
-            if (i == 0 || ManagedIndex[i]) UpdateObjectIndex(i);
-        }
-        
+
+        for (var i = 0U; i < Constants.ObjectLimit; i++)
+            if (i == 0 || ManagedIndex[i])
+                UpdateObjectIndex(i);
     }
 
     private void OnCommand(string command, string args) {
         switch (args.ToLowerInvariant()) {
             case "debug":
                 IsDebug = !IsDebug;
+                return;
+            case "debug2":
+                extraDebug.Toggle();
                 return;
             case "enable":
                 Config.Enabled = true;
@@ -264,22 +359,6 @@ public unsafe class Plugin : IDalamudPlugin {
         }
     }
 
-    public static Dictionary<(string, uint), AssignedData> IpcAssignedData { get; } = new();
-
-    public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
-    
-    private float? GetOffsetFromConfig(string name, uint homeWorld, Human* human, out CharacterConfig? characterConfig) {
-        characterConfig = null;
-        if (isDisposing) return null;
-        if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) return data.Offset;
-        if (!Config.TryGetCharacterConfig(name, homeWorld, &human->CharacterBase.DrawObject, out characterConfig) || characterConfig == null) {
-            return null;
-        }
-
-        var firstMatch = characterConfig.GetFirstMatch(human);
-        return firstMatch?.Offset ?? null;
-    }
-
     public static string? GetModelPath(Human* human, ModelSlot slot) {
         if (human == null) return null;
         var modelArray = human->CharacterBase.Models;
@@ -290,250 +369,50 @@ public unsafe class Plugin : IDalamudPlugin {
         if (modelResource == null) return null;
         return modelResource->ResourceHandle.FileName.ToString();
     }
-    
-    public float? GetOffset(GameObject* gameObject, bool bypassStandingCheck = false) {
-        using var _ = PerformanceMonitors.Run("GetOffset");
-        
-        if (isDisposing) return null;
-        if (!Config.Enabled) return null;
-        if (gameObject == null) return null;
-        var drawObject = gameObject->DrawObject;
-        if (drawObject == null) return null;
-        if (drawObject->Object.GetObjectType() != ObjectType.CharacterBase) return null;
-        var characterBase = (CharacterBase*)drawObject;
-        if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return null;
-        var human = (Human*)characterBase;
-        var character = (Character*)gameObject;
-        if (!bypassStandingCheck) {
-            if (character->Mode == Character.CharacterModes.Crafting) return null;
-            if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 2) return null;
-            if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 1) {
-                if (TryGetGroundSitOffset(gameObject, out var gsOffset)) return gsOffset;
-                return null;
-            };
-            if (character->Mode == Character.CharacterModes.InPositionLoop && character->ModeParam is 3) {
-                if (TryGetSleepOffset(gameObject, out var sleepOffset)) return sleepOffset;
-                return null;
-            };
-            if (character->Mode == Character.CharacterModes.EmoteLoop && character->ModeParam is 21) return null;
-        }
-        
-        var name = MemoryHelper.ReadSeString(new nint(gameObject->GetName()), 64).TextValue;
-        var homeWorld = character->HomeWorld;
 
-        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
-            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
-            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
-        }
-        
-        var configuredOffset = GetOffsetFromConfig(name, homeWorld, human, out var characterConfig);
-        if (configuredOffset != null) return configuredOffset;
-        
-        if (Config.UseModelOffsets) {
-            using var useModelOffsetsPerformance = PerformanceMonitors.Run("CheckModelOffsets");
-            float? CheckModelSlot(ModelSlot slot) {
-                var modelArray = human->CharacterBase.Models;
-                if (modelArray == null) return null;
-                var feetModel = modelArray[(byte)slot];
-                if (feetModel == null) return null;
-                var modelResource = feetModel->ModelResourceHandle;
-                if (modelResource == null) return null;
+    private static float? CheckModelSlot(Human* human, ModelSlot slot) {
+        var modelArray = human->CharacterBase.Models;
+        if (modelArray == null) return null;
+        var feetModel = modelArray[(byte)slot];
+        if (feetModel == null) return null;
+        var modelResource = feetModel->ModelResourceHandle;
+        if (modelResource == null) return null;
 
-                foreach (var attr in modelResource->Attributes) {
-                    var str = MemoryHelper.ReadStringNullTerminated(new nint(attr.Item1.Value));
-                    if (str.StartsWith("heels_offset=", StringComparison.OrdinalIgnoreCase)) {
-                        if (float.TryParse(str[13..].Replace(',', '.'), CultureInfo.InvariantCulture, out var offsetAttr)) {
-                            return offsetAttr * human->CharacterBase.DrawObject.Object.Scale.Y;
-                        }
-                    } else if (str.StartsWith("heels_offset_", StringComparison.OrdinalIgnoreCase)) {
-                        var valueStr = str[13..]
-                            .Replace("n_", "-")
-                            .Replace('a', '0')
-                            .Replace('b', '1')
-                            .Replace('c', '2')
-                            .Replace('d', '3')
-                            .Replace('e', '4')
-                            .Replace('f', '5')
-                            .Replace('g', '6')
-                            .Replace('h', '7')
-                            .Replace('i', '8')
-                            .Replace('j', '9')
-                            .Replace('_', '.');
-                        
-                        if (float.TryParse(valueStr, CultureInfo.InvariantCulture, out var value)) {
-                            return value * human->CharacterBase.DrawObject.Object.Scale.Y;
-                        }
-                    }
-                }
+        foreach (var attr in modelResource->Attributes) {
+            var str = MemoryHelper.ReadStringNullTerminated(new nint(attr.Item1.Value));
+            if (str.StartsWith("heels_offset=", StringComparison.OrdinalIgnoreCase)) {
+                if (float.TryParse(str[13..].Replace(',', '.'), CultureInfo.InvariantCulture, out var offsetAttr)) return offsetAttr * human->CharacterBase.DrawObject.Object.Scale.Y;
+            } else if (str.StartsWith("heels_offset_", StringComparison.OrdinalIgnoreCase)) {
+                var valueStr = str[13..].Replace("n_", "-").Replace('a', '0').Replace('b', '1').Replace('c', '2').Replace('d', '3').Replace('e', '4').Replace('f', '5').Replace('g', '6').Replace('h', '7').Replace('i', '8').Replace('j', '9').Replace('_', '.');
 
-                return null;
+                if (float.TryParse(valueStr, CultureInfo.InvariantCulture, out var value)) return value * human->CharacterBase.DrawObject.Object.Scale.Y;
             }
-
-            return CheckModelSlot(ModelSlot.Top) ?? CheckModelSlot(ModelSlot.Legs) ?? CheckModelSlot(ModelSlot.Feet) ?? characterConfig?.DefaultOffset;
         }
 
-        return characterConfig?.DefaultOffset;
+        return null;
     }
-    
-    private bool isDisposing;
 
-    public void Dispose() {
-        isDisposing = true;
-        PluginService.Log.Verbose($"Dispose");
-        PluginService.Framework.Update -= OnFrameworkUpdate;
+    private static float? GetOffsetFromModels(Human* human) {
+        if (human == null) return null;
+        if (Config.UseModelOffsets) {
+            using var useModelOffsetsPerformance = PerformanceMonitors.Run("GetOffsetFromModels");
 
-        for (var i = 0; i < ObjectLimit; i++) {
-            if (i == 0 || ManagedIndex[i]) UpdateObjectIndex(i);
-            if (AppliedSittingOffset[i] != null) TryUpdateSittingPosition(i);
+            return CheckModelSlot(human, ModelSlot.Top) ?? CheckModelSlot(human, ModelSlot.Legs) ?? CheckModelSlot(human, ModelSlot.Feet) ?? null;
         }
-        
-        ApiProvider.DeInit();
-        PluginService.Commands.RemoveHandler("/heels");
-        windowSystem.RemoveAllWindows();
-        
-        PluginService.PluginInterface.SavePluginConfig(Config);
-        
-        setDrawOffset?.Disable();
-        setDrawOffset?.Dispose();
-        setDrawOffset = null!;
-        
-        cloneActor?.Disable();
-        cloneActor?.Dispose();
-        cloneActor = null!;
+
+        return null;
     }
 
-    private readonly Stopwatch waitTimer = new Stopwatch();
-
-    public bool TryGetSittingOffset(GameObject* gameObject, out float y, out float z, bool bypassSittingCheck = false) {
-        y = 0;
-        z = 0;
-        if (gameObject == null) return false;
-        if (!(gameObject->ObjectKind == 1 && gameObject->SubKind == 4 )) return false;
-        return TryGetSittingOffset((Character*)gameObject, out y, out z, bypassSittingCheck);
-    }
-    
-    public bool TryGetSittingOffset(Character* character, out float y, out float z, bool bypassSittingCheck = false) {
-        y = 0;
-        z = 0;
-        if (isDisposing) return false;
-        if (character == null) return false;
-        if (!bypassSittingCheck && (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 2)) return false;
-        var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64).TextValue;
-        var homeWorld = character->HomeWorld;
-
-        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
-            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
-            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
-        }
-        
-        if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) {
-            if (data is { SittingPosition: 0, SittingHeight: 0 }) return false;
-            y = data.SittingHeight;
-            z = data.SittingPosition;
-            return true;
-        }
-        
-        if (!Config.TryGetCharacterConfig(name, homeWorld, character->GameObject.DrawObject, out var characterConfig) || characterConfig == null) return false;
-        if (characterConfig is { SittingOffsetY: 0, SittingOffsetZ: 0 }) return false;
-        
-        y = characterConfig.SittingOffsetY;
-        z = characterConfig.SittingOffsetZ;
-        return true;
-
-    }
-    
-    public bool TryGetGroundSitOffset(GameObject* gameObject, out float y, bool bypassSittingCheck = false) {
-        y = 0;
-        if (gameObject == null) return false;
-        if (!(gameObject->ObjectKind == 1 && gameObject->SubKind == 4 )) return false;
-        return TryGetGroundSitOffset((Character*)gameObject, out y, bypassSittingCheck);
-    }
-    
-    public bool TryGetGroundSitOffset(Character* character, out float y, bool bypassSittingCheck = false) {
-        y = 0;
-        if (isDisposing) return false;
-        if (character == null) return false;
-        if (!bypassSittingCheck && (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 1)) return false;
-        var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64).TextValue;
-        var homeWorld = character->HomeWorld;
-
-        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
-            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
-            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
-        }
-        
-        if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) {
-            if (data is { GroundSitHeight: 0 }) return false;
-            y = data.GroundSitHeight;
-            return true;
-        }
-        
-        if (!Config.TryGetCharacterConfig(name, homeWorld, character->GameObject.DrawObject, out var characterConfig) || characterConfig == null) return false;
-        if (characterConfig is { GroundSitOffset: 0 }) return false;
-
-        y = characterConfig.GroundSitOffset;
-        return true;
-    }
-    
-    public bool TryGetSleepOffset(GameObject* gameObject, out float y, bool bypassSleepingCheck = false) {
-        y = 0;
-        if (gameObject == null) return false;
-        if (!(gameObject->ObjectKind == 1 && gameObject->SubKind == 4 )) return false;
-        return TryGetSleepOffset((Character*)gameObject, out y, bypassSleepingCheck);
-    }
-    
-    public bool TryGetSleepOffset(Character* character, out float y, bool bypassSleepingCheck = false) {
-        y = 0;
-        if (isDisposing) return false;
-        if (character == null) return false;
-        if (!bypassSleepingCheck && (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 3)) return false;
-        var name = MemoryHelper.ReadSeString(new nint(character->GameObject.GetName()), 64).TextValue;
-        var homeWorld = character->HomeWorld;
-
-        if (character->GameObject.ObjectIndex >= 200 && ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mapping)) {
-            if (string.IsNullOrWhiteSpace(name)) name = mapping.name;
-            if (homeWorld == ushort.MaxValue) homeWorld = mapping.homeWorld;
-        }
-        
-        if (IpcAssignedData.TryGetValue((name, homeWorld), out var data)) {
-            if (data is { SleepHeight: 0 }) return false;
-            y = data.SleepHeight;
-            return true;
-        }
-        
-        if (!Config.TryGetCharacterConfig(name, homeWorld, character->GameObject.DrawObject, out var characterConfig) || characterConfig == null) return false;
-        if (characterConfig is { SleepOffset: 0 }) return false;
-
-        y = characterConfig.SleepOffset;
-        return true;
+    public static bool TryGetOffsetFromModels(Human* human, [NotNullWhen(true)] out float? offset) {
+        offset = GetOffsetFromModels(human);
+        return offset != null;
     }
 
-    public void TryUpdateSittingPosition(string name, uint world) {
-        var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == name && playerCharacter.HomeWorld.Id == world);
-        if (player == null) return;
-        TryUpdateSittingPosition((GameObject*) player.Address);
-    }
+    private delegate void SetDrawOffset(GameObject* gameObject, float x, float y, float z);
 
-    public void TryUpdateSittingPositions() {
-        foreach (var player in PluginService.Objects.Where(p => p is PlayerCharacter)) {
-            TryUpdateSittingPosition((GameObject*) player.Address);
-        }
-    }
+    private delegate void* CloneActor(Character** destination, Character* source, uint a3);
 
-    public void TryUpdateSittingPosition(int index) {
-        var player = PluginService.Objects[index] as PlayerCharacter;
-        if (player == null) return;
-        TryUpdateSittingPosition((GameObject*) player.Address);
-    }
+    private delegate void* SetDrawRotation(GameObject* gameObject, float rotation);
 
-    public void TryUpdateSittingPosition(GameObject* gameObject) {
-        if (gameObject->ObjectKind != 1 || gameObject->SubKind != 4) return;
-        
-        var character = (Character*)gameObject;
-        if (character->Mode != Character.CharacterModes.InPositionLoop || character->ModeParam != 2) return;
-
-        var currentOffset = AppliedSittingOffset[gameObject->ObjectIndex];
-        SetDrawOffsetDetour(gameObject, gameObject->DrawOffset.X, gameObject->DrawOffset.Y - (currentOffset?.X ?? 0), gameObject->DrawOffset.Z - (currentOffset?.Y ?? 0));
-    }
-    
+    private delegate void* TerminateCharacter(Character* character);
 }

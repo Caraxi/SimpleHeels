@@ -5,60 +5,41 @@ using System.Numerics;
 using Dalamud.Interface.Utility;
 using ImGuiNET;
 
-namespace SimpleHeels; 
+namespace SimpleHeels;
 
 public static class PerformanceMonitors {
-    public class PerformanceLogger : IDisposable {
-        private readonly string runKey;
-        public PerformanceLogger(string k) {
-            Logs.TryAdd(k, new PerformanceLog());
-            Logs[k].Begin();
-            runKey = k;
-        }
-        
-        public void Dispose() {
-            if (!Logs.ContainsKey(runKey)) return;
-            Logs[runKey].End();
-        }
-    }
+    private static DisplayType _displayType = DisplayType.Milliseconds;
 
-    public static PerformanceLogger? Run(string k) {
-        if (!Plugin.IsDebug) return null;
+    private static readonly Dictionary<string, PerformanceLog> Logs = new();
+
+    public static PerformanceLogger? Run(string k, bool enable = true) {
+        if (!(Plugin.IsDebug && enable)) return null;
         return new PerformanceLogger(k);
     }
-
-    private enum DisplayType {
-        Ticks,
-        Milliseconds,
-    }
-
-    private static DisplayType _displayType = DisplayType.Milliseconds;
 
     private static void DisplayValue(long ticks) {
         var text = _displayType switch {
             DisplayType.Ticks => $"{ticks}",
-            DisplayType.Milliseconds => $"{ticks / (float)TimeSpan.TicksPerMillisecond : 0.000}ms",
+            DisplayType.Milliseconds => $"{ticks / (float)TimeSpan.TicksPerMillisecond: 0.000}ms",
             _ => $"{ticks}"
         };
-        
+
         ImGui.Text($"{text}");
     }
-    
-    public static void DrawTable() {
-        if (ImGui.Button("Reset All")) {
-            ClearAll();
-        }
+
+    public static void DrawTable(float? height = null) {
+        if (ImGui.Button("Reset All")) ClearAll();
 
         ImGui.SameLine();
         ImGui.SetNextItemWidth(150);
         if (ImGui.BeginCombo("Display Type", $"{_displayType}")) {
-            foreach (var e in Enum.GetValues<DisplayType>()) {
-                if (ImGui.Selectable($"{e}", _displayType == e)) _displayType = e;
-            }
+            foreach (var e in Enum.GetValues<DisplayType>())
+                if (ImGui.Selectable($"{e}", _displayType == e))
+                    _displayType = e;
             ImGui.EndCombo();
         }
 
-        if (ImGui.BeginTable("performanceTable", 8, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollX, new Vector2(ImGui.GetContentRegionAvail().X, 150 * ImGuiHelpers.GlobalScale))) {
+        if (ImGui.BeginTable("performanceTable", 8, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollX | ImGuiTableFlags.Resizable, new Vector2(ImGui.GetContentRegionAvail().X, height ?? 150 * ImGuiHelpers.GlobalScale))) {
             ImGui.TableSetupColumn("Reset");
             ImGui.TableSetupColumn("Key");
             ImGui.TableSetupColumn("Last Check");
@@ -89,16 +70,48 @@ public static class PerformanceMonitors {
                 ImGui.TableNextColumn();
                 ImGui.Text($"{log.Value.HitsPerSecond:F2}");
             }
-                
-                
-                
+
             ImGui.EndTable();
         }
     }
-    
+
+    public static void Begin(string k) {
+        Logs.TryAdd(k, new PerformanceLog());
+        Logs[k].Begin();
+    }
+
+    public static void End(string k) {
+        if (!Logs.ContainsKey(k)) return;
+        Logs[k].End();
+    }
+
+    public static void ClearAll() {
+        foreach (var l in Logs) l.Value.Clear();
+    }
+
+    public class PerformanceLogger : IDisposable {
+        private readonly string runKey;
+
+        public PerformanceLogger(string k) {
+            Logs.TryAdd(k, new PerformanceLog());
+            Logs[k].Begin();
+            runKey = k;
+        }
+
+        public void Dispose() {
+            if (!Logs.ContainsKey(runKey)) return;
+            Logs[runKey].End();
+        }
+    }
+
+    private enum DisplayType {
+        Ticks,
+        Milliseconds
+    }
+
     private class PerformanceLog {
-        private readonly Stopwatch stopwatch = new();
         private readonly Stopwatch started = new();
+        private readonly Stopwatch stopwatch = new();
         private readonly Stopwatch total = new();
 
         public long Last { get; private set; } = -1;
@@ -110,12 +123,10 @@ public static class PerformanceMonitors {
         public double HitsPerSecond => started.ElapsedTicks == 0 ? 0 : Count / started.Elapsed.TotalSeconds;
 
         public double AveragePerSecond => HitsPerSecond * Average;
-            
+
         public void Begin() {
             if (!started.IsRunning) started.Start();
-            if (stopwatch.IsRunning) {
-                End();
-            }
+            if (stopwatch.IsRunning) End();
             stopwatch.Restart();
             total.Start();
         }
@@ -144,25 +155,5 @@ public static class PerformanceMonitors {
             started.Reset();
             total.Reset();
         }
-            
     }
-
-    private static readonly Dictionary<string, PerformanceLog> Logs = new();
-
-    public static void Begin(string k) {
-        Logs.TryAdd(k, new PerformanceLog());
-        Logs[k].Begin();
-    }
-
-    public static void End(string k) {
-        if (!Logs.ContainsKey(k)) return;
-        Logs[k].End();
-    }
-
-    public static void ClearAll() {
-        foreach (var l in Logs) {
-            l.Value.Clear();
-        }
-    }
-        
 }
