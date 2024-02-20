@@ -18,7 +18,7 @@ public class IpcCharacterConfig : CharacterConfig {
 
         if (plugin.TryGetCharacterConfig(player, out var characterConfig, false) && characterConfig != null) {
             DefaultOffset = characterConfig.GetFirstMatch(player, false)?.GetOffset().Y ?? 0;
-            EmoteConfigs = characterConfig.EmoteConfigs.Where(e => e.Enabled).ToList();
+            EmoteConfigs = characterConfig?.EmoteConfigs?.Where(e => e.Enabled).ToList() ?? new List<EmoteConfig>();
             
             // Legacy Data
             Offset = DefaultOffset;
@@ -58,7 +58,7 @@ public class IpcCharacterConfig : CharacterConfig {
 
     public override bool ShouldSerializeIgnoreModelOffsets() => false;
 
-    public override bool ShouldSerializeEmoteConfigs() => EmoteConfigs.Count > 0;
+    public override bool ShouldSerializeEmoteConfigs() => EmoteConfigs is { Count: > 0 };
 
     public static IpcCharacterConfig? FromString(string json) {
         if (string.IsNullOrWhiteSpace(json)) return new IpcCharacterConfig().Initialize() as IpcCharacterConfig;
