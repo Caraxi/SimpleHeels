@@ -183,10 +183,12 @@ public unsafe class Plugin : IDalamudPlugin {
 
     private void SetDrawOffsetDetour(GameObject* gameObject, float x, float y, float z) {
         try {
-            BaseOffsets[gameObject->ObjectIndex] = new Vector3(x, y, z);
-            if (ManagedIndex[gameObject->ObjectIndex]) {
-                UpdateObjectIndex(gameObject->ObjectIndex);
-                return;
+            if (gameObject->ObjectIndex < Constants.ObjectLimit) {
+                BaseOffsets[gameObject->ObjectIndex] = new Vector3(x, y, z);
+                if (ManagedIndex[gameObject->ObjectIndex]) {
+                    UpdateObjectIndex(gameObject->ObjectIndex);
+                    return;
+                }
             }
         } catch (Exception ex) {
             PluginService.Log.Error(ex, "Error within SetDrawOffsetDetour");
@@ -196,7 +198,7 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void* SetDrawRotationDetour(GameObject* gameObject, float rotation) {
-        if (ManagedIndex[gameObject->ObjectIndex])
+        if (gameObject->ObjectIndex < Constants.ObjectLimit && ManagedIndex[gameObject->ObjectIndex])
             rotation += RotationOffsets[gameObject->ObjectIndex];
         return setDrawRotationHook!.Original(gameObject, rotation);
     }
