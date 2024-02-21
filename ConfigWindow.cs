@@ -1551,7 +1551,12 @@ public class ConfigWindow : Window {
     }
 
     private void ShowActiveOffsetMarker(bool show, bool isEnabled, bool isActive, string tooltipText) {
-        if (!show) return;
+        if (!show) {
+            using (ImRaii.PushFont(UiBuilder.IconFont)) 
+                ImGui.Dummy(ImGui.CalcTextSize(FontAwesomeIcon.ArrowLeft.ToIconString()));
+            return;
+        }
+        
         using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.HealerGreen, isEnabled && isActive))
         using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.DalamudViolet, isEnabled && isActive == false))
         using (ImRaii.PushColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled), isEnabled == false))
