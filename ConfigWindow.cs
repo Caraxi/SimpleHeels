@@ -1509,16 +1509,51 @@ public class ConfigWindow : Window {
                 }
 
                 if (characterConfig is not IpcCharacterConfig) {
-                    if (activeCharacterAsCharacter != null && EmoteIdentifier.TryGet(activeCharacterAsCharacter, out var currentEmote)) {
-                        if (ImGui.Button($"Add Emote: {currentEmote.Name}")) {
-                            characterConfig.EmoteConfigs.Add(new EmoteConfig() { Emote = currentEmote, Enabled = characterConfig.EmoteConfigs.All(ec => ec.Enabled == false || ec.Emote != currentEmote) });
-                        }
-                    } else {
-                        using (ImRaii.Disabled(true)) {
-                            if (ImGui.Button("Add Emote")) {
-                            
+                    var currentEmote = EmoteIdentifier.Get(activeCharacterAsCharacter);
+                    using (ImRaii.Disabled(currentEmote == null))
+                    using (ImRaii.PushFont(UiBuilder.IconFont)) {
+                        if (ImGui.Button(FontAwesomeIcon.PersonDressBurst.ToIconString(), new Vector2(checkboxSize))) {
+                            if (currentEmote != null) {
+                                characterConfig.EmoteConfigs.Add(new EmoteConfig() { Emote = currentEmote, Enabled = characterConfig.EmoteConfigs.All(ec => ec.Enabled == false || ec.Emote != currentEmote) });
                             }
                         }
+                    }
+
+                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && activeCharacterAsCharacter != null) {
+                        if (currentEmote == null) {
+                            ImGui.SetTooltip($"Add Current Emote");
+                        } else {
+                            ImGui.SetTooltip($"Add Current Emote:\n{currentEmote.Name}");
+                        }
+                    }
+
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(250 * ImGuiHelpers.GlobalScale);
+                    if (ImGui.BeginCombo("##addCurrentEmote", "Add Emote...", ImGuiComboFlags.HeightLargest)) {
+                        if (ImGui.IsWindowAppearing()) {
+                            searchInput = string.Empty;
+                            ImGui.SetKeyboardFocusHere();
+                        }
+
+                        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                        ImGui.InputTextWithHint("##searchInput", "Search...", ref searchInput, 128);
+                        if (ImGui.BeginChild("##searchScroll", new Vector2(ImGui.GetContentRegionAvail().X, 300))) {
+                            using (ImRaii.PushColor(ImGuiCol.FrameBgHovered, ImGui.GetColorU32(ImGuiCol.ButtonHovered))) {
+                                foreach (var emote in EmoteIdentifier.List) {
+                                    if (!string.IsNullOrWhiteSpace(searchInput)) {
+                                        if (!(emote.Name.Contains(searchInput, StringComparison.InvariantCultureIgnoreCase) || (ushort.TryParse(searchInput, out var searchShort) && searchShort == emote.EmoteModeId))) continue;
+                                    }
+                                    
+                                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                                    if (ImGuiExt.IconTextFrame(emote.Icon, emote.Name, true)) {
+                                        characterConfig.EmoteConfigs.Add(new EmoteConfig() { Emote = emote, Enabled = characterConfig.EmoteConfigs.All(ec => ec.Enabled == false || ec.Emote != emote) });
+                                    }
+                                }
+                            }
+                        }
+
+                        ImGui.EndChild();
+                        ImGui.EndCombo();
                     }
                 }
             }
