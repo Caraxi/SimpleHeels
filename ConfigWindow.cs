@@ -244,6 +244,7 @@ public class ConfigWindow : Window {
 
                     ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGui.GetIO().KeyShift ? ImGuiCol.Text : ImGuiCol.TextDisabled));
                     if (ImGui.Selectable($"Delete group '{filterConfig.Label}'") && ImGui.GetIO().KeyShift) {
+                        if (selectedGroup == filterConfig) selectedGroup = null;
                         config.Groups.Remove(filterConfig);
                     }
 
