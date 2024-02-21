@@ -282,7 +282,7 @@ public unsafe class Plugin : IDalamudPlugin {
         }
 
         var character = (Character*)obj;
-        if (character->ReaperShroud.Flags != 0) return true; // Ignore all changes when Reaper Shroud is active.
+        if (updateIndex < 200 && character->ReaperShroud.Flags != 0) return true; // Ignore all changes when Reaper Shroud is active.
 
         using var performance = PerformanceMonitors.Run("UpdateObject");
         using var performance2 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);

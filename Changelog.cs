@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.02f, "0.9.0.2", "Fixed applying offsets to GPose actors.");
         ChangelogFor(9.0f, "0.9.0.0", () => {
             C("Major rework of internals");
             C("Added 'Emote Offsets'");

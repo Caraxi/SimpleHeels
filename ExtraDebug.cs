@@ -70,6 +70,14 @@ public unsafe class ExtraDebug : Window {
 
                 ImGui.Text($"Draw Offset: {obj->GameObject.DrawOffset}");
                 ImGui.Text($"Height: {obj->GameObject.Height}");
+                
+                ImGui.Text("Character Data:");
+                ImGui.SameLine();
+                Util.ShowStruct(&obj->CharacterData);
+
+                ImGui.Text($"Reaper Shroud:");
+                ImGui.SameLine();
+                Util.ShowStruct(&obj->ReaperShroud);
 
                 if (Plugin.ActorMapping.TryGetValue(actor.ObjectIndex, out var map)) ImGui.Text($"Clone of {map.name} @ {map.homeWorld}");
 
