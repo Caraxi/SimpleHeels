@@ -920,7 +920,7 @@ public class ConfigWindow : Window {
         }
 
         using (ImRaii.Disabled(characterConfig is IpcCharacterConfig)) {
-            if (characterConfig is not IpcCharacterConfig && ImGui.Checkbox($"Enable offsets for {selectedName}", ref characterConfig.Enabled)) {
+            if (characterConfig is not (IpcCharacterConfig or GroupConfig) && ImGui.Checkbox($"Enable offsets for {selectedName}", ref characterConfig.Enabled)) {
                 Plugin.RequestUpdateAll();
             }
 
