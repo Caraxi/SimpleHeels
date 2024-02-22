@@ -309,6 +309,7 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void OnFrameworkUpdate(IFramework framework) {
+        if (!PluginService.Condition.Any()) return;
         using var frameworkPerformance = PerformanceMonitors.Run("Framework Update");
         if (_updateAll) {
             _updateAll = false;
