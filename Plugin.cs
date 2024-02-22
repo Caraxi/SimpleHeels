@@ -300,7 +300,13 @@ public unsafe class Plugin : IDalamudPlugin {
         var appliedOffset = offsetProvider.GetOffset();
         offset += appliedOffset;
 
-        setDrawOffset!.Original(obj, offset.X, offset.Y, offset.Z);
+        if (Vector3.Distance(offset, obj->DrawOffset) > Constants.FloatDelta || Config.DebugOpenOnStartup) {
+            using (PerformanceMonitors.Run($"Set Offset:{updateIndex}", Config.DetailedPerformanceLogging))
+            using (PerformanceMonitors.Run("Set Offset")) {
+                setDrawOffset!.Original(obj, offset.X, offset.Y, offset.Z);
+            }
+        }
+        
         ManagedIndex[obj->ObjectIndex] = true;
         RotationOffsets[obj->ObjectIndex] = offsetProvider.GetRotation();
 
