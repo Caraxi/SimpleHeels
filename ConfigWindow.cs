@@ -622,7 +622,7 @@ public class ConfigWindow : Window {
                     ImGui.SliderFloat("Plus/Minus Button Delta", ref config.PlusMinusDelta, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags.AlwaysClamp);
                 }
 
-                ImGui.Checkbox("Show Config Copy UI", ref config.ShowCopyUi);
+                ImGui.Checkbox("Show character Rename and Copy UI", ref config.ShowCopyUi);
 
                 ImGuiExt.Separator();
                 ImGui.Text("Bypass Dalamud's plugin UI hiding:");
@@ -860,7 +860,7 @@ public class ConfigWindow : Window {
                 var newAlreadyExists = config.WorldCharacterDictionary.ContainsKey(newWorld) && config.WorldCharacterDictionary[newWorld].ContainsKey(newName);
 
                 using (ImRaii.Disabled(isModified == false || newAlreadyExists)) {
-                    if (ImGui.Button("Move Character Config")) {
+                    if (ImGui.Button("Rename Character Config")) {
                         if (selectedCharacter != null && config.TryAddCharacter(newName, newWorld)) {
                             config.WorldCharacterDictionary[newWorld][newName] = selectedCharacter;
                             config.WorldCharacterDictionary[selectedWorld].Remove(selectedName);
