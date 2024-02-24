@@ -149,13 +149,15 @@ public class ConfigWindow : Window {
             ImGuiExt.Separator();
 
             foreach (var (name, characterConfig) in characters.ToArray()) {
-                if (ImGui.Selectable($"{name}##{world.Name.RawString}", selectedCharacter == characterConfig)) {
-                    selectedCharacter = characterConfig;
-                    selectedName = name;
-                    selectedWorld = world.RowId;
-                    newName = name;
-                    newWorld = world.RowId;
-                    selectedGroup = null;
+                using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ParsedGrey, characterConfig.Enabled == false)) {
+                    if (ImGui.Selectable($"{name}##{world.Name.RawString}", selectedCharacter == characterConfig)) {
+                        selectedCharacter = characterConfig;
+                        selectedName = name;
+                        selectedWorld = world.RowId;
+                        newName = name;
+                        newWorld = world.RowId;
+                        selectedGroup = null;
+                    }
                 }
 
                 if (ImGui.BeginPopupContextItem()) {
@@ -213,14 +215,16 @@ public class ConfigWindow : Window {
 
             for (var i = 0; i < arr.Length; i++) {
                 var filterConfig = arr[i];
-                if (ImGui.Selectable($"{filterConfig.Label}##filterConfig_{i}", selectedGroup == filterConfig)) {
-                    selectedCharacter = null;
-                    selectedName = string.Empty;
-                    selectedWorld = 0;
-                    newName = string.Empty;
-                    newWorld = 0;
-                    selectedGroup = filterConfig;
-                    selectedGroup.Characters.RemoveAll(c => string.IsNullOrWhiteSpace(c.Name));
+                using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ParsedGrey, filterConfig.Enabled == false)) {
+                    if (ImGui.Selectable($"{filterConfig.Label}##filterConfig_{i}", selectedGroup == filterConfig)) {
+                        selectedCharacter = null;
+                        selectedName = string.Empty;
+                        selectedWorld = 0;
+                        newName = string.Empty;
+                        newWorld = 0;
+                        selectedGroup = filterConfig;
+                        selectedGroup.Characters.RemoveAll(c => string.IsNullOrWhiteSpace(c.Name));
+                    }
                 }
 
                 if (ImGui.BeginPopupContextItem()) {
