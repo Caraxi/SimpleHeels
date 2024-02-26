@@ -1277,7 +1277,7 @@ public class ConfigWindow : Window {
             if (characterConfig is IpcCharacterConfig) {
                 ImGui.CollapsingHeader("Emote Offsets##ipcCharacterConfig", ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.Leaf);
             } else {
-                ImGui.CollapsingHeader("Emote Offsets", ImGuiTreeNodeFlags.DefaultOpen);
+                emoteOffsetsOpen = ImGui.CollapsingHeader("Emote Offsets", ImGuiTreeNodeFlags.DefaultOpen);
             }
 
             if (emoteOffsetsOpen) {
