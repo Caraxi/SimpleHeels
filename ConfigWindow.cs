@@ -1571,14 +1571,29 @@ public class ConfigWindow : Window {
         }
 
         if (Plugin.IsDebug && activeCharacter != null) {
-            if (ImGui.TreeNode("[Debug] Active Offset")) {
-                if (activeHeelConfig == null) {
-                    ImGui.TextDisabled("No Active Offset");
-                } else if (activeHeelConfig is CharacterConfig cc) {
-                    ImGui.Text($"Using Default Offset: {cc.DefaultOffset}");
-                } else {
-                    Util.ShowStruct(activeHeelConfig, 0);
+            if (ImGui.TreeNode("Debug Information")) {
+                if (ImGui.TreeNode("Active Offset")) {
+                    if (activeHeelConfig == null) {
+                        ImGui.TextDisabled("No Active Offset");
+                    } else if (activeHeelConfig is CharacterConfig cc) {
+                        ImGui.Text($"Using Default Offset: {cc.DefaultOffset}");
+                    } else {
+                        Util.ShowStruct(activeHeelConfig, 0);
+                    }
+                    ImGui.TreePop();
                 }
+                
+                if (ImGui.TreeNode("Emote")) {
+                    var emoteId = EmoteIdentifier.Get(activeCharacterAsCharacter);
+                    if (emoteId == null) {
+                        ImGui.TextDisabled("None");
+                    } else {
+                        Util.ShowObject(emoteId);
+                    }
+                    
+                    ImGui.TreePop();
+                }
+                ImGui.TreePop();
             }
         }
 
