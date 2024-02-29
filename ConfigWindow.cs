@@ -1785,7 +1785,7 @@ public class ConfigWindow : Window {
     public void ToggleWithWarning() {
         if (IsOpen && hiddenStopwatch.ElapsedMilliseconds < 1000) {
             IsOpen = false;
-        } else {
+        } else if (IsOpen == false) {
             IsOpen = true;
             notVisibleWarningCancellationTokenSource?.Cancel();
             notVisibleWarningCancellationTokenSource = new CancellationTokenSource();
@@ -1821,6 +1821,9 @@ public class ConfigWindow : Window {
 
                 PluginService.ChatGui.PrintError(message.Build());
             }, TimeSpan.FromMilliseconds(250), cancellationToken: notVisibleWarningCancellationTokenSource.Token);
+        } else {
+            notVisibleWarningCancellationTokenSource?.Cancel();
+            IsOpen = false;
         }
     }
 
