@@ -12,6 +12,9 @@ namespace SimpleHeels;
 public class IpcCharacterConfig : CharacterConfig {
 
     [JsonIgnore] public string IpcJson { get; private set; } = string.Empty;
+
+    public TempOffset? TempOffset;
+    
     
     public unsafe IpcCharacterConfig(Plugin plugin, PlayerCharacter player) {
         if (player == null) throw new Exception("No Player");
@@ -40,6 +43,8 @@ public class IpcCharacterConfig : CharacterConfig {
                     break;
             }
         }
+
+        TempOffset = player.ObjectIndex < Constants.ObjectLimit ? Plugin.TempOffsets[player.ObjectIndex] : null;
     }
 
     public IpcCharacterConfig() { }
@@ -59,6 +64,8 @@ public class IpcCharacterConfig : CharacterConfig {
     public override bool ShouldSerializeIgnoreModelOffsets() => false;
 
     public override bool ShouldSerializeEmoteConfigs() => EmoteConfigs is { Count: > 0 };
+
+    public bool ShouldSerializeTempOffset() => TempOffset != null;
 
     public static IpcCharacterConfig? FromString(string json) {
         if (string.IsNullOrWhiteSpace(json)) return new IpcCharacterConfig().Initialize() as IpcCharacterConfig;

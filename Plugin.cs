@@ -97,6 +97,8 @@ public unsafe class Plugin : IDalamudPlugin {
     public bool[] ManagedIndex { get; } = new bool[Constants.ObjectLimit];
     public static bool[] NeedsUpdate { get; } = new bool[Constants.ObjectLimit];
 
+    public static TempOffset?[] TempOffsets { get; } = new TempOffset[Constants.ObjectLimit];
+
     private float[] RotationOffsets { get; } = new float[Constants.ObjectLimit];
 
     public static Dictionary<uint, IpcCharacterConfig> IpcAssignedData { get; } = new();
@@ -142,6 +144,7 @@ public unsafe class Plugin : IDalamudPlugin {
             ManagedIndex[character->GameObject.ObjectIndex] = false;
             BaseOffsets.Remove(character->GameObject.ObjectIndex);
             NeedsUpdate[character->GameObject.ObjectIndex] = false;
+            TempOffsets[character->GameObject.ObjectIndex] = null;
         }
 
         return terminateCharacterHook!.Original(character);
@@ -215,7 +218,10 @@ public unsafe class Plugin : IDalamudPlugin {
             ActorMapping.Remove(destination->GameObject.ObjectIndex);
             var name = MemoryHelper.ReadSeString(new nint(source->GameObject.GetName()), 64);
             ActorMapping.Add(destination->GameObject.ObjectIndex, (name.TextValue, source->HomeWorld));
-            if (destination->GameObject.ObjectIndex < Constants.ObjectLimit && source->GameObject.ObjectIndex < Constants.ObjectLimit) ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
+            if (destination->GameObject.ObjectIndex < Constants.ObjectLimit && source->GameObject.ObjectIndex < Constants.ObjectLimit) {
+                ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
+                TempOffsets[destination->GameObject.ObjectIndex] = TempOffsets[source->GameObject.ObjectIndex];
+            }
             PluginService.Log.Verbose($"Game cloned Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex} [{name} @ {source->HomeWorld}]");
         } catch (Exception ex) {
             PluginService.Log.Error(ex, "Error handling CloneActor");
@@ -287,10 +293,17 @@ public unsafe class Plugin : IDalamudPlugin {
         using var performance = PerformanceMonitors.Run("UpdateObject");
         using var performance2 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);
 
-        if (!TryGetCharacterConfig(character, out var characterConfig)) return false;
-
-        if (!characterConfig.TryGetFirstMatch(character, out var offsetProvider)) return false;
-
+        IOffsetProvider? offsetProvider = null;
+        
+        if (!IpcAssignedData.ContainsKey(obj->ObjectID) && TempOffsets[updateIndex] != null) {
+            offsetProvider = TempOffsets[updateIndex];
+        }
+        
+        if (offsetProvider == null) {
+            if (!TryGetCharacterConfig(character, out var characterConfig)) return false;
+            if (!characterConfig.TryGetFirstMatch(character, out offsetProvider)) return false;
+        }
+        
         if (!BaseOffsets.TryGetValue(updateIndex, out var offset)) {
             var baseOffset = new Vector3(character->GameObject.DrawOffset.X, character->GameObject.DrawOffset.Y, character->GameObject.DrawOffset.Z);
             BaseOffsets[updateIndex] = baseOffset;
