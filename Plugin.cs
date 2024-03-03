@@ -221,6 +221,10 @@ public unsafe class Plugin : IDalamudPlugin {
             if (destination->GameObject.ObjectIndex < Constants.ObjectLimit && source->GameObject.ObjectIndex < Constants.ObjectLimit) {
                 ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
                 TempOffsets[destination->GameObject.ObjectIndex] = TempOffsets[source->GameObject.ObjectIndex];
+                destination->GameObject.DrawOffset = source->GameObject.DrawOffset;
+                if (BaseOffsets.TryGetValue(source->GameObject.ObjectIndex, out var baseOffset)) {
+                    BaseOffsets[destination->GameObject.ObjectIndex] = baseOffset;
+                }
             }
             PluginService.Log.Verbose($"Game cloned Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex} [{name} @ {source->HomeWorld}]");
         } catch (Exception ex) {

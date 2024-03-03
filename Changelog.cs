@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.06f, "0.9.0.6", "Attempt to fix the positioning of other players in GPose.");
         ChangelogFor(9.05f, "0.9.0.5", () => {
             C("Dimmed character and group names in config window when disabled.");
             C("Fixed some UI not functioning correctly");
