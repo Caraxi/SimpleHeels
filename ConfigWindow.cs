@@ -688,9 +688,12 @@ public class ConfigWindow : Window {
                 ImGui.Checkbox("Use TexTools safe attribute", ref useTextoolSafeAttribute);
 
                 FloatEditor("Heels Offset", ref mdlEditorOffset, 0.001f, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
-                var offset = attributes.FirstOrDefault(a => a.StartsWith("heels_offset="));
+                var offset = attributes.FirstOrDefault(a => a.Length > 13 && a.StartsWith("heels_offset") && a[12] is '_' or '=');
                 if (offset == null) {
                     ImGui.Text("Model has no offset assigned.");
+                } else if (offset[12] == '_') {
+                    var str = offset[13..].Replace("n_", "-").Replace('a', '0').Replace('b', '1').Replace('c', '2').Replace('d', '3').Replace('e', '4').Replace('f', '5').Replace('g', '6').Replace('h', '7').Replace('i', '8').Replace('j', '9').Replace('_', '.');
+                    ImGui.Text($"Current Offset: {str}");
                 } else {
                     ImGui.Text($"Current Offset: {offset[13..]}");
                 }
