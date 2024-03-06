@@ -27,7 +27,7 @@ public class EmoteConfig : IOffsetProvider {
 
     public bool ShouldSerializeLabel() => ApiProvider.IsSerializing == false;
 
-    public bool ShouldSerializeLinkedEmoteIds() => LinkedEmotes.Count > 0;
+    public bool ShouldSerializeLinkedEmotes() => LinkedEmotes.Count > 0;
 
     public bool MatchesEmote(params EmoteIdentifier?[] emoteIds) => emoteIds.Any(e => e != null && (e == Emote || LinkedEmotes.Contains(e)));
 }

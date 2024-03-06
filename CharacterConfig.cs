@@ -31,7 +31,7 @@ public class CharacterConfig : IOffsetProvider {
         return true;
     }
 
-    public virtual CharacterConfig Initialize() {
+    public CharacterConfig Initialize() {
         if (EmoteConfigs != null) return this;
         
         EmoteConfigs = new List<EmoteConfig> {
