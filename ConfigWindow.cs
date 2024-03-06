@@ -575,7 +575,35 @@ public class ConfigWindow : Window {
                         selectedGroup.Characters.Add(c);
                         groupNameMatchingNewInput = string.Empty;
                     }
+                    
+                    if (PluginService.ClientState.LocalPlayer != null) {
+                        ImGui.SameLine();
+                        if (ImGuiComponents.IconButton(FontAwesomeIcon.User)) {
+                            if (PluginService.ClientState.LocalPlayer != null) {
+                                var c = new GroupCharacter { Name = PluginService.ClientState.LocalPlayer.Name.TextValue, World = PluginService.ClientState.LocalPlayer.HomeWorld.Id };
+                                if (!selectedGroup.Characters.Any(ec => ec.Name == c.Name && ec.World == c.World)) {
+                                    selectedGroup.Characters.Add(c);
+                                }
+                            }
+                        }
 
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Add current character");
+
+                        ImGui.SameLine();
+                        if (ImGuiComponents.IconButton(FontAwesomeIcon.DotCircle)) {
+                            var target = PluginService.Targets.SoftTarget ?? PluginService.Targets.Target;
+                            if (target != null) {
+                                var c = new GroupCharacter { Name = target.Name.TextValue, World = target is PlayerCharacter pc ? pc.HomeWorld.Id : ushort.MaxValue };
+                                if (!selectedGroup.Characters.Any(ec => ec.Name == c.Name && ec.World == c.World)) {
+                                    selectedGroup.Characters.Add(c);
+                                }
+                            }
+                        }
+
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Add targeted character");
+                        ImGui.SameLine();
+                    }
+                    
                     ImGui.PopID();
                 }
 
@@ -613,6 +641,10 @@ public class ConfigWindow : Window {
                     Util.OpenLink("https://github.com/Caraxi/SimpleHeels/blob/master/modguide.md");
                 }
 
+                ImGui.Checkbox("Apply offsets to minions", ref config.ApplyToMinions);
+                ImGui.SameLine();
+                ImGuiComponents.HelpMarker("Allows group offsets to be applied to minions.\nThis only functions if the minion has been converted to a human using another plugin such as Glamourer.\nEmote offsets and syncing will not function on minions.");
+                
                 ImGui.Checkbox("Prefer model paths when creating new entries", ref config.PreferModelPath);
 
                 ImGui.Checkbox("Show Plus/Minus buttons for offset adjustments", ref config.ShowPlusMinusButtons);

@@ -24,6 +24,7 @@ public class PluginConfig : IPluginConfiguration {
     public bool ShowCopyUi = false;
     public bool ShowPlusMinusButtons = true;
     public bool UseModelOffsets = true;
+    public bool ApplyToMinions = false;
 
     public Dictionary<uint, Dictionary<string, CharacterConfig>> WorldCharacterDictionary = new();
     public int Version { get; set; } = 1;

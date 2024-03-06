@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 
 namespace SimpleHeels;
@@ -75,6 +76,11 @@ public class CharacterConfig : IOffsetProvider {
         offsetProvider = GetFirstMatch(character, checkEmote);
         return offsetProvider != null;
     }
+    
+    public unsafe bool TryGetFirstMatch(GameObject* character, [NotNullWhen(true)] out IOffsetProvider? offsetProvider, bool checkEmote = true) {
+        offsetProvider = GetFirstMatch(character, checkEmote);
+        return offsetProvider != null;
+    }
 
     public unsafe IOffsetProvider? GetFirstMatch(PlayerCharacter playerCharacter, bool checkEmote = true) {
         var character = (Character*)playerCharacter.Address;
@@ -83,19 +89,24 @@ public class CharacterConfig : IOffsetProvider {
     }
 
     public virtual unsafe IOffsetProvider? GetFirstMatch(Character* character, bool checkEmote = true) {
+        if (character == null) return null;
+        return GetFirstMatch(&character->GameObject, checkEmote);
+    }
+
+    public unsafe IOffsetProvider? GetFirstMatch(GameObject* character, bool checkEmote = true) {
         if (!Enabled) return null;
         if (character == null) return null;
-        if (checkEmote) {
-            var emoteId = EmoteIdentifier.Get(character);
+        if (checkEmote && character->IsCharacter()) {
+            var emoteId = EmoteIdentifier.Get((Character*)character);
             if (emoteId != null) {
                 var e = EmoteConfigs?.FirstOrDefault(ec => ec.Enabled && (ec.Emote == emoteId || ec.LinkedEmotes.Contains(emoteId)));
                 if (e != null) return e;
             }
         }
 
-        if (character->GameObject.DrawObject == null) return null;
-        if (character->GameObject.DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return null;
-        var characterBase = (CharacterBase*)character->GameObject.DrawObject;
+        if (character->DrawObject == null) return null;
+        if (character->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return null;
+        var characterBase = (CharacterBase*)character->DrawObject;
         if (characterBase->GetModelType() != CharacterBase.ModelType.Human) return null;
 
         if (TryGetFirstMatch((Human*)characterBase, out var heelConfig)) return heelConfig;

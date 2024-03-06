@@ -184,6 +184,27 @@ public unsafe class Plugin : IDalamudPlugin {
         return false;
     }
 
+    public bool TryGetMinionCharacterConfig(GameObject* minion, [NotNullWhen(true)] out CharacterConfig? characterConfig) {
+        using var performance = PerformanceMonitors.Run("TryGetMinionCharacterConfig");
+        if (minion == null) {
+            characterConfig = null;
+            return false;
+        }
+        
+        string name;
+        if (ActorMapping.TryGetValue(minion->ObjectIndex, out var mappedActor)) {
+            name = mappedActor.name;
+        } else {
+            name = MemoryHelper.ReadSeString((nint)minion->Name, 64).TextValue;
+        }
+        
+        
+        if (Config.TryGetCharacterConfig(name, ushort.MaxValue, minion->DrawObject, out characterConfig) && characterConfig != null) return true;
+
+        characterConfig = null;
+        return false;
+    }
+
     private void SetDrawOffsetDetour(GameObject* gameObject, float x, float y, float z) {
         try {
             if (gameObject->ObjectIndex < Constants.ObjectLimit) {
@@ -279,11 +300,66 @@ public unsafe class Plugin : IDalamudPlugin {
         _updateAll = true;
     }
 
+    private bool UpdateCompanion(uint updateIndex, GameObject* obj) {
+        using var performance = PerformanceMonitors.Run("UpdateCompanionObject");
+        using var performance2 = PerformanceMonitors.Run("UpdateObject");
+        using var performance3 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);
+        
+        
+        IOffsetProvider? offsetProvider = null;
+        
+        if (!IpcAssignedData.ContainsKey(obj->ObjectID) && TempOffsets[updateIndex] != null) {
+            offsetProvider = TempOffsets[updateIndex];
+        }
+        
+        if (offsetProvider == null) {
+            if (!TryGetMinionCharacterConfig(obj, out var characterConfig)) return false;
+            if (!characterConfig.TryGetFirstMatch(obj, out offsetProvider, false)) return false;
+        }
+        
+        if (!BaseOffsets.TryGetValue(updateIndex, out var offset)) {
+            var baseOffset = new Vector3(obj->DrawOffset.X, obj->DrawOffset.Y, obj->DrawOffset.Z);
+            BaseOffsets[updateIndex] = baseOffset;
+            offset = baseOffset;
+        }
+
+        var appliedOffset = offsetProvider.GetOffset();
+        offset += appliedOffset;
+
+        if (Vector3.Distance(offset, obj->DrawOffset) > Constants.FloatDelta) {
+            using (PerformanceMonitors.Run($"Set Offset:{updateIndex}", Config.DetailedPerformanceLogging))
+            using (PerformanceMonitors.Run("Set Offset")) {
+                setDrawOffset!.Original(obj, offset.X, offset.Y, offset.Z);
+            }
+        }
+        
+        ManagedIndex[obj->ObjectIndex] = true;
+        RotationOffsets[obj->ObjectIndex] = offsetProvider.GetRotation();
+        
+        
+        
+        return false;
+    }
+
+    private bool ObjectIsCompanionTurnedHuman(GameObject* gameObject) {
+        if (gameObject == null) return false;
+        if (gameObject->ObjectKind != (byte)ObjectKind.Companion) return false;
+        if (gameObject->DrawObject == null) return false;
+        if (gameObject->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return false;
+        var chrBase = (CharacterBase*)gameObject->DrawObject;
+        return chrBase->GetModelType() == CharacterBase.ModelType.Human;
+    }
+    
+    
     private bool UpdateObjectIndex(uint updateIndex) {
         if (updateIndex >= Constants.ObjectLimit) return true;
         NeedsUpdate[updateIndex] = false;
 
         var obj = GameObjectManager.GetGameObjectByIndex((int)updateIndex);
+
+        if (Config is { Enabled: true, ApplyToMinions: true } && ObjectIsCompanionTurnedHuman(obj)) 
+            return UpdateCompanion(updateIndex, obj);
+        
         if (isDisposing || obj == null || !obj->IsCharacter() || Config.Enabled == false) {
             if (obj != null && ManagedIndex[updateIndex] && BaseOffsets.TryGetValue(obj->ObjectIndex, out var baseOffset)) setDrawOffset!.Original(obj, baseOffset.X, baseOffset.Y, baseOffset.Z);
             ManagedIndex[updateIndex] = false;
