@@ -5,7 +5,17 @@ using System.Numerics;
 
 namespace SimpleHeels;
 
-public class EmoteConfig : IOffsetProvider {
+public class EmoteConfig : IOffsetProvider{
+
+    public EmoteConfig IpcClone() {
+        return new EmoteConfig {
+            Emote = new EmoteIdentifier(Emote.EmoteModeId, Emote.CPoseState),
+            LinkedEmotes = LinkedEmotes.Select(l => new EmoteIdentifier(l.EmoteModeId, l.CPoseState)).ToHashSet(),
+            Offset = new Vector3(Offset.X, Offset.Y, Offset.Z),
+            Rotation = Rotation
+        };
+    }
+    
     [NonSerialized] public bool Editing = false;
 
     public EmoteIdentifier Emote;

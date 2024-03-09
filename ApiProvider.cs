@@ -34,7 +34,7 @@ public static class ApiProvider {
 
     private static CancellationTokenSource? _tokenSource;
 
-    public static string LastReportedData => _lastReported?.ToString() ?? string.Empty;
+    public static string LastReportedData { get; private set; } = string.Empty;
 
     public static void Init(Plugin plugin) {
         _plugin = plugin;
@@ -97,6 +97,7 @@ public static class ApiProvider {
 
             PluginService.Framework.RunOnTick(() => {
                 using (PerformanceMonitors.Run("Send IPC Message")) {
+                    LastReportedData = json;
                     _localChanged?.SendMessage(json);
                 }
             }, cancellationToken: _tokenSource.Token, delay: TimeSpan.FromMilliseconds(250));

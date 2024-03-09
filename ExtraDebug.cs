@@ -34,6 +34,10 @@ public unsafe class ExtraDebug : Window {
         ImGui.Indent();
 
         ImGui.TextWrapped(ApiProvider.LastReportedData);
+        ImGui.Spacing();
+        ImGui.Spacing();
+        ImGui.TextDisabled($"Time Since Report: {ApiProvider.TimeSinceLastReport.Elapsed:hh\\:mm\\:ss}");
+        
         
         
         

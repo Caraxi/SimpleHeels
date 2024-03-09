@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.08f, "0.9.0.8", "Fixed reporting emote offsets to other plugins.");
         ChangelogFor(9.07f, "0.9.0.7", () => {
             C("Added an option to allow group offsets to partially apply to minions.");
             C("Removed legacy data from synced offsets.");

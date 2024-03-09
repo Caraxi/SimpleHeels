@@ -21,7 +21,7 @@ public class IpcCharacterConfig : CharacterConfig {
 
         if (plugin.TryGetCharacterConfig(player, out var characterConfig, false) && characterConfig != null) {
             DefaultOffset = characterConfig.GetFirstMatch(player, false)?.GetOffset().Y ?? 0;
-            EmoteConfigs = characterConfig?.EmoteConfigs?.Where(e => e.Enabled).ToList() ?? new List<EmoteConfig>();
+            EmoteConfigs = characterConfig?.EmoteConfigs?.Where(e => e.Enabled).Select(e => e.IpcClone()).ToList() ?? new List<EmoteConfig>();
         }
 
         TempOffset = player.ObjectIndex < Constants.ObjectLimit ? Plugin.TempOffsets[player.ObjectIndex] : null;
