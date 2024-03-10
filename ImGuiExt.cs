@@ -1,5 +1,8 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Diagnostics;
+using System.Numerics;
 using Dalamud.Interface;
+using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 
@@ -47,5 +50,46 @@ public static class ImGuiExt {
         }
 
         return clicked;
+    }
+
+    private static Stopwatch _clickHoldThrottle = Stopwatch.StartNew();
+    private static Stopwatch _holdingClick = Stopwatch.StartNew();
+
+    public static bool FloatEditor(string label, ref float value, float speed = 1, float min = float.MinValue, float max = float.MaxValue, string format = "%.5f", ImGuiSliderFlags flags = ImGuiSliderFlags.None, bool allowPlusMinus = true, float? customPlusMinus = null, bool? forcePlusMinus = null) {
+        using var group = ImRaii.Group();
+        var showPlusMinus = allowPlusMinus && (forcePlusMinus ?? Plugin.Config.ShowPlusMinusButtons);
+        var c = false;
+        var w = ImGui.CalcItemWidth();
+
+        if (showPlusMinus) {
+            if (ImGuiComponents.IconButton($"##{label}_minus", FontAwesomeIcon.Minus) || (_holdingClick.ElapsedMilliseconds > 500 && _clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                _clickHoldThrottle.Restart();
+                value -= customPlusMinus ?? Plugin.Config.PlusMinusDelta;
+                c = true;
+            }
+
+            w -= ImGui.GetItemRectSize().X * 2 + ImGui.GetStyle().ItemSpacing.X * 2;
+            ImGui.SameLine();
+        }
+
+        ImGui.SetNextItemWidth(w);
+
+        c |= ImGui.DragFloat($"##{label}_slider", ref value, speed, min, max, format, flags);
+        if (showPlusMinus) {
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButton($"##{label}_plus", FontAwesomeIcon.Plus) || (_holdingClick.ElapsedMilliseconds > 500 && _clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
+                _clickHoldThrottle.Restart();
+                value += customPlusMinus ?? MathF.Round(Plugin.Config.PlusMinusDelta, 5, MidpointRounding.AwayFromZero);
+                c = true;
+            }
+        }
+
+        var displayText = label.Split("##")[0];
+        if (!string.IsNullOrEmpty(displayText)) {
+            ImGui.SameLine();
+            ImGui.Text(displayText);
+        }
+        
+        return c;
     }
 }

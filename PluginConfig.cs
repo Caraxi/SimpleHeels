@@ -26,6 +26,12 @@ public class PluginConfig : IPluginConfiguration {
     public bool UseModelOffsets = true;
     public bool ApplyToMinions = false;
 
+    public bool TempOffsetWindowOpen = false;
+    public bool TempOffsetWindowLock = false;
+    public bool TempOffsetWindowTooltips = true;
+    public bool TempOffsetWindowTransparent = false;
+    public bool TempOffsetWindowPlusMinus = true;
+
     public Dictionary<uint, Dictionary<string, CharacterConfig>> WorldCharacterDictionary = new();
     public int Version { get; set; } = 1;
 

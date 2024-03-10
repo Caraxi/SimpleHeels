@@ -28,6 +28,7 @@ public unsafe class Plugin : IDalamudPlugin {
     private readonly ConfigWindow configWindow;
     private readonly ExtraDebug extraDebug;
     private readonly WindowSystem windowSystem;
+    private readonly TempOffsetOverlay tempOffsetOverlay;
 
     public Dictionary<uint, Vector3> BaseOffsets = new();
 
@@ -73,6 +74,9 @@ public unsafe class Plugin : IDalamudPlugin {
         extraDebug = new ExtraDebug(this, Config) { IsOpen = Config.ExtendedDebugOpen };
         windowSystem.AddWindow(extraDebug);
 
+        tempOffsetOverlay = new TempOffsetOverlay($"{Name} | Temp Offset", this, Config);
+        windowSystem.AddWindow(tempOffsetOverlay);
+
         pluginInterface.UiBuilder.Draw += windowSystem.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += () => OnCommand(string.Empty, string.Empty);
 
@@ -97,7 +101,8 @@ public unsafe class Plugin : IDalamudPlugin {
     public bool[] ManagedIndex { get; } = new bool[Constants.ObjectLimit];
     public static bool[] NeedsUpdate { get; } = new bool[Constants.ObjectLimit];
 
-    public static TempOffset?[] TempOffsets { get; } = new TempOffset[Constants.ObjectLimit];
+    public static TempOffset?[] TempOffsets { get; } = new TempOffset?[Constants.ObjectLimit];
+    public static EmoteIdentifier?[] TempOffsetEmote { get; } = new EmoteIdentifier?[Constants.ObjectLimit];
 
     private float[] RotationOffsets { get; } = new float[Constants.ObjectLimit];
 
@@ -242,6 +247,7 @@ public unsafe class Plugin : IDalamudPlugin {
             if (destination->GameObject.ObjectIndex < Constants.ObjectLimit && source->GameObject.ObjectIndex < Constants.ObjectLimit) {
                 ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
                 TempOffsets[destination->GameObject.ObjectIndex] = TempOffsets[source->GameObject.ObjectIndex];
+                TempOffsetEmote[destination->GameObject.ObjectIndex] = TempOffsetEmote[source->GameObject.ObjectIndex];
                 destination->GameObject.DrawOffset = source->GameObject.DrawOffset;
                 if (BaseOffsets.TryGetValue(source->GameObject.ObjectIndex, out var baseOffset)) {
                     BaseOffsets[destination->GameObject.ObjectIndex] = baseOffset;
@@ -359,12 +365,18 @@ public unsafe class Plugin : IDalamudPlugin {
 
         if (Config is { Enabled: true, ApplyToMinions: true } && ObjectIsCompanionTurnedHuman(obj)) 
             return UpdateCompanion(updateIndex, obj);
-        
-        if (isDisposing || obj == null || !obj->IsCharacter() || Config.Enabled == false) {
+
+        bool ReleaseControl(bool r) {
             if (obj != null && ManagedIndex[updateIndex] && BaseOffsets.TryGetValue(obj->ObjectIndex, out var baseOffset)) setDrawOffset!.Original(obj, baseOffset.X, baseOffset.Y, baseOffset.Z);
             ManagedIndex[updateIndex] = false;
             BaseOffsets.Remove(updateIndex);
-            return false;
+            RotationOffsets[updateIndex] = 0;
+            if (updateIndex == 0) ApiProvider.UpdateLocal(Vector3.Zero, 0);
+            return r;
+        }
+
+        if (isDisposing || obj == null || !obj->IsCharacter() || Config.Enabled == false) {
+            return ReleaseControl(false);
         }
 
         var character = (Character*)obj;
@@ -376,12 +388,19 @@ public unsafe class Plugin : IDalamudPlugin {
         IOffsetProvider? offsetProvider = null;
         
         if (!IpcAssignedData.ContainsKey(obj->ObjectID) && TempOffsets[updateIndex] != null) {
-            offsetProvider = TempOffsets[updateIndex];
+            var emote = EmoteIdentifier.Get(character);
+            if (TempOffsetEmote[updateIndex] != emote) {
+                PluginService.Log.Verbose($"Clearing Temp Offset for Object#{updateIndex} - Emote Changed");
+                TempOffsets[updateIndex] = null;
+                TempOffsetEmote[updateIndex] = null;
+            } else {
+                offsetProvider = TempOffsets[updateIndex];
+            }
         }
         
         if (offsetProvider == null) {
-            if (!TryGetCharacterConfig(character, out var characterConfig)) return false;
-            if (!characterConfig.TryGetFirstMatch(character, out offsetProvider)) return false;
+            if (!TryGetCharacterConfig(character, out var characterConfig)) return ReleaseControl(false);
+            if (!characterConfig.TryGetFirstMatch(character, out offsetProvider)) return ReleaseControl(false);
         }
         
         if (!BaseOffsets.TryGetValue(updateIndex, out var offset)) {
@@ -454,6 +473,9 @@ public unsafe class Plugin : IDalamudPlugin {
             case "toggle":
                 Config.Enabled = !Config.Enabled;
                 RequestUpdateAll();
+                break;
+            case "temp":
+                Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
                 break;
             default:
                 configWindow.ToggleWithWarning();

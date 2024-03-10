@@ -16,6 +16,14 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.1f, "0.9.1.0", () => {
+            C("Added Temporary Offsets");
+            C("Allows setting offsets that are not saved into configs.", 1);
+            C("Overrides all other active offsets.", 1);
+            C("Edited from overlay window.", 1);
+            C("/heels temp", 2);
+            C("Can lock and customize overlay window in the plugin settings.", 2);
+        });
         ChangelogFor(9.08f, "0.9.0.8", "Fixed reporting emote offsets to other plugins.");
         ChangelogFor(9.07f, "0.9.0.7", () => {
             C("Added an option to allow group offsets to partially apply to minions.");

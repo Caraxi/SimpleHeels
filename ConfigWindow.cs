@@ -21,6 +21,7 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
@@ -669,6 +670,39 @@ public class ConfigWindow : Window {
 
                 ImGui.Unindent();
                 ImGuiExt.Separator();
+                ImGui.Text("Temporary Offsets");
+                ImGui.SameLine();
+                using (ImRaii.PushFont(UiBuilder.IconFont)) {
+                    ImGui.TextColored(ImGuiColors.DalamudWhite, FontAwesomeIcon.InfoCircle.ToIconString());
+                }
+
+                if (ImGui.IsItemHovered()) {
+                    
+                    ImGui.BeginTooltip();
+                    
+                    ImGui.TextWrapped("Temporary Offsets allow adjusting your current offset without permanently changing the config. Offsets will automatically be reset when you begin or end a looped emote, or if manually reset with the 'Reset Offset' button.");
+                    ImGuiHelpers.ScaledDummy(350, 1);
+                    ImGui.EndTooltip();
+                }
+                
+                using (ImRaii.PushIndent())
+                using (ImRaii.PushId("TempOffsets")) {
+                    ImGui.Checkbox("Show Editing Window", ref config.TempOffsetWindowOpen);
+                    ImGui.SameLine();
+                    ImGui.TextDisabled("Toggle with command");
+                    ImGui.SameLine();
+                    ImGui.TextColored(ImGuiColors.DalamudViolet, "/heels temp");
+                    ImGui.Checkbox("Show Tooltips", ref config.TempOffsetWindowTooltips);
+                    ImGui.Checkbox("Lock Window", ref config.TempOffsetWindowLock);
+                    using (ImRaii.Disabled(config.TempOffsetWindowLock == false)) {
+                        ImGui.Checkbox("Transparent", ref config.TempOffsetWindowTransparent);
+                    }
+
+                    ImGui.Checkbox("Show Plus/Minus Buttons", ref config.TempOffsetWindowPlusMinus);
+                }
+                
+                
+                ImGuiExt.Separator();
 
 #if DEBUG
                 ImGui.Checkbox("[DEBUG] Open config window on startup", ref config.DebugOpenOnStartup);
@@ -719,7 +753,7 @@ public class ConfigWindow : Window {
                 ImGui.Text("Loaded File");
                 ImGui.Checkbox("Use TexTools safe attribute", ref useTextoolSafeAttribute);
 
-                FloatEditor("Heels Offset", ref mdlEditorOffset, 0.001f, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
+                ImGuiExt.FloatEditor("Heels Offset", ref mdlEditorOffset, 0.001f, -1, 1, "%.5f", ImGuiSliderFlags.AlwaysClamp);
                 var offset = attributes.FirstOrDefault(a => a.Length > 13 && a.StartsWith("heels_offset") && a[12] is '_' or '=');
                 if (offset == null) {
                     ImGui.Text("Model has no offset assigned.");
@@ -1094,7 +1128,7 @@ public class ConfigWindow : Window {
                         ImGui.TableNextColumn();
 
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        if (FloatEditor("##offset", ref heelConfig.Offset, 0.001f, float.MinValue, float.MaxValue, "%.5f")) {
+                        if (ImGuiExt.FloatEditor("##offset", ref heelConfig.Offset, 0.001f, float.MinValue, float.MaxValue, "%.5f")) {
                             if (heelConfig.Enabled) Plugin.RequestUpdateAll();
                         }
 
@@ -1389,18 +1423,18 @@ public class ConfigWindow : Window {
                         ImGuiExt.IconTextFrame(e.Emote.Icon, previewEmoteName);
                         ImGui.TableNextColumn();
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        FloatEditor("##height", ref e.Offset.Y, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
+                        ImGuiExt.FloatEditor("##height", ref e.Offset.Y, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
                         ImGui.TableNextColumn();
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        FloatEditor("##forward", ref e.Offset.Z, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
+                        ImGuiExt.FloatEditor("##forward", ref e.Offset.Z, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
                         ImGui.TableNextColumn();
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        FloatEditor("##side", ref e.Offset.X, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
+                        ImGuiExt.FloatEditor("##side", ref e.Offset.X, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
                         ImGui.TableNextColumn();
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
                         var rot = e.Rotation * 180f / MathF.PI;
 
-                        if (FloatEditor("##rotation", ref rot, format: "%.0f", allowPlusMinus: characterConfig is not IpcCharacterConfig, customPlusMinus: 1)) {
+                        if (ImGuiExt.FloatEditor("##rotation", ref rot, format: "%.0f", allowPlusMinus: characterConfig is not IpcCharacterConfig, customPlusMinus: 1)) {
                             if (rot < 0) rot += 360;
                             if (rot >= 360) rot -= 360;
                             e.Rotation = rot * MathF.PI / 180f;
@@ -1598,7 +1632,7 @@ public class ConfigWindow : Window {
             }
 
             ImGuiExt.Separator();
-            FloatEditor("Default Offset", ref characterConfig.DefaultOffset, 0.001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
+            ImGuiExt.FloatEditor("Default Offset", ref characterConfig.DefaultOffset, 0.001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
             ImGui.SameLine();
             ImGuiComponents.HelpMarker("The default offset will be used for all footwear that has not been configured.");
             ImGui.SameLine();
@@ -1743,38 +1777,6 @@ public class ConfigWindow : Window {
     public override void OnClose() {
         PluginService.PluginInterface.SavePluginConfig(config);
         base.OnClose();
-    }
-
-    private bool FloatEditor(string label, ref float value, float speed = 1, float min = float.MinValue, float max = float.MaxValue, string format = "%.5f", ImGuiSliderFlags flags = ImGuiSliderFlags.None, bool allowPlusMinus = true, float? customPlusMinus = null) {
-        var c = false;
-        var w = ImGui.CalcItemWidth();
-
-        if (config.ShowPlusMinusButtons && allowPlusMinus) {
-            if (ImGuiComponents.IconButton($"##{label}_minus", FontAwesomeIcon.Minus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
-                clickHoldThrottle.Restart();
-                value -= customPlusMinus ?? config.PlusMinusDelta;
-                c = true;
-            }
-
-            w -= ImGui.GetItemRectSize().X * 2 + ImGui.GetStyle().ItemSpacing.X * 2;
-            ImGui.SameLine();
-        }
-
-        ImGui.SetNextItemWidth(w);
-
-        c |= ImGui.DragFloat($"##{label}_slider", ref value, speed, min, max, format, flags);
-        if (config.ShowPlusMinusButtons && allowPlusMinus) {
-            ImGui.SameLine();
-            if (ImGuiComponents.IconButton($"##{label}_plus", FontAwesomeIcon.Plus) || (holdingClick.ElapsedMilliseconds > 500 && clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {
-                clickHoldThrottle.Restart();
-                value += customPlusMinus ?? MathF.Round(config.PlusMinusDelta, 5, MidpointRounding.AwayFromZero);
-                c = true;
-            }
-        }
-
-        ImGui.SameLine();
-        ImGui.Text(label.Split("##")[0]);
-        return c;
     }
 
     private bool MouseWithin(Vector2 min, Vector2 max) {

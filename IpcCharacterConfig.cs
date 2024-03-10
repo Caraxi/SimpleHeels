@@ -24,7 +24,9 @@ public class IpcCharacterConfig : CharacterConfig {
             EmoteConfigs = characterConfig?.EmoteConfigs?.Where(e => e.Enabled).Select(e => e.IpcClone()).ToList() ?? new List<EmoteConfig>();
         }
 
-        TempOffset = player.ObjectIndex < Constants.ObjectLimit ? Plugin.TempOffsets[player.ObjectIndex] : null;
+        if (player.ObjectIndex < Constants.ObjectLimit && Plugin.TempOffsets[player.ObjectIndex] != null) {
+            TempOffset = Plugin.TempOffsets[player.ObjectIndex]?.Clone() ?? null;
+        }
     }
 
     public IpcCharacterConfig() { }
@@ -74,6 +76,9 @@ public class IpcCharacterConfig : CharacterConfig {
     
     public override unsafe IOffsetProvider? GetFirstMatch(Character* character, bool checkEmote = true) {
         if (character == null) return null;
+
+        if (TempOffset != null) return TempOffset;
+        
         if (checkEmote && EmoteConfigs != null) {
             var emote = EmoteIdentifier.Get(character);
             if (emote != null) {
