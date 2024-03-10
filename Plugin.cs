@@ -389,12 +389,13 @@ public unsafe class Plugin : IDalamudPlugin {
         
         if (!IpcAssignedData.ContainsKey(obj->ObjectID) && TempOffsets[updateIndex] != null) {
             var emote = EmoteIdentifier.Get(character);
-            if (TempOffsetEmote[updateIndex] != emote) {
+            var tEmote = TempOffsetEmote[updateIndex];
+            if (TempOffsetEmote[updateIndex] == emote || (emote != null && tEmote != null && emote.EmoteModeId == tEmote.EmoteModeId)) {
+                offsetProvider = TempOffsets[updateIndex];
+            } else {
                 PluginService.Log.Verbose($"Clearing Temp Offset for Object#{updateIndex} - Emote Changed");
                 TempOffsets[updateIndex] = null;
                 TempOffsetEmote[updateIndex] = null;
-            } else {
-                offsetProvider = TempOffsets[updateIndex];
             }
         }
         
