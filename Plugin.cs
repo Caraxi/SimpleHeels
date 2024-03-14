@@ -246,8 +246,14 @@ public unsafe class Plugin : IDalamudPlugin {
             ActorMapping.Add(destination->GameObject.ObjectIndex, (name.TextValue, source->HomeWorld));
             if (destination->GameObject.ObjectIndex < Constants.ObjectLimit && source->GameObject.ObjectIndex < Constants.ObjectLimit) {
                 ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
-                TempOffsets[destination->GameObject.ObjectIndex] = TempOffsets[source->GameObject.ObjectIndex];
-                TempOffsetEmote[destination->GameObject.ObjectIndex] = TempOffsetEmote[source->GameObject.ObjectIndex];
+                if (IpcAssignedData.TryGetValue(source->GameObject.ObjectID, out var ipcCharacterConfig)) {
+                    TempOffsets[destination->GameObject.ObjectIndex] = ipcCharacterConfig.TempOffset;
+                    TempOffsetEmote[destination->GameObject.ObjectIndex] = ipcCharacterConfig.TempOffset == null ? null : EmoteIdentifier.Get(source);
+                } else {
+                    TempOffsets[destination->GameObject.ObjectIndex] = TempOffsets[source->GameObject.ObjectIndex];
+                    TempOffsetEmote[destination->GameObject.ObjectIndex] = TempOffsetEmote[source->GameObject.ObjectIndex];
+                }
+                
                 destination->GameObject.DrawOffset = source->GameObject.DrawOffset;
                 if (BaseOffsets.TryGetValue(source->GameObject.ObjectIndex, out var baseOffset)) {
                     BaseOffsets[destination->GameObject.ObjectIndex] = baseOffset;

@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.12f, "0.9.1.2", "Apply temp offsets from synced players to gpose clones.");
         ChangelogFor(9.1f, "0.9.1.0", () => {
             C("Added Temporary Offsets");
             C("Allows setting offsets that are not saved into configs.", 1);
