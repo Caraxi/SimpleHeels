@@ -32,11 +32,9 @@ namespace SimpleHeels;
 
 public class ConfigWindow : Window {
     private static FileDialogManager? _fileDialogManager;
-    private readonly Stopwatch clickHoldThrottle = Stopwatch.StartNew();
     private readonly PluginConfig config;
     private readonly Stopwatch hiddenStopwatch = Stopwatch.StartNew();
-
-    private readonly Stopwatch holdingClick = Stopwatch.StartNew();
+    
     private readonly Plugin plugin;
 
     private readonly Lazy<Dictionary<(ushort, ModelSlot), ShoeModel>> shoeModelList = new(() => {
@@ -352,8 +350,6 @@ public class ConfigWindow : Window {
             notVisibleWarningCancellationTokenSource.Cancel();
             notVisibleWarningCancellationTokenSource = null;
         }
-
-        if (holdingClick.IsRunning && !ImGui.IsMouseDown(ImGuiMouseButton.Left)) holdingClick.Restart();
 
         if (!config.Enabled) {
             ImGui.PushStyleColor(ImGuiCol.Button, ImGuiColors.DalamudRed * new Vector4(1, 1, 1, 0.3f));

@@ -56,6 +56,8 @@ public static class ImGuiExt {
     private static Stopwatch _holdingClick = Stopwatch.StartNew();
 
     public static bool FloatEditor(string label, ref float value, float speed = 1, float min = float.MinValue, float max = float.MaxValue, string format = "%.5f", ImGuiSliderFlags flags = ImGuiSliderFlags.None, bool allowPlusMinus = true, float? customPlusMinus = null, bool? forcePlusMinus = null) {
+        if (_holdingClick.IsRunning && !ImGui.IsMouseDown(ImGuiMouseButton.Left)) _holdingClick.Restart();
+        
         using var group = ImRaii.Group();
         var showPlusMinus = allowPlusMinus && (forcePlusMinus ?? Plugin.Config.ShowPlusMinusButtons);
         var c = false;
