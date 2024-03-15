@@ -313,6 +313,8 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private bool UpdateCompanion(uint updateIndex, GameObject* obj) {
+        if (!Config.ApplyToMinions) return false;
+        
         using var performance = PerformanceMonitors.Run("UpdateCompanionObject");
         using var performance2 = PerformanceMonitors.Run("UpdateObject");
         using var performance3 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);
@@ -390,6 +392,23 @@ public unsafe class Plugin : IDalamudPlugin {
 
         using var performance = PerformanceMonitors.Run("UpdateObject");
         using var performance2 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);
+
+        if (Config is { Enabled: true, SyncStaticMinionPositions: true } && character->Companion.CompanionObject != null) {
+            var companion = (GameObject*) character->Companion.CompanionObject;
+            if (companion->DrawObject != null) {
+                if (Config.SyncStaticMinionPositions && Utils.StaticMinions.Value.Contains(companion->DataID) && IpcAssignedData.TryGetValue(obj->ObjectID, out var ipc) && ipc.MinionPosition != null) {
+                    companion->DrawObject->Object.Position.X = ipc.MinionPosition.X;
+                    companion->DrawObject->Object.Position.Y = ipc.MinionPosition.Y;
+                    companion->DrawObject->Object.Position.Z = ipc.MinionPosition.Z;
+                    companion->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(ipc.MinionPosition.R, 0, 0);
+                    return false;
+                }
+            
+                if (updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->DataID)) {
+                    ApiProvider.UpdateMinion(companion->Position, companion->Rotation);
+                }
+            }
+        }
 
         IOffsetProvider? offsetProvider = null;
         

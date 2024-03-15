@@ -1,4 +1,8 @@
-﻿using FFXIVClientStructs.FFXIV.Client.Game.Object;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using Lumina.Excel.GeneratedSheets2;
 
 namespace SimpleHeels;
 
@@ -12,4 +16,12 @@ public static unsafe class Utils {
 
         return null;
     }
+    
+    public static Lazy<HashSet<uint>> StaticMinions = new(() => {
+        try {
+            return PluginService.Data.GetExcelSheet<Companion>()?.Where(c => c.Behavior.Row == 3).Select(c => c.RowId)?.ToHashSet() ?? new HashSet<uint>();
+        } catch {
+            return new HashSet<uint>();
+        }
+    });
 }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
@@ -14,9 +13,9 @@ public class IpcCharacterConfig : CharacterConfig {
     [JsonIgnore] public string IpcJson { get; private set; } = string.Empty;
 
     public TempOffset? TempOffset;
+    public TempOffset? MinionPosition;
     
-    
-    public IpcCharacterConfig(Plugin plugin, PlayerCharacter player) {
+    public unsafe IpcCharacterConfig(Plugin plugin, PlayerCharacter player) {
         if (player == null) throw new Exception("No Player");
 
         if (plugin.TryGetCharacterConfig(player, out var characterConfig, false) && characterConfig != null) {
@@ -26,6 +25,14 @@ public class IpcCharacterConfig : CharacterConfig {
 
         if (player.ObjectIndex < Constants.ObjectLimit && Plugin.TempOffsets[player.ObjectIndex] != null) {
             TempOffset = Plugin.TempOffsets[player.ObjectIndex]?.Clone() ?? null;
+        }
+        
+        if (Plugin.Config.SyncStaticMinionPositions) {
+            var chr = (Character*)player.Address;
+            if (chr->Companion.CompanionObject != null && Utils.StaticMinions.Value.Contains(chr->Companion.CompanionObject->Character.GameObject.DataID)) {
+                var p = chr->Companion.CompanionObject->Character.GameObject.Position;
+                MinionPosition = new TempOffset(p.X, p.Y, p.Z, chr->Companion.CompanionObject->Character.GameObject.Rotation);
+            }
         }
     }
 
@@ -48,6 +55,7 @@ public class IpcCharacterConfig : CharacterConfig {
     public override bool ShouldSerializeEmoteConfigs() => EmoteConfigs is { Count: > 0 };
 
     public bool ShouldSerializeTempOffset() => TempOffset != null;
+    public bool ShouldSerializeMinionPosition() => MinionPosition != null;
 
     public static IpcCharacterConfig? FromString(string json) {
         if (string.IsNullOrWhiteSpace(json)) return new IpcCharacterConfig().Initialize() as IpcCharacterConfig;

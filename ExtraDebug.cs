@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using ImGuiNET;
+using Companion = Lumina.Excel.GeneratedSheets2.Companion;
 
 namespace SimpleHeels;
 
@@ -38,8 +41,12 @@ public unsafe class ExtraDebug : Window {
         ImGui.Spacing();
         ImGui.TextDisabled($"Time Since Report: {ApiProvider.TimeSinceLastReport.Elapsed:hh\\:mm\\:ss}");
         
-        
-        
+        ImGui.Separator();
+        var localPlayer = PluginService.ClientState.LocalPlayer;
+        if (localPlayer != null) {
+            var chr = (Character*)localPlayer.Address;
+            Util.ShowStruct(chr);
+        }
         
         ImGui.Unindent();
         
@@ -52,6 +59,33 @@ public unsafe class ExtraDebug : Window {
 
     private void TabBaseOffsets() {
         foreach (var (index, offset) in plugin.BaseOffsets) ImGui.Text($"Object#{index} => {offset}");
+    }
+
+    private Vector4[] minionPositions = new Vector4[Constants.ObjectLimit];
+    private void TabStaticMinions() {
+        foreach (var c in PluginService.Objects.Where(o => o is PlayerCharacter).Cast<PlayerCharacter>()) {
+            if (c == null) continue;
+            var chr = (Character*)c.Address;
+            if (chr->Companion.CompanionObject == null) continue;
+            var companionId = chr->Companion.CompanionObject->Character.GameObject.DataID;
+            var companion = PluginService.Data.GetExcelSheet<Companion>()?.GetRow(companionId);
+            if (companion == null) continue;
+            if (companion.Behavior.Row != 3) continue;
+            using (ImRaii.PushId($"chr_{c.ObjectId:X}")) {
+                ImGui.Separator();
+                var go = &chr->Companion.CompanionObject->Character.GameObject;
+                if (minionPositions[go->ObjectIndex] == default) minionPositions[go->ObjectIndex] = new Vector4(go->Position, go->Rotation);
+                if (ImGui.DragFloat4($"{c.Name.TextValue}'s {companion.Singular.ToDalamudString().TextValue}", ref minionPositions[go->ObjectIndex], 0.01f)) {
+                    go->DrawObject->Object.Position.X = minionPositions[go->ObjectIndex].X;
+                    go->DrawObject->Object.Position.Y = minionPositions[go->ObjectIndex].Y;
+                    go->DrawObject->Object.Position.Z = minionPositions[go->ObjectIndex].Z;
+                    go->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(minionPositions[go->ObjectIndex].W, 0, 0);
+                }
+                
+                ImGui.SameLine();
+                ImGui.Text($"{go->ObjectID:X}");
+            }
+        }
     }
 
     private void TabObjects() {
