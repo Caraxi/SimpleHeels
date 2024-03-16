@@ -401,7 +401,6 @@ public unsafe class Plugin : IDalamudPlugin {
                     companion->DrawObject->Object.Position.Y = ipc.MinionPosition.Y;
                     companion->DrawObject->Object.Position.Z = ipc.MinionPosition.Z;
                     companion->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(ipc.MinionPosition.R, 0, 0);
-                    return false;
                 }
             
                 if (updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->DataID)) {
