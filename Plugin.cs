@@ -396,7 +396,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (Config is { Enabled: true, SyncStaticMinionPositions: true } && character->Companion.CompanionObject != null) {
             var companion = (GameObject*) character->Companion.CompanionObject;
             if (companion->DrawObject != null) {
-                if (Config.SyncStaticMinionPositions && Utils.StaticMinions.Value.Contains(companion->DataID) && IpcAssignedData.TryGetValue(obj->ObjectID, out var ipc) && ipc.MinionPosition != null) {
+                if (updateIndex != 0 && Config.SyncStaticMinionPositions && Utils.StaticMinions.Value.Contains(companion->DataID) && IpcAssignedData.TryGetValue(obj->ObjectID, out var ipc) && ipc.MinionPosition != null) {
                     companion->DrawObject->Object.Position.X = ipc.MinionPosition.X;
                     companion->DrawObject->Object.Position.Y = ipc.MinionPosition.Y;
                     companion->DrawObject->Object.Position.Z = ipc.MinionPosition.Z;
