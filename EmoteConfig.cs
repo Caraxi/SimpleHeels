@@ -18,7 +18,7 @@ public class EmoteConfig : IOffsetProvider{
     
     [NonSerialized] public bool Editing = false;
 
-    public EmoteIdentifier Emote;
+    public EmoteIdentifier Emote = new(0, 0);
     public bool Enabled = true;
     public string Label = string.Empty;
     public HashSet<EmoteIdentifier> LinkedEmotes = new();

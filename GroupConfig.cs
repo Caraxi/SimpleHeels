@@ -27,7 +27,7 @@ public class GroupConfig : CharacterConfig {
         if (human->Customize.Sex > 1) return false;
         if (human->Customize.Sex == 0 && MatchMasculine == false) return false;
         if (human->Customize.Sex == 1 && MatchFeminine == false) return false;
-        if (Clans.Count >= 1 && Clans.All(c => c != human->Customize.Clan)) return false;
+        if (Clans.Count >= 1 && Clans.All(c => c != human->Customize.Tribe)) return false;
 
         if (Characters.Any(c => !string.IsNullOrWhiteSpace(c.Name)) && !Characters.Any(c => c.World == world && c.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase))) return false;
 

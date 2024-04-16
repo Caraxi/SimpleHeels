@@ -75,9 +75,6 @@ public class ConfigWindow : Window {
 
     private string groupNameMatchingNewInput = string.Empty;
     private string groupNameMatchingWorldSearch = string.Empty;
-    private bool? heelsConfigExists;
-
-    private string? heelsConfigPath;
 
     private Vector2 iconButtonSize = new(16);
 
@@ -905,7 +902,7 @@ public class ConfigWindow : Window {
             }
 
             using (ImRaii.Disabled(!ImGui.GetIO().KeyShift)) {
-                if (ImGui.Button("Create Group")) {
+                if (ImGui.Button("Create Group") && selectedCharacter != null) {
                     if (new GroupConfig { Label = $"Group from {selectedName}@{worldName}", HeelsConfig = selectedCharacter.HeelsConfig, EmoteConfigs = selectedCharacter.EmoteConfigs, Enabled = false }.Initialize() is GroupConfig group) {
                         var copy = JsonConvert.DeserializeObject<GroupConfig>(JsonConvert.SerializeObject(group));
                         if (copy != null) {
@@ -1349,7 +1346,7 @@ public class ConfigWindow : Window {
                 emoteOffsetsOpen = ImGui.CollapsingHeader("Emote Offsets", ImGuiTreeNodeFlags.DefaultOpen);
             }
 
-            if (emoteOffsetsOpen) {
+            if (emoteOffsetsOpen && characterConfig.EmoteConfigs != null) {
                 if (ImGui.BeginTable("emoteOffsets", characterConfig is IpcCharacterConfig ? 6 : 8, ImGuiTableFlags.NoClip)) {
                     if (characterConfig is not IpcCharacterConfig) {
                         ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 4 + 3 * ImGuiHelpers.GlobalScale);
@@ -1444,7 +1441,7 @@ public class ConfigWindow : Window {
 
                         var activeEmote = EmoteIdentifier.Get(activeCharacterAsCharacter);
                         
-                        ShowActiveOffsetMarker(activeCharacterAsCharacter != null && (activeEmote == e.Emote || (characterConfig is not IpcCharacterConfig && e.Editing == false && e.LinkedEmotes.Contains(activeEmote))), e.Enabled, activeHeelConfig == e, "Emote is currently being performed");
+                        ShowActiveOffsetMarker(activeCharacterAsCharacter != null && activeEmote != null &&(activeEmote == e.Emote || (characterConfig is not IpcCharacterConfig && e.Editing == false && e.LinkedEmotes.Contains(activeEmote))), e.Enabled, activeHeelConfig == e, "Emote is currently being performed");
 
                         if (characterConfig is IpcCharacterConfig || e.Editing) {
                             var fl = characterConfig is not IpcCharacterConfig;

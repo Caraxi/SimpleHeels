@@ -96,7 +96,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public string Name => "Simple Heels";
 
-    public static PluginConfig Config { get; private set; }
+    public static PluginConfig Config { get; private set; } = new();
 
     public bool[] ManagedIndex { get; } = new bool[Constants.ObjectLimit];
     public static bool[] NeedsUpdate { get; } = new bool[Constants.ObjectLimit];
