@@ -1665,6 +1665,33 @@ public class ConfigWindow : Window {
 
         if (Plugin.IsDebug) {
             if (characterConfig is IpcCharacterConfig ipcCharacter && ImGui.TreeNode("IPC Data")) {
+                if (ipcCharacter.EmotePosition != null && activeCharacterAsCharacter->Mode is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop) {
+                    ImGui.Text("Position Error:");
+                    var pos = (Vector3) activeCharacter->Position;
+                    var emotePos = ipcCharacter.EmotePosition.GetOffset();
+
+                    var eR = 180f / MathF.PI * ipcCharacter.EmotePosition.R;
+                    var cR = 180f / MathF.PI * activeCharacter->Rotation;
+                    
+                    var rotDif = 180 - MathF.Abs(MathF.Abs(eR - cR) - 180); ;
+                    ImGui.Indent();
+                    ImGui.Text($"Position: {Vector3.Distance(pos, emotePos)}");
+                    ImGui.Text($"Rotation: {rotDif}");
+                    if (ImGui.GetIO().KeyShift) {
+                        if (PluginService.GameGui.WorldToScreen(pos, out var a)) {
+                            var dl = ImGui.GetBackgroundDrawList(ImGuiHelpers.MainViewport);
+                            dl.AddCircleFilled(a, 3, 0xFF0000FF);
+                        }
+
+                        if (PluginService.GameGui.WorldToScreen(emotePos, out var b)) {
+                            var dl = ImGui.GetBackgroundDrawList(ImGuiHelpers.MainViewport);
+                            dl.AddCircle(b, 3, 0xFF00FF00);
+                        }
+                    }
+                    
+                    ImGui.Unindent();
+                }
+                
                 ImGui.TextWrapped(ipcCharacter.IpcJson);
                 ImGui.TreePop();
             }

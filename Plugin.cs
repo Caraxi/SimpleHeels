@@ -48,6 +48,9 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 80 89 ?? ?? ?? ?? ?? 48 8B D9", DetourName = nameof(TerminateCharacterDetour))]
     private Hook<TerminateCharacter>? terminateCharacterHook;
 
+    [Signature("E8 ?? ?? ?? ?? 48 8B 4B 08 44 8B CF", DetourName = nameof(SetModeDetour))]
+    private Hook<SetMode>? setModeHook;
+
     public Plugin(DalamudPluginInterface pluginInterface) {
 #if DEBUG
         IsDebug = true;
@@ -89,6 +92,7 @@ public unsafe class Plugin : IDalamudPlugin {
         cloneActor?.Enable();
         setDrawRotationHook?.Enable();
         terminateCharacterHook?.Enable();
+        setModeHook?.Enable();
         RequestUpdateAll();
 
         for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
@@ -140,6 +144,10 @@ public unsafe class Plugin : IDalamudPlugin {
         terminateCharacterHook?.Disable();
         terminateCharacterHook?.Dispose();
         terminateCharacterHook = null;
+        
+        setModeHook?.Disable();
+        setModeHook?.Dispose();
+        setModeHook = null;
     }
 
     private void* TerminateCharacterDetour(Character* character) {
@@ -153,6 +161,21 @@ public unsafe class Plugin : IDalamudPlugin {
         }
 
         return terminateCharacterHook!.Original(character);
+    }
+
+    private void* SetModeDetour(Character* character, ulong mode, byte modeParam) {
+        try {
+            return setModeHook!.Original(character, mode, modeParam);
+        } finally {
+            try {
+                var m = (Character.CharacterModes)mode;
+                if (character->GameObject.ObjectIndex == 0 && m is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop) {
+                    ApiProvider.ForceUpdateLocal();
+                }
+            } catch (Exception ex) {
+                PluginService.Log.Error(ex, "Error handling SetMode");
+            }
+        }
     }
 
     public bool TryGetCharacterConfig(PlayerCharacter playerCharacter, out CharacterConfig? characterConfig, bool allowIpc = true) {
@@ -564,4 +587,5 @@ public unsafe class Plugin : IDalamudPlugin {
     private delegate void* SetDrawRotation(GameObject* gameObject, float rotation);
 
     private delegate void* TerminateCharacter(Character* character);
+    private delegate void* SetMode(Character* character, ulong mode, byte modeParam);
 }

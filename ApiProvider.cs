@@ -127,6 +127,13 @@ public static class ApiProvider {
         }
     }
 
+    internal static void ForceUpdateLocal() {
+        _lastReportedOffset = null;
+        _lastReportedRotation = null;
+        _lastReported = null;
+        OnChanged();
+    }
+
     internal static void UpdateMinion(Vector3 pos, float rotation) {
         if (_lastReported?.MinionPosition == null || Vector3.Distance(new Vector3(_lastReported.MinionPosition.X, _lastReported.MinionPosition.Y, _lastReported.MinionPosition.Z), pos) > Constants.FloatDelta || MathF.Abs(_lastReported.MinionPosition.R - rotation) > Constants.FloatDelta) {
             OnChanged();
