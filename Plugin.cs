@@ -426,7 +426,7 @@ public unsafe class Plugin : IDalamudPlugin {
                     companion->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(ipc.MinionPosition.R, 0, 0);
                 }
             
-                if (Config.SyncStaticMinionPositions && updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->DataID)) {
+                if (Config.ApplyStaticMinionPositions && updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->DataID)) {
                     ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f);
                 }
             }
@@ -459,6 +459,17 @@ public unsafe class Plugin : IDalamudPlugin {
 
         var appliedOffset = offsetProvider.GetOffset();
         offset += appliedOffset;
+        if (updateIndex != 0 && Config.UsePrecisePositioning && character->Mode is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop && IpcAssignedData.TryGetValue(obj->ObjectID, out var ipcCharacter) && ipcCharacter.EmotePosition != null) {
+            using (PerformanceMonitors.Run($"Calculate Precise Position Offset:{updateIndex}", Config.DetailedPerformanceLogging))
+            using (PerformanceMonitors.Run("Calculate Precise Position Offset")) {
+                var pos = (Vector3) character->GameObject.Position;
+                var emotePos = ipcCharacter.EmotePosition.GetOffset();
+
+                if (Vector3.Distance(pos, emotePos) is > Constants.FloatDelta and < 0.1f ) {
+                    offset += emotePos - pos;
+                }
+            }
+        }
 
         if (Vector3.Distance(offset, obj->DrawOffset) > Constants.FloatDelta) {
             using (PerformanceMonitors.Run($"Set Offset:{updateIndex}", Config.DetailedPerformanceLogging))

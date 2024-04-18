@@ -32,7 +32,7 @@ public class IpcCharacterConfig : CharacterConfig {
             TempOffset = Plugin.TempOffsets[player.ObjectIndex]?.Clone() ?? null;
         }
         var chr = (Character*)player.Address;
-        if (Plugin.Config.SyncStaticMinionPositions) {
+        if (Plugin.Config.ApplyStaticMinionPositions) {
             
             if (chr->Companion.CompanionObject != null && Utils.StaticMinions.Value.Contains(chr->Companion.CompanionObject->Character.GameObject.DataID)) {
                 var drawObj = chr->Companion.CompanionObject->Character.GameObject.DrawObject;

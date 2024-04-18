@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.3f, "0.9.3.0", "Added optional precise position sharing when performing looping emotes.");
         ChangelogFor(9.2f, "0.9.2.0", "Added optional stationary minion position sharing.");
         ChangelogFor(9.13f, "0.9.1.3", "Fix Plus/Minus buttons applying change multiple times per click.");
         ChangelogFor(9.12f, "0.9.1.2", "Apply temp offsets from synced players to gpose clones.");

@@ -639,10 +639,15 @@ public class ConfigWindow : Window {
                 ImGui.SameLine();
                 ImGuiComponents.HelpMarker("Allows group offsets to be applied to minions.\nThis only functions if the minion has been converted to a human using another plugin such as Glamourer.\nEmote offsets and syncing will not function on minions.");
 
-                ImGui.Checkbox("Share static minion positions", ref config.SyncStaticMinionPositions);
+                ImGui.Checkbox("Share static minion positions", ref config.ApplyStaticMinionPositions);
                 ImGui.SameLine();
                 ImGuiComponents.HelpMarker("Allows the sending and recieving of static minion positions when syncing your offset with Mare.\nThis option must be enabled on both sides to have an effect on position.\nOnly works on minions that do not move, such as the Plush Cushion and Wanderers Campfire");
 
+                
+                ImGui.Checkbox("Use precise positioning for emotes", ref config.UsePrecisePositioning);
+                ImGui.SameLine();
+                ImGuiComponents.HelpMarker("Adjusts offsets of other players to better match the position they see themself in.\n\nBy default, the game does not have a good deal of precision in showing where other players are, this option helps line up emotes that aren't bound to a chair or bed.");
+                
                 ImGui.Checkbox("Prefer model paths when creating new entries", ref config.PreferModelPath);
 
                 ImGui.Checkbox("Show Plus/Minus buttons for offset adjustments", ref config.ShowPlusMinusButtons);
@@ -1673,7 +1678,7 @@ public class ConfigWindow : Window {
                     var eR = 180f / MathF.PI * ipcCharacter.EmotePosition.R;
                     var cR = 180f / MathF.PI * activeCharacter->Rotation;
                     
-                    var rotDif = 180 - MathF.Abs(MathF.Abs(eR - cR) - 180); ;
+                    var rotDif = 180 - MathF.Abs(MathF.Abs(eR - cR) - 180);
                     ImGui.Indent();
                     ImGui.Text($"Position: {Vector3.Distance(pos, emotePos)}");
                     ImGui.Text($"Rotation: {rotDif}");

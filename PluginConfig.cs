@@ -32,7 +32,8 @@ public class PluginConfig : IPluginConfiguration {
     public bool TempOffsetWindowTransparent = false;
     public bool TempOffsetWindowPlusMinus = true;
 
-    public bool SyncStaticMinionPositions = false;
+    public bool ApplyStaticMinionPositions = true;
+    public bool UsePrecisePositioning = true;
 
     public Dictionary<uint, Dictionary<string, CharacterConfig>> WorldCharacterDictionary = new();
     public int Version { get; set; } = 1;
