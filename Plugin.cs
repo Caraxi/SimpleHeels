@@ -260,7 +260,6 @@ public unsafe class Plugin : IDalamudPlugin {
             var destination = destinationArray[1];
             if (destination == null) return cloneActor!.Original(destinationArray, source, copyFlags);
             if (destination->GameObject.ObjectIndex < 200) {
-                PluginService.Log.Warning($"Game attempting to clone Actor#{source->GameObject.ObjectIndex} to Actor#{destination->GameObject.ObjectIndex}. Something seems wrong.");
                 return cloneActor!.Original(destinationArray, source, copyFlags);
             }
 
@@ -465,7 +464,7 @@ public unsafe class Plugin : IDalamudPlugin {
                 var pos = (Vector3) character->GameObject.Position;
                 var emotePos = ipcCharacter.EmotePosition.GetOffset();
 
-                if (Vector3.Distance(pos, emotePos) is > Constants.FloatDelta and < 0.1f ) {
+                if (Vector3.Distance(pos, emotePos) is > Constants.FloatDelta and < 1f ) {
                     offset += emotePos - pos;
                 }
             }
