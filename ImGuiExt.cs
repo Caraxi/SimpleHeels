@@ -55,7 +55,7 @@ public static class ImGuiExt {
     private static Stopwatch _clickHoldThrottle = Stopwatch.StartNew();
     private static Stopwatch _holdingClick = Stopwatch.StartNew();
 
-    public static bool FloatEditor(string label, ref float value, float speed = 1, float min = float.MinValue, float max = float.MaxValue, string format = "%.5f", ImGuiSliderFlags flags = ImGuiSliderFlags.None, bool allowPlusMinus = true, float? customPlusMinus = null, bool? forcePlusMinus = null) {
+    public static bool FloatEditor(string label, ref float value, float speed = 1, float min = float.MinValue, float max = float.MaxValue, string format = "%.5f", ImGuiSliderFlags flags = ImGuiSliderFlags.None, bool allowPlusMinus = true, float? customPlusMinus = null, bool? forcePlusMinus = null, float? resetValue = null) {
         if (_holdingClick.IsRunning && !ImGui.IsMouseDown(ImGuiMouseButton.Left)) _holdingClick.Restart();
         
         using var group = ImRaii.Group();
@@ -77,6 +77,11 @@ public static class ImGuiExt {
         ImGui.SetNextItemWidth(w);
 
         c |= ImGui.DragFloat($"##{label}_slider", ref value, speed, min, max, format, flags);
+
+        if (resetValue != null && Plugin.Config.RightClickResetValue && ImGui.IsItemClicked(ImGuiMouseButton.Right) && ImGui.GetIO().KeyShift) {
+            value = resetValue.Value;
+        }
+        
         if (showPlusMinus) {
             ImGui.SameLine();
             if (ImGuiComponents.IconButton($"##{label}_plus", FontAwesomeIcon.Plus) || (_holdingClick.ElapsedMilliseconds > 500 && _clickHoldThrottle.ElapsedMilliseconds > 50 && ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))) {

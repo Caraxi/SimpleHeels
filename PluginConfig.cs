@@ -25,6 +25,7 @@ public class PluginConfig : IPluginConfiguration {
     public bool ShowPlusMinusButtons = true;
     public bool UseModelOffsets = true;
     public bool ApplyToMinions = false;
+    public bool RightClickResetValue = false;
 
     public bool TempOffsetWindowOpen = false;
     public bool TempOffsetWindowLock = false;

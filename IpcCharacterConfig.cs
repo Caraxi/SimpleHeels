@@ -69,11 +69,17 @@ public class IpcCharacterConfig : CharacterConfig {
     public override bool ShouldSerializeIgnoreModelOffsets() => false;
 
     public override bool ShouldSerializeEmoteConfigs() => EmoteConfigs is { Count: > 0 };
+    public override bool ShouldSerializeDefaultOffset() => MathF.Abs(DefaultOffset) > Constants.FloatDelta;
 
     public bool ShouldSerializeTempOffset() => TempOffset != null;
     public bool ShouldSerializeMinionPosition() => MinionPosition != null;
     public bool ShouldSerializeEmotePosition() => EmotePosition != null;
-    public bool ShouldSerializePluginVersion() => !string.IsNullOrWhiteSpace(PluginVersion);
+    public bool ShouldSerializePluginVersion() => !string.IsNullOrWhiteSpace(PluginVersion) && (
+        ShouldSerializeDefaultOffset() || ShouldSerializeEmotePosition() || ShouldSerializeEmoteConfigs() || 
+        ShouldSerializeTempOffset() || ShouldSerializeMinionPosition()
+    );
+
+    public override bool ShouldSerializeVersion() => ShouldSerializePluginVersion();
 
     public static IpcCharacterConfig? FromString(string json) {
         if (string.IsNullOrWhiteSpace(json)) return new IpcCharacterConfig().Initialize() as IpcCharacterConfig;

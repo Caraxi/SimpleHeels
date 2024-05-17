@@ -180,6 +180,8 @@ public class CharacterConfig : IOffsetProvider {
 
     public virtual bool ShouldSerializeEmoteConfigs() => true;
 
+    public virtual bool ShouldSerializeVersion() => true;
+
     #region Legacy Data
 
     public float SittingOffsetZ = 0f;
@@ -194,6 +196,8 @@ public class CharacterConfig : IOffsetProvider {
     public virtual bool ShouldSerializeGroundSitOffset() => MathF.Abs(GroundSitOffset) >= Constants.FloatDelta;
 
     public virtual bool ShouldSerializeSleepOffset() => MathF.Abs(SleepOffset) >= Constants.FloatDelta;
+
+    public virtual bool ShouldSerializeDefaultOffset() => true;
 
     #endregion
 }
