@@ -16,6 +16,11 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.31f, "0.9.3.1", () => {
+            C("Added option to allow right clicking offset inputs to return to zero.");
+            C("Added button to emote offsets to reset all values to zero.");
+            C("Increased range for precise positioning.");
+        });
         ChangelogFor(9.3f, "0.9.3.0", "Added optional precise position sharing when performing looping emotes.");
         ChangelogFor(9.2f, "0.9.2.0", "Added optional stationary minion position sharing.");
         ChangelogFor(9.13f, "0.9.1.3", "Fix Plus/Minus buttons applying change multiple times per click.");
