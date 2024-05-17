@@ -1388,7 +1388,18 @@ public class ConfigWindow : Window {
                             }
 
                             using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, new Vector2(1))) {
-                                ImGui.Dummy(new Vector2(checkboxSize));
+                                using (ImRaii.Disabled(e.Locked || !ImGui.GetIO().KeyShift))
+                                using (ImRaii.PushFont(UiBuilder.IconFont)) {
+                                    if (ImGui.Button(FontAwesomeIcon.Eraser.ToIconString(), new Vector2(checkboxSize))) {
+                                        e.Offset = new Vector3(0, 0, 0);
+                                        e.Rotation = 0;
+                                    }
+                                }
+                                
+                                if (e.Locked == false && !ImGui.GetIO().KeyShift && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
+                                    ImGui.SetTooltip("Hold SHIFT to reset all values to zero");
+                                }
+                                
                                 ImGui.SameLine();
                                 using (ImRaii.Disabled(e.Locked || !ImGui.GetIO().KeyShift))
                                 using (ImRaii.PushFont(UiBuilder.IconFont)) {
