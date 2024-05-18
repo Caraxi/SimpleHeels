@@ -80,6 +80,7 @@ public static class ImGuiExt {
 
         if (resetValue != null && Plugin.Config.RightClickResetValue && ImGui.IsItemClicked(ImGuiMouseButton.Right) && ImGui.GetIO().KeyShift) {
             value = resetValue.Value;
+            c = true;
         }
         
         if (showPlusMinus) {

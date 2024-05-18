@@ -1646,7 +1646,7 @@ public class ConfigWindow : Window {
             }
 
             ImGuiExt.Separator();
-            ImGuiExt.FloatEditor("Default Offset", ref characterConfig.DefaultOffset, 0.001f, allowPlusMinus: characterConfig is not IpcCharacterConfig);
+            ImGuiExt.FloatEditor("Default Offset", ref characterConfig.DefaultOffset, 0.001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
             ImGui.SameLine();
             ImGuiComponents.HelpMarker("The default offset will be used for all footwear that has not been configured.");
             ImGui.SameLine();
