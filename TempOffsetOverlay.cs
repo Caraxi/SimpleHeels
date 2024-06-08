@@ -119,7 +119,7 @@ public sealed unsafe class TempOffsetOverlay : Window {
 
         // Auto Resize Height Only
         if (Size != null && ImGui.GetContentRegionAvail().Y != 0) {
-            Size = Size.Value with { Y = Size.Value.Y - ImGui.GetContentRegionAvail().Y };
+            Size = Size.Value with { Y = Size.Value.Y - (ImGui.GetContentRegionAvail().Y * 1 / ImGuiHelpers.GlobalScale) };
             SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = Size.Value with { X = 100 },
                 MaximumSize = Size.Value with { X = float.MaxValue },
