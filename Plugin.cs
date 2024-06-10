@@ -164,12 +164,13 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void* SetModeDetour(Character* character, ulong mode, byte modeParam) {
+        var previousMode = character == null ? Character.CharacterModes.None : character->Mode;
         try {
             return setModeHook!.Original(character, mode, modeParam);
         } finally {
             try {
                 var m = (Character.CharacterModes)mode;
-                if (character->GameObject.ObjectIndex == 0 && m is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop) {
+                if (character->GameObject.ObjectIndex == 0 && (m is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop || previousMode is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop)) {
                     ApiProvider.ForceUpdateLocal();
                 }
             } catch (Exception ex) {

@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(9.34f, "0.9.3.4", "Fixed issue causing other players to appear to teleport for a brief moment when using emotes with precise positioning.");
         ChangelogFor(9.31f, "0.9.3.1", () => {
             C("Added option to allow right clicking offset inputs to return to zero.");
             C("Added button to emote offsets to reset all values to zero.");
