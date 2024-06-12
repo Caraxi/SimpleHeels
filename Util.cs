@@ -24,4 +24,11 @@ public static unsafe class Utils {
             return new HashSet<uint>();
         }
     });
+
+    public static bool IsPlayerWorld(this World world) {
+        if (world.Name.RawData.IsEmpty) return false;
+        if (world.DataCenter.Row == 0) return false;
+        if (world.IsPublic) return true;
+        return char.IsUpper((char)world.Name.RawData[0]);
+    }
 }

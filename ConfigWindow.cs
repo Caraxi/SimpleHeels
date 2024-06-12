@@ -21,12 +21,12 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
-using World = Lumina.Excel.GeneratedSheets.World;
+using World = Lumina.Excel.GeneratedSheets2.World;
+using WorldDCGroupType = Lumina.Excel.GeneratedSheets2.WorldDCGroupType;
 
 namespace SimpleHeels;
 
@@ -545,7 +545,7 @@ public class ConfigWindow : Window {
                                 }
 
                                 World("Non Player", ushort.MaxValue);
-                                foreach (var w in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPublic).OrderBy(w => w.DataCenter.Value?.Name.RawString).ThenBy(w => w.Name.RawString)) {
+                                foreach (var w in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPlayerWorld()).OrderBy(w => w.DataCenter.Value?.Name.RawString).ThenBy(w => w.Name.RawString)) {
                                     World(w.Name.RawString, w.RowId, w.DataCenter.Value);
                                 }
                             }
@@ -898,8 +898,14 @@ public class ConfigWindow : Window {
             ImGui.InputText("Character Name", ref newName, 64);
             var worldName = PluginService.Data.GetExcelSheet<World>()!.GetRow(newWorld)!.Name.ToDalamudString().TextValue;
             if (ImGui.BeginCombo("World", worldName)) {
-                foreach (var world in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPublic).OrderBy(w => w.Name.ToDalamudString().TextValue, StringComparer.OrdinalIgnoreCase)) {
-                    if (ImGui.Selectable($"{world.Name.ToDalamudString().TextValue}", world.RowId == newWorld)) {
+                var lastDc = string.Empty;
+                foreach (var world in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPlayerWorld()).OrderBy(w => w.DataCenter?.Value?.Name.RawString ?? string.Empty).ThenBy(w => w.Name.ToDalamudString().TextValue, StringComparer.OrdinalIgnoreCase)) {
+                    if (lastDc != world.DataCenter?.Value?.Name.RawString) {
+                        ImGui.TextDisabled(world.DataCenter?.Value?.Name.RawString ?? string.Empty);
+                        lastDc = world.DataCenter?.Value?.Name.RawString ?? string.Empty;
+                    }
+                    
+                    if (ImGui.Selectable($"  {world.Name.ToDalamudString().TextValue}", world.RowId == newWorld)) {
                         newWorld = world.RowId;
                     }
                 }
