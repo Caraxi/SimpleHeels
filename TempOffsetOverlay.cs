@@ -107,6 +107,7 @@ public sealed unsafe class TempOffsetOverlay : Window {
             if (ImGui.Button(ImGui.GetContentRegionAvail().X < 105 * ImGuiHelpers.GlobalScale ? "Reset" : "Reset Offset", new Vector2(ImGui.CalcItemWidth(), ImGui.GetTextLineHeightWithSpacing()))) {
                 Plugin.TempOffsets[obj->GameObject.ObjectIndex] = null;
                 Plugin.TempOffsetEmote[obj->GameObject.ObjectIndex] = null;
+                ApiProvider.ForceUpdateLocal();
             }
         }
 

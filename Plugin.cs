@@ -247,7 +247,7 @@ public unsafe class Plugin : IDalamudPlugin {
             PluginService.Log.Error(ex, "Error within SetDrawOffsetDetour");
         }
 
-        setDrawOffset?.Original(gameObject, x, y, z);
+        setDrawOffset!.Original(gameObject, x, y, z);
     }
 
     private void* SetDrawRotationDetour(GameObject* gameObject, float rotation) {
@@ -389,6 +389,7 @@ public unsafe class Plugin : IDalamudPlugin {
     
     
     private bool UpdateObjectIndex(uint updateIndex) {
+        if (setDrawOffset == null) return true;
         if (updateIndex >= Constants.ObjectLimit) return true;
         NeedsUpdate[updateIndex] = false;
 
