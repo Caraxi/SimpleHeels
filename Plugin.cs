@@ -464,10 +464,18 @@ public unsafe class Plugin : IDalamudPlugin {
             using (PerformanceMonitors.Run($"Calculate Precise Position Offset:{updateIndex}", Config.DetailedPerformanceLogging))
             using (PerformanceMonitors.Run("Calculate Precise Position Offset")) {
                 var pos = (Vector3) character->GameObject.Position;
+                var rot = character->GameObject.Rotation;
                 var emotePos = ipcCharacter.EmotePosition.GetOffset();
+                var emoteRot = ipcCharacter.EmotePosition.GetRotation();
 
                 if (Vector3.Distance(pos, emotePos) is > Constants.FloatDelta and < 1f ) {
-                    offset += emotePos - pos;
+                    PluginService.Log.Debug($"Apply Precise Position to Object#{updateIndex}");
+                    character->GameObject.SetPosition(emotePos.X, emotePos.Y, emotePos.Z);
+                }
+
+                if (MathF.Abs(rot - emoteRot) > Constants.FloatDelta) {
+                    PluginService.Log.Debug($"Apply Precise Rotation to Object#{updateIndex}");
+                    character->GameObject.Rotate(emoteRot);
                 }
             }
         }
