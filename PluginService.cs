@@ -7,7 +7,7 @@ namespace SimpleHeels;
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
 public class PluginService {
-    [PluginService] public static DalamudPluginInterface PluginInterface { get; private set; } = null!;
+    [PluginService] public static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] public static IClientState ClientState { get; private set; } = null!;
     [PluginService] public static ICommandManager Commands { get; private set; } = null!;
     [PluginService] public static IDataManager Data { get; private set; } = null!;

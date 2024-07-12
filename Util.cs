@@ -7,10 +7,10 @@ using Lumina.Excel.GeneratedSheets2;
 namespace SimpleHeels;
 
 public static unsafe class Utils {
-    public static GameObject* GetGameObjectById(uint objectId) {
+    public static GameObject* GetGameObjectById(ulong objectId) {
         for (var i = 0; i < Constants.ObjectLimit; i++) {
-            var o = GameObjectManager.GetGameObjectByIndex(i);
-            if (o == null || o->ObjectID != objectId) continue;
+            GameObject* o = GameObjectManager.Instance()->Objects.GameObjectIdSorted[i];
+            if (o == null || o->GetGameObjectId().ObjectId != objectId) continue;
             return o;
         }
 

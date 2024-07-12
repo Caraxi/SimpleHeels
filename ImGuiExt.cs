@@ -23,8 +23,8 @@ public static class ImGuiExt {
         using (ImRaii.PushColor(ImGuiCol.FrameBg, ImGui.GetColorU32(ImGuiCol.FrameBgHovered), hoverColor && ImGui.IsMouseHoveringRect(pos, pos + frameSize))) {
             if (ImGui.BeginChildFrame(ImGui.GetID($"iconTextFrame_{previewIcon}_{previewText}"), frameSize)) {
                 var dl = ImGui.GetWindowDrawList();
-                var icon = PluginService.TextureProvider.GetIcon(previewIcon);
-                if (icon != null) dl.AddImage(icon.ImGuiHandle, pos, pos + new Vector2(size.Y));
+                var icon = PluginService.TextureProvider.GetFromGameIcon(previewIcon);
+                //if (icon != null) dl.AddImage(icon  .ImGuiHandle, pos, pos + new Vector2(size.Y));
                 var textSize = ImGui.CalcTextSize(previewText);
                 dl.AddText(pos + new Vector2(size.Y + ImGui.GetStyle().FramePadding.X, size.Y / 2f - textSize.Y / 2f), ImGui.GetColorU32(ImGuiCol.Text), previewText);
             }
