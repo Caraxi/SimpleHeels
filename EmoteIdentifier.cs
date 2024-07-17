@@ -74,7 +74,7 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
 
     public static EmoteIdentifier? Get(Character* character) {
         if (character == null) return null;
-        if (character->Mode is not (Character.CharacterModes.InPositionLoop or Character.CharacterModes.EmoteLoop)) return null;
+        if (character->Mode is not (CharacterModes.InPositionLoop or CharacterModes.EmoteLoop)) return null;
         return new EmoteIdentifier(character->ModeParam, character->EmoteController.CPoseState);
     }
 

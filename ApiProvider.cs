@@ -3,13 +3,12 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Threading;
 using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Ipc;
 
 namespace SimpleHeels;
 
 public static class ApiProvider {
-    private const int ApiVersionMajor = 1;
+    private const int ApiVersionMajor = 2;
     private const int ApiVersionMinor = 1;
 
     public const string ApiVersionIdentifier = "SimpleHeels.ApiVersion";
@@ -23,8 +22,8 @@ public static class ApiProvider {
     private static ICallGateProvider<(int, int)>? _apiVersion;
     private static ICallGateProvider<string>? _getLocalPlayer;
     private static ICallGateProvider<string, object?>? _localChanged;
-    private static ICallGateProvider<GameObject, string, object?>? _registerPlayer;
-    private static ICallGateProvider<GameObject, object?>? _unregisterPlayer;
+    private static ICallGateProvider<int, string, object?>? _registerPlayer;
+    private static ICallGateProvider<int, object?>? _unregisterPlayer;
 
     private static IpcCharacterConfig? _lastReported;
     private static Vector3? _lastReportedOffset;
@@ -44,28 +43,30 @@ public static class ApiProvider {
         _apiVersion.RegisterFunc(() => (ApiVersionMajor, ApiVersionMinor));
         _getLocalPlayer = pluginInterface.GetIpcProvider<string>(GetLocalPlayerIdentifier);
         _localChanged = pluginInterface.GetIpcProvider<string, object?>(LocalChangedIdentifier);
-        _registerPlayer = pluginInterface.GetIpcProvider<GameObject, string, object?>(RegisterPlayerIdentifier);
-        _unregisterPlayer = pluginInterface.GetIpcProvider<GameObject, object?>(UnregisterPlayerIdentifier);
+        _registerPlayer = pluginInterface.GetIpcProvider<int, string, object?>(RegisterPlayerIdentifier);
+        _unregisterPlayer = pluginInterface.GetIpcProvider<int, object?>(UnregisterPlayerIdentifier);
 
         _apiVersion.RegisterFunc(() => (ApiVersionMajor, ApiVersionMinor));
 
-        _registerPlayer.RegisterAction((gameObject, data) => {
-            if (gameObject is not PlayerCharacter playerCharacter) return;
+        _registerPlayer.RegisterAction((gameObjectIndex, data) => {
+            var gameObject = gameObjectIndex >= 0 && gameObjectIndex < PluginService.Objects.Length ? PluginService.Objects[gameObjectIndex] : null;
+            if (gameObject is not IPlayerCharacter playerCharacter) return;
             if (string.IsNullOrWhiteSpace(data)) {
-                Plugin.IpcAssignedData.Remove(playerCharacter.ObjectId);
+                Plugin.IpcAssignedData.Remove(playerCharacter.EntityId);
                 return;
             }
 
             var assigned = IpcCharacterConfig.FromString(data);
             if (assigned == null) return;
-            Plugin.IpcAssignedData.Remove(playerCharacter.ObjectId);
-            Plugin.IpcAssignedData.Add(playerCharacter.ObjectId, assigned);
+            Plugin.IpcAssignedData.Remove(playerCharacter.EntityId);
+            Plugin.IpcAssignedData.Add(playerCharacter.EntityId, assigned);
             Plugin.RequestUpdateAll();
         });
 
-        _unregisterPlayer.RegisterAction(gameObject => {
-            if (gameObject is not PlayerCharacter playerCharacter) return;
-            Plugin.IpcAssignedData.Remove(playerCharacter.ObjectId);
+        _unregisterPlayer.RegisterAction(gameObjectIndex => {
+            var gameObject = gameObjectIndex >= 0 && gameObjectIndex < PluginService.Objects.Length ? PluginService.Objects[gameObjectIndex] : null;
+            if (gameObject is not IPlayerCharacter playerCharacter) return;
+            Plugin.IpcAssignedData.Remove(playerCharacter.EntityId);
             Plugin.RequestUpdateAll();
         });
 

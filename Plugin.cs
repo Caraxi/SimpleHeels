@@ -9,6 +9,7 @@ using System.Reflection;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Hooking;
 using Dalamud.Interface.Windowing;
 using Dalamud.Memory;
@@ -51,7 +52,7 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? 48 8B 4B 08 44 8B CF", DetourName = nameof(SetModeDetour))]
     private Hook<SetMode>? setModeHook;
 
-    public Plugin(DalamudPluginInterface pluginInterface) {
+    public Plugin(IDalamudPluginInterface pluginInterface) {
 #if DEBUG
         IsDebug = true;
 #endif
@@ -164,13 +165,13 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void* SetModeDetour(Character* character, ulong mode, byte modeParam) {
-        var previousMode = character == null ? Character.CharacterModes.None : character->Mode;
+        var previousMode = character == null ? CharacterModes.None : character->Mode;
         try {
             return setModeHook!.Original(character, mode, modeParam);
         } finally {
             try {
-                var m = (Character.CharacterModes)mode;
-                if (character->GameObject.ObjectIndex == 0 && (m is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop || previousMode is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop)) {
+                var m = (CharacterModes)mode;
+                if (character->GameObject.ObjectIndex == 0 && (m is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop || previousMode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop)) {
                     ApiProvider.ForceUpdateLocal();
                 }
             } catch (Exception ex) {
@@ -179,7 +180,7 @@ public unsafe class Plugin : IDalamudPlugin {
         }
     }
 
-    public bool TryGetCharacterConfig(PlayerCharacter playerCharacter, out CharacterConfig? characterConfig, bool allowIpc = true) {
+    public bool TryGetCharacterConfig(IPlayerCharacter playerCharacter, out CharacterConfig? characterConfig, bool allowIpc = true) {
         var character = (Character*)playerCharacter.Address;
         if (character == null) {
             characterConfig = null;
@@ -192,7 +193,7 @@ public unsafe class Plugin : IDalamudPlugin {
     public bool TryGetCharacterConfig(Character* character, [NotNullWhen(true)] out CharacterConfig? characterConfig, bool allowIpc = true) {
         using var performance = PerformanceMonitors.Run("TryGetCharacterConfig");
 
-        if (allowIpc && character->GameObject.ObjectID != Constants.InvalidObjectId && IpcAssignedData.TryGetValue(character->GameObject.ObjectID, out var ipcCharacterConfig)) {
+        if (allowIpc && character->GameObject.EntityId != Constants.InvalidObjectId && IpcAssignedData.TryGetValue(character->GameObject.EntityId, out var ipcCharacterConfig)) {
             characterConfig = ipcCharacterConfig;
             return true;
         }
@@ -203,7 +204,7 @@ public unsafe class Plugin : IDalamudPlugin {
             name = mappedActor.name;
             homeWorld = mappedActor.homeWorld;
         } else {
-            name = MemoryHelper.ReadSeString((nint)character->GameObject.Name, 64).TextValue;
+            name = SeString.Parse(character->GameObject.Name).TextValue;
             homeWorld = character->HomeWorld;
         }
 
@@ -224,7 +225,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (ActorMapping.TryGetValue(minion->ObjectIndex, out var mappedActor)) {
             name = mappedActor.name;
         } else {
-            name = MemoryHelper.ReadSeString((nint)minion->Name, 64).TextValue;
+            name = SeString.Parse(minion->Name).TextValue;
         }
         
         
@@ -269,7 +270,7 @@ public unsafe class Plugin : IDalamudPlugin {
             ActorMapping.Add(destination->GameObject.ObjectIndex, (name.TextValue, source->HomeWorld));
             if (destination->GameObject.ObjectIndex < Constants.ObjectLimit && source->GameObject.ObjectIndex < Constants.ObjectLimit) {
                 ManagedIndex[destination->GameObject.ObjectIndex] = ManagedIndex[source->GameObject.ObjectIndex];
-                if (IpcAssignedData.TryGetValue(source->GameObject.ObjectID, out var ipcCharacterConfig)) {
+                if (IpcAssignedData.TryGetValue(source->GameObject.EntityId, out var ipcCharacterConfig)) {
                     TempOffsets[destination->GameObject.ObjectIndex] = ipcCharacterConfig.TempOffset;
                     TempOffsetEmote[destination->GameObject.ObjectIndex] = ipcCharacterConfig.TempOffset == null ? null : EmoteIdentifier.Get(source);
                 } else {
@@ -290,7 +291,7 @@ public unsafe class Plugin : IDalamudPlugin {
         return cloneActor!.Original(destinationArray, source, copyFlags);
     }
 
-    private void DoConfigBackup(DalamudPluginInterface pluginInterface) {
+    private void DoConfigBackup(IDalamudPluginInterface pluginInterface) {
         try {
             var configFile = pluginInterface.ConfigFile;
             if (!configFile.Exists) return;
@@ -345,7 +346,7 @@ public unsafe class Plugin : IDalamudPlugin {
         
         IOffsetProvider? offsetProvider = null;
         
-        if (!IpcAssignedData.ContainsKey(obj->ObjectID) && TempOffsets[updateIndex] != null) {
+        if (!IpcAssignedData.ContainsKey(obj->EntityId) && TempOffsets[updateIndex] != null) {
             offsetProvider = TempOffsets[updateIndex];
         }
         
@@ -380,7 +381,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
     private bool ObjectIsCompanionTurnedHuman(GameObject* gameObject) {
         if (gameObject == null) return false;
-        if (gameObject->ObjectKind != (byte)ObjectKind.Companion) return false;
+        if (gameObject->ObjectKind != ObjectKind.Companion) return false;
         if (gameObject->DrawObject == null) return false;
         if (gameObject->DrawObject->Object.GetObjectType() != ObjectType.CharacterBase) return false;
         var chrBase = (CharacterBase*)gameObject->DrawObject;
@@ -393,7 +394,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (updateIndex >= Constants.ObjectLimit) return true;
         NeedsUpdate[updateIndex] = false;
 
-        var obj = GameObjectManager.GetGameObjectByIndex((int)updateIndex);
+        var obj = GameObjectManager.Instance()->Objects.IndexSorted[(int)updateIndex].Value;
 
         if (Config is { Enabled: true, ApplyToMinions: true } && ObjectIsCompanionTurnedHuman(obj)) 
             return UpdateCompanion(updateIndex, obj);
@@ -417,17 +418,17 @@ public unsafe class Plugin : IDalamudPlugin {
         using var performance = PerformanceMonitors.Run("UpdateObject");
         using var performance2 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);
 
-        if (Config is { Enabled: true } && character->Companion.CompanionObject != null) {
-            var companion = (GameObject*) character->Companion.CompanionObject;
+        if (Config is { Enabled: true } && character->CompanionData.CompanionObject != null) {
+            var companion = (GameObject*) character->CompanionData.CompanionObject;
             if (companion->DrawObject != null) {
-                if (updateIndex != 0 && Utils.StaticMinions.Value.Contains(companion->DataID) && IpcAssignedData.TryGetValue(obj->ObjectID, out var ipc) && ipc.MinionPosition != null) {
+                if (updateIndex != 0 && Utils.StaticMinions.Value.Contains(companion->BaseId) && IpcAssignedData.TryGetValue(obj->EntityId, out var ipc) && ipc.MinionPosition != null) {
                     companion->DrawObject->Object.Position.X = ipc.MinionPosition.X;
                     companion->DrawObject->Object.Position.Y = ipc.MinionPosition.Y;
                     companion->DrawObject->Object.Position.Z = ipc.MinionPosition.Z;
                     companion->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(ipc.MinionPosition.R, 0, 0);
                 }
             
-                if (Config.ApplyStaticMinionPositions && updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->DataID)) {
+                if (Config.ApplyStaticMinionPositions && updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->BaseId)) {
                     ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f);
                 }
             }
@@ -435,7 +436,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
         IOffsetProvider? offsetProvider = null;
         
-        if (!IpcAssignedData.ContainsKey(obj->ObjectID) && TempOffsets[updateIndex] != null) {
+        if (!IpcAssignedData.ContainsKey(obj->EntityId) && TempOffsets[updateIndex] != null) {
             var emote = EmoteIdentifier.Get(character);
             var tEmote = TempOffsetEmote[updateIndex];
             if (TempOffsetEmote[updateIndex] == emote || (emote != null && tEmote != null && emote.EmoteModeId == tEmote.EmoteModeId)) {
@@ -460,24 +461,24 @@ public unsafe class Plugin : IDalamudPlugin {
 
         var appliedOffset = offsetProvider.GetOffset();
         offset += appliedOffset;
-        if (updateIndex != 0 && Config.UsePrecisePositioning && character->Mode is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop && IpcAssignedData.TryGetValue(obj->ObjectID, out var ipcCharacter) && ipcCharacter.EmotePosition != null) {
+        if (updateIndex != 0 && Config.UsePrecisePositioning && character->Mode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop && IpcAssignedData.TryGetValue(obj->EntityId, out var ipcCharacter) && ipcCharacter.EmotePosition != null) {
             using (PerformanceMonitors.Run($"Calculate Precise Position Offset:{updateIndex}", Config.DetailedPerformanceLogging))
             using (PerformanceMonitors.Run("Calculate Precise Position Offset")) {
                 var pos = (Vector3) character->GameObject.Position;
-                //var rot = character->GameObject.Rotation;
+                var rot = character->GameObject.Rotation;
                 var emotePos = ipcCharacter.EmotePosition.GetOffset();
-                //var emoteRot = ipcCharacter.EmotePosition.GetRotation();
+                var emoteRot = ipcCharacter.EmotePosition.GetRotation();
 
                 if (Vector3.Distance(pos, emotePos) is > Constants.FloatDelta and < 1f ) {
                     PluginService.Log.Debug($"Apply Precise Position to Object#{updateIndex}");
                     character->GameObject.SetPosition(emotePos.X, emotePos.Y, emotePos.Z);
                 }
-/*
+
                 if (MathF.Abs(rot - emoteRot) > Constants.FloatDelta) {
                     PluginService.Log.Debug($"Apply Precise Rotation to Object#{updateIndex}");
-                    character->GameObject.Rotate(emoteRot);
+                    character->GameObject.SetRotation(emoteRot);
                 }
-*/
+
             }
         }
 

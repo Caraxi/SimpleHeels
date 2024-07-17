@@ -7,6 +7,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
@@ -16,7 +17,6 @@ using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
-using Dalamud.Memory;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -183,7 +183,7 @@ public class ConfigWindow : Window {
                 var ipcAssignedCharacter = (Character*)ipcAssignedObject;
                 if (ipcAssignedCharacter->HomeWorld == ushort.MaxValue) continue;
 
-                var name = MemoryHelper.ReadSeString((nint)ipcAssignedObject->Name, 64).TextValue;
+                var name = SeString.Parse(ipcAssignedObject->Name).TextValue;
                 var worldId = ipcAssignedCharacter->HomeWorld;
 
                 var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
@@ -264,9 +264,9 @@ public class ConfigWindow : Window {
     private void ShowDebugInfo() {
         if (Plugin.IsDebug && ImGui.TreeNode("DEBUG INFO")) {
             try {
-                var activePlayer = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
+                var activePlayer = PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
 
-                if (activePlayer is not PlayerCharacter pc) {
+                if (activePlayer is not IPlayerCharacter pc) {
                     ImGui.TextDisabled("Character is not currently in world.");
                     return;
                 }
@@ -377,7 +377,7 @@ public class ConfigWindow : Window {
 
                 ImGui.SameLine();
                 if (ImGuiComponents.IconButton(FontAwesomeIcon.DotCircle)) {
-                    if (PluginService.Targets.Target is PlayerCharacter pc) {
+                    if (PluginService.Targets.Target is IPlayerCharacter pc) {
                         config.TryAddCharacter(pc.Name.TextValue, pc.HomeWorld.Id);
                     }
                 }
@@ -587,7 +587,7 @@ public class ConfigWindow : Window {
                         if (ImGuiComponents.IconButton(FontAwesomeIcon.DotCircle)) {
                             var target = PluginService.Targets.SoftTarget ?? PluginService.Targets.Target;
                             if (target != null) {
-                                var c = new GroupCharacter { Name = target.Name.TextValue, World = target is PlayerCharacter pc ? pc.HomeWorld.Id : ushort.MaxValue };
+                                var c = new GroupCharacter { Name = target.Name.TextValue, World = target is IPlayerCharacter pc ? pc.HomeWorld.Id : ushort.MaxValue };
                                 if (!selectedGroup.Characters.Any(ec => ec.Name == c.Name && ec.World == c.World)) {
                                     selectedGroup.Characters.Add(c);
                                 }
@@ -853,12 +853,12 @@ public class ConfigWindow : Window {
         IOffsetProvider? activeHeelConfig = null;
 
         if (characterConfig is GroupConfig gc) {
-            var target = new[] { PluginService.Targets.SoftTarget, PluginService.Targets.Target, PluginService.ClientState.LocalPlayer }.FirstOrDefault(t => t is Dalamud.Game.ClientState.Objects.Types.Character character && gc.Matches(((GameObject*)character.Address)->DrawObject, character.Name.TextValue, (character is PlayerCharacter pc) ? pc.HomeWorld.Id : ushort.MaxValue));
-            if (target is Dalamud.Game.ClientState.Objects.Types.Character) {
+            var target = new[] { PluginService.Targets.SoftTarget, PluginService.Targets.Target, PluginService.ClientState.LocalPlayer }.FirstOrDefault(t => t is ICharacter character && gc.Matches(((GameObject*)character.Address)->DrawObject, character.Name.TextValue, (character is IPlayerCharacter pc) ? pc.HomeWorld.Id : ushort.MaxValue));
+            if (target is ICharacter) {
                 activeCharacter = (GameObject*)target.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;
                 activeHeelConfig = characterConfig.GetFirstMatch(activeCharacterAsCharacter);
-                if (target is PlayerCharacter pc) {
+                if (target is IPlayerCharacter pc) {
                     ImGui.TextDisabled($"Preview displays based on {target.Name.TextValue} ({pc.HomeWorld?.GameData?.Name.RawString})");
                 } else {
                     ImGui.TextDisabled($"Preview displays based on {target.Name.TextValue} (NPC)");
@@ -867,8 +867,8 @@ public class ConfigWindow : Window {
                 Plugin.RequestUpdateAll();
             }
         } else {
-            var player = PluginService.Objects.FirstOrDefault(t => t is PlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
-            if (player is PlayerCharacter) {
+            var player = PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
+            if (player is IPlayerCharacter) {
                 activeCharacter = (GameObject*)player.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;
                 activeHeelConfig = characterConfig.GetFirstMatch(activeCharacterAsCharacter);
@@ -876,7 +876,7 @@ public class ConfigWindow : Window {
             }
         }
 
-        if (activeCharacter != null && Plugin.IpcAssignedData.TryGetValue(activeCharacter->ObjectID, out var ipcCharacterConfig)) {
+        if (activeCharacter != null && Plugin.IpcAssignedData.TryGetValue(activeCharacter->EntityId, out var ipcCharacterConfig)) {
             characterConfig = ipcCharacterConfig;
         }
 
@@ -885,7 +885,7 @@ public class ConfigWindow : Window {
             if (Plugin.IsDebug && activeCharacter != null) {
                 ImGui.SameLine();
                 if (ImGui.SmallButton("Clear IPC")) {
-                    Plugin.IpcAssignedData.Remove(activeCharacter->ObjectID);
+                    Plugin.IpcAssignedData.Remove(activeCharacter->EntityId);
                     selectedCharacter = null;
                     selectedWorld = 0;
                     selectedName = string.Empty;
@@ -1688,7 +1688,7 @@ public class ConfigWindow : Window {
 
         if (Plugin.IsDebug) {
             if (characterConfig is IpcCharacterConfig ipcCharacter && ImGui.TreeNode("IPC Data")) {
-                if (ipcCharacter.EmotePosition != null && activeCharacterAsCharacter->Mode is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop) {
+                if (ipcCharacter.EmotePosition != null && activeCharacterAsCharacter->Mode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop) {
                     ImGui.Text("Position Error:");
                     var pos = (Vector3) activeCharacter->Position;
                     var emotePos = ipcCharacter.EmotePosition.GetOffset();

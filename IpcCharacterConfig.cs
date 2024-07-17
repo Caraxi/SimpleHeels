@@ -20,7 +20,7 @@ public class IpcCharacterConfig : CharacterConfig {
     public string PluginVersion = string.Empty;
     
     
-    public unsafe IpcCharacterConfig(Plugin plugin, PlayerCharacter player) {
+    public unsafe IpcCharacterConfig(Plugin plugin, IPlayerCharacter player) {
         if (player == null) throw new Exception("No Player");
 
         if (plugin.TryGetCharacterConfig(player, out var characterConfig, false) && characterConfig != null) {
@@ -34,8 +34,8 @@ public class IpcCharacterConfig : CharacterConfig {
         var chr = (Character*)player.Address;
         if (Plugin.Config.ApplyStaticMinionPositions) {
             
-            if (chr->Companion.CompanionObject != null && Utils.StaticMinions.Value.Contains(chr->Companion.CompanionObject->Character.GameObject.DataID)) {
-                var drawObj = chr->Companion.CompanionObject->Character.GameObject.DrawObject;
+            if (chr->CompanionData.CompanionObject != null && Utils.StaticMinions.Value.Contains(chr->CompanionData.CompanionObject->Character.GameObject.BaseId)) {
+                var drawObj = chr->CompanionData.CompanionObject->Character.GameObject.DrawObject;
                 if (drawObj != null) {
                     var p = drawObj->Object.Position;
                     MinionPosition = new TempOffset(p.X, p.Y, p.Z, drawObj->Object.Rotation.EulerAngles.Y * MathF.PI / 180f);
@@ -43,7 +43,7 @@ public class IpcCharacterConfig : CharacterConfig {
             }
         }
 
-        if (chr->Mode is Character.CharacterModes.EmoteLoop or Character.CharacterModes.InPositionLoop) {
+        if (chr->Mode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop) {
             // Precise Positioning
             var p = chr->GameObject.Position;
             EmotePosition = new TempOffset(p.X, p.Y, p.Z, chr->GameObject.Rotation);

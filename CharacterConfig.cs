@@ -82,7 +82,7 @@ public class CharacterConfig : IOffsetProvider {
         return offsetProvider != null;
     }
 
-    public unsafe IOffsetProvider? GetFirstMatch(PlayerCharacter playerCharacter, bool checkEmote = true) {
+    public unsafe IOffsetProvider? GetFirstMatch(IPlayerCharacter playerCharacter, bool checkEmote = true) {
         var character = (Character*)playerCharacter.Address;
         if (character == null) return null;
         return GetFirstMatch(character, checkEmote);

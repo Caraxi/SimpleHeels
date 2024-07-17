@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
@@ -63,17 +61,17 @@ public unsafe class ExtraDebug : Window {
 
     private Vector4[] minionPositions = new Vector4[Constants.ObjectLimit];
     private void TabStaticMinions() {
-        foreach (var c in PluginService.Objects.Where(o => o is PlayerCharacter).Cast<PlayerCharacter>()) {
+        foreach (var c in PluginService.Objects.Where(o => o is IPlayerCharacter).Cast<IPlayerCharacter>()) {
             if (c == null) continue;
             var chr = (Character*)c.Address;
-            if (chr->Companion.CompanionObject == null) continue;
-            var companionId = chr->Companion.CompanionObject->Character.GameObject.DataID;
+            if (chr->CompanionData.CompanionObject == null) continue;
+            var companionId = chr->CompanionData.CompanionObject->Character.GameObject.BaseId;
             var companion = PluginService.Data.GetExcelSheet<Companion>()?.GetRow(companionId);
             if (companion == null) continue;
             if (companion.Behavior.Row != 3) continue;
-            using (ImRaii.PushId($"chr_{c.ObjectId:X}")) {
+            using (ImRaii.PushId($"chr_{c.EntityId:X}")) {
                 ImGui.Separator();
-                var go = &chr->Companion.CompanionObject->Character.GameObject;
+                var go = &chr->CompanionData.CompanionObject->Character.GameObject;
                 if (minionPositions[go->ObjectIndex] == default) minionPositions[go->ObjectIndex] = new Vector4(go->Position, go->Rotation);
                 if (ImGui.DragFloat4($"{c.Name.TextValue}'s {companion.Singular.ToDalamudString().TextValue}", ref minionPositions[go->ObjectIndex], 0.01f)) {
                     go->DrawObject->Object.Position.X = minionPositions[go->ObjectIndex].X;
@@ -83,14 +81,14 @@ public unsafe class ExtraDebug : Window {
                 }
                 
                 ImGui.SameLine();
-                ImGui.Text($"{go->ObjectID:X}");
+                ImGui.Text($"{go->EntityId:X}");
             }
         }
     }
 
     private void TabObjects() {
         foreach (var actor in PluginService.Objects) {
-            if (actor is not PlayerCharacter pc) continue;
+            if (actor is not IPlayerCharacter pc) continue;
 
             if (ImGui.TreeNode($"[{actor.ObjectIndex} ({actor.GetType().Name})] {actor.ObjectKind}.{actor.SubKind} - {actor.Name}")) {
                 var obj = (Character*)pc.Address;
@@ -104,7 +102,7 @@ public unsafe class ExtraDebug : Window {
                 ImGui.Text($"Mode: {obj->Mode}");
                 ImGui.Text($"ModeParam: {obj->ModeParam}");
 
-                ImGui.Text($"Feet Model: {obj->DrawData.Feet.Id}");
+                ImGui.Text($"Feet Model: {obj->DrawData.Equipment(DrawDataContainer.EquipmentSlot.Feet).Id}");
 
                 ImGui.Text($"Draw Offset: {obj->GameObject.DrawOffset}");
                 ImGui.Text($"Height: {obj->GameObject.Height}");

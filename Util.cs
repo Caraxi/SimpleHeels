@@ -9,8 +9,8 @@ namespace SimpleHeels;
 public static unsafe class Utils {
     public static GameObject* GetGameObjectById(uint objectId) {
         for (var i = 0; i < Constants.ObjectLimit; i++) {
-            var o = GameObjectManager.GetGameObjectByIndex(i);
-            if (o == null || o->ObjectID != objectId) continue;
+            var o = GameObjectManager.Instance()->Objects.IndexSorted[i].Value;
+            if (o == null || o->EntityId != objectId) continue;
             return o;
         }
 
