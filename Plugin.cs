@@ -33,7 +33,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public Dictionary<uint, Vector3> BaseOffsets = new();
 
-    [Signature("E8 ?? ?? ?? ?? 0F B6 9F ?? ?? ?? ?? 48 8D 8F", DetourName = nameof(CloneActorDetour))]
+    [Signature("E8 ?? ?? ?? ?? 0F B6 9E ?? ?? ?? ?? 48 8D 8E", DetourName = nameof(CloneActorDetour))]
     private Hook<CloneActor>? cloneActor;
 
     private bool isDisposing;
@@ -46,10 +46,10 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? 83 FE 01 75 0D", DetourName = nameof(SetDrawRotationDetour))]
     private Hook<SetDrawRotation>? setDrawRotationHook;
 
-    [Signature("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 80 89 ?? ?? ?? ?? ?? 48 8B D9", DetourName = nameof(TerminateCharacterDetour))]
+    [Signature("48 89 5C 24 ?? 57 48 83 EC 20 80 89", DetourName = nameof(TerminateCharacterDetour))]
     private Hook<TerminateCharacter>? terminateCharacterHook;
 
-    [Signature("E8 ?? ?? ?? ?? 48 8B 4B 08 44 8B CF", DetourName = nameof(SetModeDetour))]
+    [Signature("E8 ?? ?? ?? ?? 45 84 FF 75 40", DetourName = nameof(SetModeDetour))]
     private Hook<SetMode>? setModeHook;
 
     public Plugin(IDalamudPluginInterface pluginInterface) {
@@ -164,13 +164,13 @@ public unsafe class Plugin : IDalamudPlugin {
         return terminateCharacterHook!.Original(character);
     }
 
-    private void* SetModeDetour(Character* character, ulong mode, byte modeParam) {
+    private void* SetModeDetour(Character* character, CharacterModes mode, byte modeParam) {
         var previousMode = character == null ? CharacterModes.None : character->Mode;
         try {
             return setModeHook!.Original(character, mode, modeParam);
         } finally {
             try {
-                var m = (CharacterModes)mode;
+                var m = mode;
                 if (character->GameObject.ObjectIndex == 0 && (m is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop || previousMode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop)) {
                     ApiProvider.ForceUpdateLocal();
                 }
@@ -609,5 +609,5 @@ public unsafe class Plugin : IDalamudPlugin {
     private delegate void* SetDrawRotation(GameObject* gameObject, float rotation);
 
     private delegate void* TerminateCharacter(Character* character);
-    private delegate void* SetMode(Character* character, ulong mode, byte modeParam);
+    private delegate void* SetMode(Character* character, CharacterModes mode, byte modeParam);
 }
