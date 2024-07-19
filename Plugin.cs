@@ -15,6 +15,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Memory;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -56,8 +57,11 @@ public unsafe class Plugin : IDalamudPlugin {
 #if DEBUG
         IsDebug = true;
 #endif
-        using var _ = PerformanceMonitors.Run("Plugin Startup");
+        using var _ = PerformanceMonitors.Run($"Plugin Startup");
         pluginInterface.Create<PluginService>();
+        
+        PluginService.Log.Information($"Starting SimpleHeels - D: {Util.GetGitHash()}- CS: {FFXIVClientStructs.ThisAssembly.Git.Commit}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]");
+        
         
         DoConfigBackup(pluginInterface);
 
@@ -465,19 +469,20 @@ public unsafe class Plugin : IDalamudPlugin {
             using (PerformanceMonitors.Run($"Calculate Precise Position Offset:{updateIndex}", Config.DetailedPerformanceLogging))
             using (PerformanceMonitors.Run("Calculate Precise Position Offset")) {
                 var pos = (Vector3) character->GameObject.Position;
-                var rot = character->GameObject.Rotation;
                 var emotePos = ipcCharacter.EmotePosition.GetOffset();
-                var emoteRot = ipcCharacter.EmotePosition.GetRotation();
-
                 if (Vector3.Distance(pos, emotePos) is > Constants.FloatDelta and < 1f ) {
                     PluginService.Log.Debug($"Apply Precise Position to Object#{updateIndex}");
                     character->GameObject.SetPosition(emotePos.X, emotePos.Y, emotePos.Z);
                 }
 
+                /*
+                var rot = character->GameObject.Rotation;
+                var emoteRot = ipcCharacter.EmotePosition.GetRotation();
                 if (MathF.Abs(rot - emoteRot) > Constants.FloatDelta) {
                     PluginService.Log.Debug($"Apply Precise Rotation to Object#{updateIndex}");
                     character->GameObject.SetRotation(emoteRot);
                 }
+                */
 
             }
         }
@@ -561,7 +566,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (feetModel == null) return null;
         var modelResource = feetModel->ModelResourceHandle;
         if (modelResource == null) return null;
-        return modelResource->ResourceHandle.FileName.ToString();
+        return System.Text.Encoding.UTF8.GetString(modelResource->ResourceHandle.FileName.AsSpan());
     }
 
     private static float? CheckModelSlot(Human* human, ModelSlot slot) {

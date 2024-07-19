@@ -713,6 +713,9 @@ public class ConfigWindow : Window {
 
                 if (Plugin.IsDebug) {
                     if (ImGui.TreeNode("DEBUG")) {
+                        
+                        ImGui.Text($"Dalamud: {Util.GetGitHash()}- ClientStructs: {FFXIVClientStructs.ThisAssembly.Git.Commit}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]");
+                        
                         ImGui.Text("Last Reported Data:");
                         ImGui.Indent();
                         ImGui.Text(ApiProvider.LastReportedData);
@@ -1786,8 +1789,7 @@ public class ConfigWindow : Window {
         if (feetModel == null) return null;
         var modelResource = feetModel->ModelResourceHandle;
         if (modelResource == null) return null;
-
-        return modelResource->ResourceHandle.FileName.ToString();
+        return System.Text.Encoding.UTF8.GetString(modelResource->ResourceHandle.FileName.AsSpan());
     }
 
     private string? GetModelName(ushort modelId, ModelSlot slot, bool nullOnNoMatch = false) {
