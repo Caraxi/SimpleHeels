@@ -1028,7 +1028,7 @@ public class ConfigWindow : Window {
                 var activeLegsPath = GetModelPathForPlayer(activeCharacter, ModelSlot.Legs);
 
                 var windowMax = ImGui.GetWindowPos() + ImGui.GetWindowSize();
-                if (ImGui.BeginTable("OffsetsTable", 5)) {
+                if (ImGui.BeginTable("OffsetsTable", 5, ImGuiTableFlags.Resizable)) {
                     ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 4 + 3 * ImGuiHelpers.GlobalScale);
                     ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
                     ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
@@ -1362,7 +1362,7 @@ public class ConfigWindow : Window {
             }
 
             if (emoteOffsetsOpen && characterConfig.EmoteConfigs != null) {
-                if (ImGui.BeginTable("emoteOffsets", characterConfig is IpcCharacterConfig ? 6 : 8, ImGuiTableFlags.NoClip)) {
+                if (ImGui.BeginTable("emoteOffsets", characterConfig is IpcCharacterConfig ? 6 : 8, ImGuiTableFlags.NoClip | ImGuiTableFlags.Resizable)) {
                     if (characterConfig is not IpcCharacterConfig) {
                         ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 4 + 3 * ImGuiHelpers.GlobalScale);
                         ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
