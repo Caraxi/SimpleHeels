@@ -1327,7 +1327,7 @@ public class ConfigWindow : Window {
                         }
 
                         if (ImGui.Button($"Add Path: {pathDisplay}")) {
-                            characterConfig.HeelsConfig.Add(new HeelConfig() { PathMode = true, Path = path, Slot = slot, Enabled = !characterConfig.HeelsConfig.Any(h => h is { PathMode: true } && h.Path == path) });
+                            characterConfig.HeelsConfig.Add(new HeelConfig() { PathMode = true, Path = path, Slot = slot, Enabled = !characterConfig.HeelsConfig.Any(h => h is { PathMode: true } && string.Equals(h.Path, path, StringComparison.OrdinalIgnoreCase)) });
                         }
 
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) {
