@@ -16,6 +16,10 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.05f, "0.10.0.5", () => {
+            C("Added a button to allow mod developers to copy offset attributes to clipboard.");
+            C("Disabled Simple Heels model attribute editor.");
+        });
         ChangelogFor(10.0f, "0.10.0.0", "Updated for Dawntrail");
         ChangelogFor(9.35f, "0.9.3.5", "Fix support for new worlds.");
         ChangelogFor(9.34f, "0.9.3.4", "Fixed issue causing other players to appear to teleport for a brief moment when using emotes with precise positioning.");

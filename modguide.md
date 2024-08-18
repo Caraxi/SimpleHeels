@@ -1,14 +1,12 @@
 Simple Heels now allows for mod developers to assign an offset directly onto the model of the footwear. This is done using the attribute fields within the `.mdl` file using the format `heels_offset=X.XXXX`.
 
-### Assigning Offset within Simple Heels
+### Assigning Offset with TexTools or Penumbra
 
-Offsets can be assigned to model files using Simple Heels' config window on the main config page under 'Model Offset Editor'. Other mod tools will hopefully support adding the attributes with time.
-
-### Assigning Offset with TexTools
-
-As TexTools doesn't allow numbers in attributes, an alternative attribute format is supported. The attribute should be defined in the format of `heels_offset_(a-j)_(a-j)` where numbers are replaced with the letters `a` through `j`.
+For improved attribute support an alternative format is supported. The attribute should be defined in the format of `heels_offset_(a-j)_(a-j)` where numbers are replaced with the letters `a` through `j`.
 
 Prefixing the offset with `n_` allows negative numbers.
+
+Enabling the 'Copy Attribute' button in plugin config will allow you to copy this alternative format to your clipboard for easier use.
 
 |    **Letter**     |    **Number**     |
 |:-----------------:|:-----------------:|

@@ -634,6 +634,13 @@ public class ConfigWindow : Window {
                 if (ImGui.IsItemClicked()) {
                     Util.OpenLink("https://github.com/Caraxi/SimpleHeels/blob/master/modguide.md");
                 }
+                
+                if (config.UseModelOffsets) {
+                    ImGui.SameLine();
+                    ImGui.Dummy(new Vector2(15, 1) * ImGuiHelpers.GlobalScale);
+                    ImGui.SameLine();
+                    ImGui.Checkbox("Enable 'Copy Attribute' button for model offsets.", ref config.CopyAttributeButton);
+                }
 
                 ImGui.Checkbox("Apply offsets to minions", ref config.ApplyToMinions);
                 ImGui.SameLine();
@@ -697,6 +704,7 @@ public class ConfigWindow : Window {
                     ImGui.TextColored(ImGuiColors.DalamudViolet, "/heels temp");
                     ImGui.Checkbox("Show Tooltips", ref config.TempOffsetWindowTooltips);
                     ImGui.Checkbox("Lock Window", ref config.TempOffsetWindowLock);
+                    ImGui.Checkbox("Restrict window to FFXIV Window", ref config.TempOffsetWindowLockInViewport);
                     using (ImRaii.Disabled(config.TempOffsetWindowLock == false)) {
                         ImGui.Checkbox("Transparent", ref config.TempOffsetWindowTransparent);
                     }
@@ -729,10 +737,11 @@ public class ConfigWindow : Window {
                         ImGui.TreePop();
                     }
                 }
-
+                /*
                 if (config.UseModelOffsets && ImGui.CollapsingHeader("Model Offset Editor")) {
                     ShowModelEditor();
                 }
+                */
             }
         }
 
@@ -1145,6 +1154,21 @@ public class ConfigWindow : Window {
                         }
 
                         ImGui.TableNextColumn();
+
+                        if (config.CopyAttributeButton) {
+                            if (ImGuiComponents.IconButton(FontAwesomeIcon.Copy)) {
+                                var valueStr = heelConfig.Offset.ToString(CultureInfo.InvariantCulture).Replace("-", "n_").Replace(".", "_").Replace("0", "a").Replace("1", "b").Replace("2", "c").Replace("3", "d").Replace("4", "e").Replace("5", "f").Replace("6", "g").Replace("7", "h").Replace("8", "i").Replace("9", "j");
+                                ImGui.SetClipboardText($"heels_offset_{valueStr}");
+                            }
+
+                            if (ImGui.IsItemHovered()) {
+                                var valueStr = heelConfig.Offset.ToString(CultureInfo.InvariantCulture).Replace("-", "n_").Replace(".", "_").Replace("0", "a").Replace("1", "b").Replace("2", "c").Replace("3", "d").Replace("4", "e").Replace("5", "f").Replace("6", "g").Replace("7", "h").Replace("8", "i").Replace("9", "j");
+                                ImGui.SetTooltip($"Copy Attribute Offset:\nheels_offset_{valueStr}");
+                            }
+                            
+                            ImGui.SameLine();
+                        }
+
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
 
                         var pathMode = heelConfig.PathMode;

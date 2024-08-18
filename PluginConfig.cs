@@ -26,12 +26,14 @@ public class PluginConfig : IPluginConfiguration {
     public bool UseModelOffsets = true;
     public bool ApplyToMinions = false;
     public bool RightClickResetValue = false;
+    public bool CopyAttributeButton;
 
     public bool TempOffsetWindowOpen = false;
     public bool TempOffsetWindowLock = false;
     public bool TempOffsetWindowTooltips = true;
     public bool TempOffsetWindowTransparent = false;
     public bool TempOffsetWindowPlusMinus = true;
+    public bool TempOffsetWindowLockInViewport = false;
 
     public bool ApplyStaticMinionPositions = true;
     public bool UsePrecisePositioning = true;
