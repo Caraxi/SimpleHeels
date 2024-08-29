@@ -112,6 +112,8 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public static TempOffset?[] TempOffsets { get; } = new TempOffset?[Constants.ObjectLimit];
     public static EmoteIdentifier?[] TempOffsetEmote { get; } = new EmoteIdentifier?[Constants.ObjectLimit];
+    
+    public static Dictionary<EmoteIdentifier, TempOffset> PreviousTempOffsets { get; } = new();
 
     private float[] RotationOffsets { get; } = new float[Constants.ObjectLimit];
 
@@ -447,6 +449,14 @@ public unsafe class Plugin : IDalamudPlugin {
                 offsetProvider = TempOffsets[updateIndex];
             } else {
                 PluginService.Log.Verbose($"Clearing Temp Offset for Object#{updateIndex} - Emote Changed");
+                if (obj->ObjectIndex == 0 && TempOffsets[updateIndex] != null && TempOffsetEmote[updateIndex] != null) {
+                    var emoteIndex = TempOffsetEmote[updateIndex];
+                    var o = TempOffsets[updateIndex];
+                    if (emoteIndex != null && o != null) {
+                        PreviousTempOffsets[emoteIndex] = o;
+                    }
+                }
+                
                 TempOffsets[updateIndex] = null;
                 TempOffsetEmote[updateIndex] = null;
             }

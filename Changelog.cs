@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.06f, "0.10.0.6", "Added ability to reapply temp offsets.");
         ChangelogFor(10.05f, "0.10.0.5", () => {
             C("Added a button to allow mod developers to copy offset attributes to clipboard.");
             C("Disabled Simple Heels model attribute editor.");
