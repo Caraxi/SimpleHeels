@@ -1275,7 +1275,7 @@ public class ConfigWindow : Window {
                         ImGui.EndDisabled();
 
                         if ((heelConfig.Slot == ModelSlot.Feet && ((heelConfig.PathMode == false && activeFootwear == heelConfig.ModelId) || (heelConfig.PathMode && activeFootwearPath != null && activeFootwearPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) || (heelConfig.Slot == ModelSlot.Legs && ((heelConfig.PathMode == false && activeLegs == heelConfig.ModelId) || (heelConfig.PathMode && activeLegsPath != null && activeLegsPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase)))) || (heelConfig.Slot == ModelSlot.Top && ((heelConfig.PathMode == false && activeTop == heelConfig.ModelId) || (heelConfig.PathMode && activeTopPath != null && activeTopPath.Equals(heelConfig.Path, StringComparison.OrdinalIgnoreCase))))) {
-                            ShowActiveOffsetMarker(activeCharacterAsCharacter != null, heelConfig.Enabled, activeHeelConfig == heelConfig, "Currently Wearing");
+                            ShowActiveOffsetMarker(activeCharacterAsCharacter != null, heelConfig.Enabled, activeHeelConfig?.Is(heelConfig) ?? false, "Currently Wearing");
                             if (heelConfig.Enabled) {
                                 wearingMatchCount++;
                                 usingDefault = false;
@@ -1386,13 +1386,13 @@ public class ConfigWindow : Window {
             }
 
             if (emoteOffsetsOpen && characterConfig.EmoteConfigs != null) {
-                if (ImGui.BeginTable("emoteOffsets", characterConfig is IpcCharacterConfig ? 6 : 8, ImGuiTableFlags.NoClip | ImGuiTableFlags.Resizable)) {
+                if (ImGui.BeginTable("emoteOffsets", characterConfig is IpcCharacterConfig ? 7 : 9, ImGuiTableFlags.NoClip | ImGuiTableFlags.Resizable)) {
                     if (characterConfig is not IpcCharacterConfig) {
                         ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 4 + 3 * ImGuiHelpers.GlobalScale);
                         ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
                     }
-
                     ImGui.TableSetupColumn("Emote", ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableSetupColumn("Rel.", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoDirectResize, 24 * ImGuiHelpers.GlobalScale);
                     ImGui.TableSetupColumn("Offset Height", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
                     ImGui.TableSetupColumn("Offset Forward", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
                     ImGui.TableSetupColumn("Offset Side", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
@@ -1400,9 +1400,9 @@ public class ConfigWindow : Window {
                     ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, checkboxSize);
 
                     if (characterConfig is IpcCharacterConfig) {
-                        TableHeaderRow(TableHeaderAlign.Left, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Left);
+                        TableHeaderRow(TableHeaderAlign.Left, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Left);
                     } else {
-                        TableHeaderRow(TableHeaderAlign.Right, TableHeaderAlign.Center, TableHeaderAlign.Left, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Left);
+                        TableHeaderRow(TableHeaderAlign.Right, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Left, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Center, TableHeaderAlign.Left);
                     }
 
                     var i = 0;
@@ -1469,6 +1469,8 @@ public class ConfigWindow : Window {
 
                         ImGuiExt.IconTextFrame(e.Emote.Icon, previewEmoteName);
                         ImGui.TableNextColumn();
+                        ImGui.Checkbox("##relativeOffset", ref e.RelativeOffset);
+                        ImGui.TableNextColumn();
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
                         ImGuiExt.FloatEditor("##height", ref e.Offset.Y, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
                         ImGui.TableNextColumn();
@@ -1491,7 +1493,7 @@ public class ConfigWindow : Window {
 
                         var activeEmote = EmoteIdentifier.Get(activeCharacterAsCharacter);
                         
-                        ShowActiveOffsetMarker(activeCharacterAsCharacter != null && activeEmote != null &&(activeEmote == e.Emote || (characterConfig is not IpcCharacterConfig && e.Editing == false && e.LinkedEmotes.Contains(activeEmote))), e.Enabled, activeHeelConfig == e, "Emote is currently being performed");
+                        ShowActiveOffsetMarker(activeCharacterAsCharacter != null && activeEmote != null && (activeEmote == e.Emote || (characterConfig is not IpcCharacterConfig && e.Editing == false && e.LinkedEmotes.Contains(activeEmote))), e.Enabled, activeHeelConfig?.Is(e) ?? false, "Emote is currently being performed");
 
                         if (characterConfig is IpcCharacterConfig || e.Editing) {
                             var fl = characterConfig is not IpcCharacterConfig;
@@ -1555,7 +1557,7 @@ public class ConfigWindow : Window {
 
                                 
                                 
-                                ShowActiveOffsetMarker(activeCharacterAsCharacter != null && activeEmote == linked, e.Enabled, activeHeelConfig == e, "Emote is currently being performed");
+                                ShowActiveOffsetMarker(activeCharacterAsCharacter != null && activeEmote == linked, e.Enabled, activeHeelConfig?.Is(e) ?? false, "Emote is currently being performed");
                             }
 
                             if (characterConfig is not IpcCharacterConfig) {
@@ -1683,7 +1685,7 @@ public class ConfigWindow : Window {
             ImGui.SameLine();
             ImGuiComponents.HelpMarker("The default offset will be used for all footwear that has not been configured.");
             ImGui.SameLine();
-            ShowActiveOffsetMarker(activeCharacterAsCharacter != null && usingDefault, true, activeHeelConfig == characterConfig, "Default offset is active");
+            ShowActiveOffsetMarker(activeCharacterAsCharacter != null && usingDefault, true, activeHeelConfig?.Is(characterConfig) ?? false, "Default offset is active");
         }
 
         if (Plugin.IsDebug && activeCharacter != null) {

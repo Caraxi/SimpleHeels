@@ -100,7 +100,10 @@ public class CharacterConfig : IOffsetProvider {
             var emoteId = EmoteIdentifier.Get((Character*)character);
             if (emoteId != null) {
                 var e = EmoteConfigs?.FirstOrDefault(ec => ec.Enabled && (ec.Emote == emoteId || ec.LinkedEmotes.Contains(emoteId)));
-                if (e != null) return e;
+                if (e != null) {
+                    if (e.RelativeOffset) return new RelativeEmoteOffsetProvider(e, GetFirstMatch(character, false));
+                    return e;
+                }
             }
         }
 

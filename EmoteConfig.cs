@@ -26,6 +26,7 @@ public class EmoteConfig : IOffsetProvider{
 
     public Vector3 Offset = new(0, 0, 0);
     public float Rotation = 0f;
+    public bool RelativeOffset;
 
     public Vector3 GetOffset() => Offset;
 
