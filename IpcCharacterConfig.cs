@@ -115,7 +115,10 @@ public class IpcCharacterConfig : CharacterConfig {
             var emote = EmoteIdentifier.Get(character);
             if (emote != null) {
                 var e = EmoteConfigs.FirstOrDefault(ec => ec.Enabled && (ec.Emote == emote || ec.LinkedEmotes.Contains(emote)));
-                if (e != null) return e;
+                if (e != null) {
+                    if (e.RelativeOffset) return new RelativeEmoteOffsetProvider(e, GetFirstMatch(character, false));
+                    return e;
+                }
             }
         }
 

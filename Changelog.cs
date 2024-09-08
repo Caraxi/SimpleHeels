@@ -16,6 +16,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.11f, "0.10.1.1", "Fixed relative emote offsets not applying through Mare Synchronos.");
         ChangelogFor(10.10f, "0.10.1.0", () => {
             C("Added ability to make emote offsets apply relative to equipment offsets.");
             C("This will allow an emote offset to apply a rotation, but keep the original offset from shoes you are wearing, for example.", 2);

@@ -1386,17 +1386,24 @@ public class ConfigWindow : Window {
             }
 
             if (emoteOffsetsOpen && characterConfig.EmoteConfigs != null) {
-                if (ImGui.BeginTable("emoteOffsets", characterConfig is IpcCharacterConfig ? 7 : 9, ImGuiTableFlags.NoClip | ImGuiTableFlags.Resizable)) {
+                var space = ImGui.GetContentRegionAvail().X;
+                if (ImGui.BeginTable("emoteOffsets", (characterConfig is IpcCharacterConfig ? 7 : 9) - (space < 1000 ? 3 : 0), ImGuiTableFlags.NoClip | (space < 1000 ? ImGuiTableFlags.None : ImGuiTableFlags.Resizable))) {
+                    
                     if (characterConfig is not IpcCharacterConfig) {
                         ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed, checkboxSize * 4 + 3 * ImGuiHelpers.GlobalScale);
-                        ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120 * ImGuiHelpers.GlobalScale);
+                        ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthStretch, 0.15f);
                     }
-                    ImGui.TableSetupColumn("Emote", ImGuiTableColumnFlags.WidthStretch);
-                    ImGui.TableSetupColumn("Rel.", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoDirectResize, 24 * ImGuiHelpers.GlobalScale);
-                    ImGui.TableSetupColumn("Offset Height", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
-                    ImGui.TableSetupColumn("Offset Forward", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
-                    ImGui.TableSetupColumn("Offset Side", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
-                    ImGui.TableSetupColumn("Rotation", ImGuiTableColumnFlags.WidthFixed, (90 + (config.ShowPlusMinusButtons ? 50 : 0)) * ImGuiHelpers.GlobalScale);
+                    ImGui.TableSetupColumn("Emote", ImGuiTableColumnFlags.WidthStretch, 0.3f);
+                    ImGui.TableSetupColumn("Rel.", ImGuiTableColumnFlags.WidthFixed, checkboxSize);
+                    if (space >= 1000) {
+                        ImGui.TableSetupColumn("Offset Height", ImGuiTableColumnFlags.WidthStretch, 0.1625f);
+                        ImGui.TableSetupColumn("Offset Forward", ImGuiTableColumnFlags.WidthStretch, 0.1625f);
+                        ImGui.TableSetupColumn("Offset Side", ImGuiTableColumnFlags.WidthStretch, 0.1625f);
+                        ImGui.TableSetupColumn("Rotation", ImGuiTableColumnFlags.WidthStretch, 0.1625f);
+                    } else {
+                        ImGui.TableSetupColumn("Offset", ImGuiTableColumnFlags.WidthStretch, 0.65f);
+                    }
+                    
                     ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, checkboxSize);
 
                     if (characterConfig is IpcCharacterConfig) {
@@ -1470,23 +1477,40 @@ public class ConfigWindow : Window {
                         ImGuiExt.IconTextFrame(e.Emote.Icon, previewEmoteName);
                         ImGui.TableNextColumn();
                         ImGui.Checkbox("##relativeOffset", ref e.RelativeOffset);
-                        ImGui.TableNextColumn();
-                        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        ImGuiExt.FloatEditor("##height", ref e.Offset.Y, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
-                        ImGui.TableNextColumn();
-                        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        ImGuiExt.FloatEditor("##forward", ref e.Offset.Z, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
-                        ImGui.TableNextColumn();
-                        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        ImGuiExt.FloatEditor("##side", ref e.Offset.X, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
-                        ImGui.TableNextColumn();
-                        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                        var rot = e.Rotation * 180f / MathF.PI;
+                        
+                        if (space >= 1000) {
+                            ImGui.TableNextColumn();
+                            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                            ImGuiExt.FloatEditor("##height", ref e.Offset.Y, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
+                            ImGui.TableNextColumn();
+                            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                            ImGuiExt.FloatEditor("##forward", ref e.Offset.Z, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
+                            ImGui.TableNextColumn();
+                            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                            ImGuiExt.FloatEditor("##side", ref e.Offset.X, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
+                            ImGui.TableNextColumn();
+                            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                            var rot = e.Rotation * 180f / MathF.PI;
 
-                        if (ImGuiExt.FloatEditor("##rotation", ref rot, format: "%.0f", allowPlusMinus: characterConfig is not IpcCharacterConfig, customPlusMinus: 1, resetValue: 0f)) {
-                            if (rot < 0) rot += 360;
-                            if (rot >= 360) rot -= 360;
-                            e.Rotation = rot * MathF.PI / 180f;
+                            if (ImGuiExt.FloatEditor("##rotation", ref rot, format: "%.0f", allowPlusMinus: characterConfig is not IpcCharacterConfig, customPlusMinus: 1, resetValue: 0f)) {
+                                if (rot < 0) rot += 360;
+                                if (rot >= 360) rot -= 360;
+                                e.Rotation = rot * MathF.PI / 180f;
+                            }
+                        } else {
+                            ImGui.TableNextColumn();
+
+                            using (ImRaii.ItemWidth(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("  Rotation  ").X)) {
+                                ImGuiExt.FloatEditor("Height", ref e.Offset.Y, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
+                                ImGuiExt.FloatEditor("Forward", ref e.Offset.Z, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
+                                ImGuiExt.FloatEditor("Side", ref e.Offset.X, 0.0001f, allowPlusMinus: characterConfig is not IpcCharacterConfig, resetValue: 0f);
+                                var rot = e.Rotation * 180f / MathF.PI;
+                                if (ImGuiExt.FloatEditor("Rotation", ref rot, format: "%.0f", allowPlusMinus: characterConfig is not IpcCharacterConfig, customPlusMinus: 1, resetValue: 0f)) {
+                                    if (rot < 0) rot += 360;
+                                    if (rot >= 360) rot -= 360;
+                                    e.Rotation = rot * MathF.PI / 180f;
+                                }
+                            }
                         }
 
                         ImGui.TableNextColumn();
@@ -1546,13 +1570,15 @@ public class ConfigWindow : Window {
 
                                 if (fl) {
                                     fl = false;
-                                    ImGui.SameLine();
-                                    ImGui.TextDisabled("Linked Emotes use the same offset as their base.");
+                                    ImGui.GetWindowDrawList().AddText(ImGui.GetFont(), ImGui.GetFont().FontSize, ImGui.GetItemRectMin() + new Vector2(ImGui.GetContentRegionAvail().X + ImGui.GetItemRectSize().X, 0), ImGui.GetColorU32(ImGuiCol.TextDisabled), "Linked Emotes use the same offset as their base.");
                                 }
 
-                                ImGui.TableNextColumn();
-                                ImGui.TableNextColumn();
-                                ImGui.TableNextColumn();
+                                if (space >= 1000) {
+                                    ImGui.TableNextColumn();
+                                    ImGui.TableNextColumn();
+                                    ImGui.TableNextColumn();
+                                }
+                                
                                 ImGui.TableNextColumn();
 
                                 
