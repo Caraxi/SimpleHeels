@@ -135,13 +135,13 @@ public class CharacterConfig : IOffsetProvider {
             switch (hc.Slot) {
                 case ModelSlot.Feet:
                     feetModelPath ??= Plugin.GetModelPath(human, ModelSlot.Feet);
-                    return (hc.PathMode == false && hc.ModelId == human->Feet.Id) || (hc.PathMode && feetModelPath != null && feetModelPath.Equals(hc.Path));
+                    return (hc.PathMode == false && hc.ModelId == human->Feet.Id) || (hc.PathMode && feetModelPath != null && feetModelPath.Equals(hc.Path, StringComparison.OrdinalIgnoreCase));
                 case ModelSlot.Top:
                     topModelPath ??= Plugin.GetModelPath(human, ModelSlot.Top);
-                    return (hc.PathMode == false && hc.ModelId == human->Top.Id) || (hc.PathMode && topModelPath != null && topModelPath.Equals(hc.Path));
+                    return (hc.PathMode == false && hc.ModelId == human->Top.Id) || (hc.PathMode && topModelPath != null && topModelPath.Equals(hc.Path, StringComparison.OrdinalIgnoreCase));
                 case ModelSlot.Legs:
                     legsModelPath ??= Plugin.GetModelPath(human, ModelSlot.Legs);
-                    return (hc.PathMode == false && hc.ModelId == human->Legs.Id) || (hc.PathMode && legsModelPath != null && legsModelPath.Equals(hc.Path));
+                    return (hc.PathMode == false && hc.ModelId == human->Legs.Id) || (hc.PathMode && legsModelPath != null && legsModelPath.Equals(hc.Path, StringComparison.OrdinalIgnoreCase));
                 default:
                     return false;
             }
@@ -166,7 +166,7 @@ public class CharacterConfig : IOffsetProvider {
             if (h.Slot != hc.Slot) continue;
 
             if (h.PathMode) {
-                if (h.Path != hc.Path) continue;
+                if (!string.Equals(h.Path, hc.Path, StringComparison.OrdinalIgnoreCase)) continue;
             } else {
                 if (h.ModelId != hc.ModelId) continue;
             }
