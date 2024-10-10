@@ -93,7 +93,7 @@ public unsafe class Plugin : IDalamudPlugin {
         PluginService.Commands.AddHandler("/heels", new CommandInfo(OnCommand) 
         { 
             HelpMessage = $"Open the {Name} config window.\n" +
-            "/heels renameChar \"<source char name>|<source world>\" \"<target char name>|<target world>\" → Rename existing character config to new character config", ShowInHelp = true 
+            "/heels renamechar \"<source char name>|<source world>\" \"<target char name>|<target world>\" → Rename existing character config to new character config", ShowInHelp = true 
         });
         
         ApiProvider.Init(this);
@@ -552,7 +552,7 @@ public unsafe class Plugin : IDalamudPlugin {
         if (splitArgs.Count > 0)
         {
 
-            switch (splitArgs[0])
+            switch (splitArgs[0].ToLowerInvariant())
             {
                 case "debug":
                     IsDebug = !IsDebug;
@@ -575,7 +575,7 @@ public unsafe class Plugin : IDalamudPlugin {
                 case "temp":
                     Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
                     break;
-                case "renameChar":
+                case "renamechar":
                     if (splitArgs.Count != 3)
                     {
                         break;
