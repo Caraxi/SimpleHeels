@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Text.RegularExpressions;
+using Dalamud.Configuration;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
@@ -20,6 +22,10 @@ using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using Lumina;
+using Lumina.Excel.GeneratedSheets2;
+using World = Lumina.Excel.GeneratedSheets2.World;
 
 namespace SimpleHeels;
 
@@ -88,7 +94,11 @@ public unsafe class Plugin : IDalamudPlugin {
         pluginInterface.UiBuilder.Draw += windowSystem.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += () => OnCommand(string.Empty, string.Empty);
 
-        PluginService.Commands.AddHandler("/heels", new CommandInfo(OnCommand) { HelpMessage = $"Open the {Name} config window.", ShowInHelp = true });
+        PluginService.Commands.AddHandler("/heels", new CommandInfo(OnCommand) 
+        { 
+            HelpMessage = $"Open the {Name} config window.\n" +
+            "/heels renameChar \"<source char name>|<source world>\" \"<target char name>|<target world>\" → Rename existing character config to new character config", ShowInHelp = true 
+        });
         
         ApiProvider.Init(this);
         PluginService.Framework.Update += OnFrameworkUpdate;
@@ -540,31 +550,87 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void OnCommand(string command, string args) {
-        switch (args.ToLowerInvariant()) {
-            case "debug":
-                IsDebug = !IsDebug;
-                return;
-            case "debug2":
-                extraDebug.Toggle();
-                return;
-            case "enable":
-                Config.Enabled = true;
-                RequestUpdateAll();
-                break;
-            case "disable":
-                Config.Enabled = false;
-                RequestUpdateAll();
-                break;
-            case "toggle":
-                Config.Enabled = !Config.Enabled;
-                RequestUpdateAll();
-                break;
-            case "temp":
-                Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
-                break;
-            default:
-                configWindow.ToggleWithWarning();
-                break;
+
+        var splitArgs = Regex.Matches(args, @"[\""].+?[\""]|[^ ]+").Cast<Match>().Select(m => m.Value).ToList();
+
+        if (splitArgs.Count > 0)
+        {
+
+            switch (splitArgs[0])
+            {
+                case "debug":
+                    IsDebug = !IsDebug;
+                    return;
+                case "debug2":
+                    extraDebug.Toggle();
+                    return;
+                case "enable":
+                    Config.Enabled = true;
+                    RequestUpdateAll();
+                    break;
+                case "disable":
+                    Config.Enabled = false;
+                    RequestUpdateAll();
+                    break;
+                case "toggle":
+                    Config.Enabled = !Config.Enabled;
+                    RequestUpdateAll();
+                    break;
+                case "temp":
+                    Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
+                    break;
+                case "renameChar":
+                    if (splitArgs.Count != 3)
+                    {
+                        break;
+                    }
+
+                    var sourceChar = splitArgs[1].Replace("\"", String.Empty).Split("|", StringSplitOptions.RemoveEmptyEntries);
+                    var targetChar = splitArgs[2].Replace("\"", String.Empty).Split("|", StringSplitOptions.RemoveEmptyEntries);
+
+                    if (sourceChar.Length != 2 || targetChar.Length != 2 || sourceChar.SequenceEqual(targetChar))
+                    {
+                        break;
+                    }
+
+                    var sourcename = sourceChar[0];
+                    var sourceworld = PluginService.Data.GetExcelSheet<World>()?.FirstOrDefault(w => w.Name == sourceChar[1]);
+                    var targetname = targetChar[0];
+                    var targetworld = PluginService.Data.GetExcelSheet<World>()?.FirstOrDefault(w => w.Name == targetChar[1]);
+
+
+                    if (targetworld == null || sourceworld == null)
+                    {
+                        break;
+                    }
+
+
+                    var newAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(targetworld.RowId) && Config.WorldCharacterDictionary[targetworld.RowId].ContainsKey(targetname);
+                    var oldAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(sourceworld.RowId) && Config.WorldCharacterDictionary[sourceworld.RowId].ContainsKey(sourcename);
+
+                    if (newAlreadyExists || !oldAlreadyExists || !Config.TryAddCharacter(targetname, targetworld.RowId))
+                    {
+                        break;
+                    }
+
+                    Config.WorldCharacterDictionary[targetworld.RowId][targetname] = Config.WorldCharacterDictionary[sourceworld.RowId][sourcename];
+                    Config.WorldCharacterDictionary[sourceworld.RowId].Remove(sourcename);
+
+                    if (Config.WorldCharacterDictionary[sourceworld.RowId].Count == 0)
+                    {
+                        Config.WorldCharacterDictionary.Remove(sourceworld.RowId);
+                    }
+
+                    break;
+                default:
+                    configWindow.ToggleWithWarning();
+                    break;
+            }
+
+        }
+        else
+        {
+            configWindow.ToggleWithWarning();
         }
     }
 
