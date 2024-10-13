@@ -90,8 +90,7 @@ public unsafe class Plugin : IDalamudPlugin {
         pluginInterface.UiBuilder.Draw += windowSystem.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += () => OnCommand(string.Empty, string.Empty);
 
-        PluginService.Commands.AddHandler("/heels", new CommandInfo(OnCommand) 
-        { 
+        PluginService.Commands.AddHandler("/heels", new CommandInfo(OnCommand) { 
             HelpMessage = $"Open the {Name} config window.\n" +
             "/heels renamechar \"<source char name>|<source world>\" \"<target char name>|<target world>\" → Rename existing character config to new character config", ShowInHelp = true 
         });
@@ -546,14 +545,13 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void OnCommand(string command, string args) {
-
-        var splitArgs = Regex.Matches(args, @"[\""].+?[\""]|[^ ]+").Cast<Match>().Select(m => m.Value).ToList();
-
-        if (splitArgs.Count > 0)
-        {
-
-            switch (splitArgs[0].ToLowerInvariant())
-            {
+        var splitArgs = Regex.Matches(args, @"[\""].+?[\""]|[^ ]+")
+            .Cast<Match>()
+            .Select(m => m.Value)
+            .ToList();
+        if (splitArgs.Count > 0) {
+            switch (splitArgs[0]
+                        .ToLowerInvariant()) {
                 case "debug":
                     IsDebug = !IsDebug;
                     return;
@@ -576,44 +574,42 @@ public unsafe class Plugin : IDalamudPlugin {
                     Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
                     break;
                 case "renamechar":
-                    if (splitArgs.Count != 3)
-                    {
+                    if (splitArgs.Count != 3) {
                         break;
                     }
 
-                    var sourceChar = splitArgs[1].Replace("\"", String.Empty).Split("|", StringSplitOptions.RemoveEmptyEntries);
-                    var targetChar = splitArgs[2].Replace("\"", String.Empty).Split("|", StringSplitOptions.RemoveEmptyEntries);
-
-                    if (sourceChar.Length != 2 || targetChar.Length != 2 || sourceChar.SequenceEqual(targetChar))
-                    {
+                    var sourceChar = splitArgs[1]
+                        .Replace("\"", String.Empty)
+                        .Split("|", StringSplitOptions.RemoveEmptyEntries);
+                    var targetChar = splitArgs[2]
+                        .Replace("\"", String.Empty)
+                        .Split("|", StringSplitOptions.RemoveEmptyEntries);
+                    if (sourceChar.Length != 2 || targetChar.Length != 2 || sourceChar.SequenceEqual(targetChar)) {
                         break;
                     }
 
                     var sourcename = sourceChar[0];
-                    var sourceworld = PluginService.Data.GetExcelSheet<World>()?.FirstOrDefault(w => w.Name == sourceChar[1]);
+                    var sourceworld = PluginService.Data.GetExcelSheet<World>()
+                        ?.FirstOrDefault(w => w.Name == sourceChar[1]);
                     var targetname = targetChar[0];
-                    var targetworld = PluginService.Data.GetExcelSheet<World>()?.FirstOrDefault(w => w.Name == targetChar[1]);
-
-
-                    if (targetworld == null || sourceworld == null)
-                    {
+                    var targetworld = PluginService.Data.GetExcelSheet<World>()
+                        ?.FirstOrDefault(w => w.Name == targetChar[1]);
+                    if (targetworld == null || sourceworld == null) {
                         break;
                     }
 
-
-                    var newAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(targetworld.RowId) && Config.WorldCharacterDictionary[targetworld.RowId].ContainsKey(targetname);
-                    var oldAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(sourceworld.RowId) && Config.WorldCharacterDictionary[sourceworld.RowId].ContainsKey(sourcename);
-
-                    if (newAlreadyExists || !oldAlreadyExists || !Config.TryAddCharacter(targetname, targetworld.RowId))
-                    {
+                    var newAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(targetworld.RowId) && Config.WorldCharacterDictionary[targetworld.RowId]
+                        .ContainsKey(targetname);
+                    var oldAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(sourceworld.RowId) && Config.WorldCharacterDictionary[sourceworld.RowId]
+                        .ContainsKey(sourcename);
+                    if (newAlreadyExists || !oldAlreadyExists || !Config.TryAddCharacter(targetname, targetworld.RowId)) {
                         break;
                     }
 
                     Config.WorldCharacterDictionary[targetworld.RowId][targetname] = Config.WorldCharacterDictionary[sourceworld.RowId][sourcename];
-                    Config.WorldCharacterDictionary[sourceworld.RowId].Remove(sourcename);
-
-                    if (Config.WorldCharacterDictionary[sourceworld.RowId].Count == 0)
-                    {
+                    Config.WorldCharacterDictionary[sourceworld.RowId]
+                        .Remove(sourcename);
+                    if (Config.WorldCharacterDictionary[sourceworld.RowId].Count == 0) {
                         Config.WorldCharacterDictionary.Remove(sourceworld.RowId);
                     }
 
@@ -622,10 +618,7 @@ public unsafe class Plugin : IDalamudPlugin {
                     configWindow.ToggleWithWarning();
                     break;
             }
-
-        }
-        else
-        {
+        } else {
             configWindow.ToggleWithWarning();
         }
     }
