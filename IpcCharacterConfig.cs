@@ -38,14 +38,14 @@ public class IpcCharacterConfig : CharacterConfig {
                 var drawObj = chr->CompanionData.CompanionObject->Character.GameObject.DrawObject;
                 if (drawObj != null) {
                     var p = drawObj->Object.Position;
-                    MinionPosition = new TempOffset(drawObj->Position, drawObj->Rotation.EulerAngles.Y);
+                    MinionPosition = new TempOffset(drawObj->Position.X, drawObj->Position.Y, drawObj->Position.Z, drawObj->Rotation.EulerAngles.Y);
                 }
             }
         }
 
         if (chr->Mode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop) {
             // Precise Positioning
-            EmotePosition = new TempOffset(chr->GameObject.Position, chr->GameObject.Rotation);
+            EmotePosition = new TempOffset(chr->GameObject.Position.X, chr->GameObject.Position.Y, chr->GameObject.Position.Z, chr->GameObject.Rotation);
         }
 
         PluginVersion = Assembly.GetExecutingAssembly()?.GetName()?.Version?.ToString() ?? string.Empty;

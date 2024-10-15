@@ -13,10 +13,6 @@ public class TempOffset(float x = 0, float y = 0, float z = 0, float r = 0, floa
     public float Pitch = pitch;
     public float Roll = roll;
 
-    public TempOffset(Vector3 position) : this(position.X, position.Y, position.Z) {}
-    public TempOffset(Vector3 position, float rotation) : this(position.X, position.Y, position.Z, rotation) { }
-
-
     public System.Numerics.Vector3 GetOffset() => new(X, Y, Z);
 
     public float GetRotation() => R;
