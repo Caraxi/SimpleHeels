@@ -16,6 +16,9 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.2f, "0.10.2.1", ()=> {
+            C("Fixed simple heels preventing rotation of main actor by gpose tools.");
+        });
         ChangelogFor(10.2f, "0.10.2.0", ()=> {
             C("Added optional gizmo for temp offsets.");
             C("Added Pitch and Roll support for temp offsets.");

@@ -123,6 +123,8 @@ public unsafe class Plugin : IDalamudPlugin {
     private float[] RotationOffsets { get; } = new float[Constants.ObjectLimit];
     private PitchRoll[] PitchRolls { get; } = new PitchRoll[Constants.ObjectLimit];
 
+    private byte[] SetGposeRotationCounter { get; } = new byte[Constants.ObjectLimit];
+
     public static Dictionary<uint, IpcCharacterConfig> IpcAssignedData { get; } = new();
 
     public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
@@ -274,11 +276,13 @@ public unsafe class Plugin : IDalamudPlugin {
         } finally {
             if (gameObject->DrawObject != null) {
 
-                var t = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(gameObject->Rotation + rotation, PitchRolls[gameObject->ObjectIndex].Pitch, PitchRolls[gameObject->ObjectIndex].Roll);
-
-                gameObject->DrawObject->Rotation = t;
-
-
+                if (!PluginService.ClientState.IsGPosing || SetGposeRotationCounter[gameObject->ObjectIndex] > 0) {
+                    if (SetGposeRotationCounter[gameObject->ObjectIndex] > 0) SetGposeRotationCounter[gameObject->ObjectIndex] -= 1;
+                    var t = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(gameObject->Rotation + rotation, PitchRolls[gameObject->ObjectIndex].Pitch, PitchRolls[gameObject->ObjectIndex].Roll);
+                    gameObject->DrawObject->Rotation = t;
+                }
+                
+                
             }
         }
     }
@@ -303,6 +307,9 @@ public unsafe class Plugin : IDalamudPlugin {
                     TempOffsets[destination->GameObject.ObjectIndex] = TempOffsets[source->GameObject.ObjectIndex];
                     TempOffsetEmote[destination->GameObject.ObjectIndex] = TempOffsetEmote[source->GameObject.ObjectIndex];
                 }
+
+                PitchRolls[destination->GameObject.ObjectIndex] = PitchRolls[source->GameObject.ObjectIndex];
+                SetGposeRotationCounter[destination->GameObject.ObjectIndex] = 60;
                 
                 destination->GameObject.DrawOffset = source->GameObject.DrawOffset;
                 if (BaseOffsets.TryGetValue(source->GameObject.ObjectIndex, out var baseOffset)) {
