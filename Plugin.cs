@@ -121,6 +121,7 @@ public unsafe class Plugin : IDalamudPlugin {
     public static Dictionary<EmoteIdentifier, TempOffset> PreviousTempOffsets { get; } = new();
 
     private float[] RotationOffsets { get; } = new float[Constants.ObjectLimit];
+    private PitchRoll[] PitchRolls { get; } = new PitchRoll[Constants.ObjectLimit];
 
     public static Dictionary<uint, IpcCharacterConfig> IpcAssignedData { get; } = new();
 
@@ -263,9 +264,23 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void* SetDrawRotationDetour(GameObject* gameObject, float rotation) {
-        if (gameObject->ObjectIndex < Constants.ObjectLimit && ManagedIndex[gameObject->ObjectIndex])
+        if (gameObject->ObjectIndex >= Constants.ObjectLimit || ManagedIndex[gameObject->ObjectIndex] == false) {
+            return setDrawRotationHook!.Original(gameObject, rotation);
+        }
+
+        try {
             rotation += RotationOffsets[gameObject->ObjectIndex];
-        return setDrawRotationHook!.Original(gameObject, rotation);
+            return setDrawRotationHook!.Original(gameObject, rotation);
+        } finally {
+            if (gameObject->DrawObject != null) {
+
+                var t = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(gameObject->Rotation + rotation, PitchRolls[gameObject->ObjectIndex].Pitch, PitchRolls[gameObject->ObjectIndex].Roll);
+
+                gameObject->DrawObject->Rotation = t;
+
+
+            }
+        }
     }
 
     private void* CloneActorDetour(Character** destinationArray, Character* source, uint copyFlags) {
@@ -381,11 +396,10 @@ public unsafe class Plugin : IDalamudPlugin {
                 setDrawOffset!.Original(obj, offset.X, offset.Y, offset.Z);
             }
         }
-        
+
         ManagedIndex[obj->ObjectIndex] = true;
         RotationOffsets[obj->ObjectIndex] = offsetProvider.GetRotation();
-        
-        
+        PitchRolls[obj->ObjectIndex] = offsetProvider.GetPitchRoll();
         
         return false;
     }
@@ -415,7 +429,8 @@ public unsafe class Plugin : IDalamudPlugin {
             ManagedIndex[updateIndex] = false;
             BaseOffsets.Remove(updateIndex);
             RotationOffsets[updateIndex] = 0;
-            if (updateIndex == 0) ApiProvider.UpdateLocal(Vector3.Zero, 0);
+            PitchRolls[updateIndex] = PitchRoll.Zero;
+            if (updateIndex == 0) ApiProvider.UpdateLocal(Vector3.Zero, 0, PitchRoll.Zero);
             return r;
         }
 
@@ -511,8 +526,10 @@ public unsafe class Plugin : IDalamudPlugin {
         
         ManagedIndex[obj->ObjectIndex] = true;
         RotationOffsets[obj->ObjectIndex] = offsetProvider.GetRotation();
+        PitchRolls[obj->ObjectIndex] = offsetProvider.GetPitchRoll();
+        
 
-        if (updateIndex == 0) ApiProvider.UpdateLocal(appliedOffset, RotationOffsets[obj->ObjectIndex]);
+        if (updateIndex == 0) ApiProvider.UpdateLocal(appliedOffset, RotationOffsets[obj->ObjectIndex], PitchRolls[obj->ObjectIndex]);
         return true;
     }
 

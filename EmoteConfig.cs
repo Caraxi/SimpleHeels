@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace SimpleHeels;
 
-public class EmoteConfig : IOffsetProvider{
+public class EmoteConfig : IOffsetProvider {
 
     public EmoteConfig IpcClone() {
         return new EmoteConfig {
@@ -32,6 +32,8 @@ public class EmoteConfig : IOffsetProvider{
     public Vector3 GetOffset() => Offset;
 
     public float GetRotation() => Rotation;
+    
+    public PitchRoll GetPitchRoll() => PitchRoll.Zero;
 
     public bool ShouldSerializeEnabled() => ApiProvider.IsSerializing == false;
 

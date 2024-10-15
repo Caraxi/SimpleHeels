@@ -26,6 +26,8 @@ public class CharacterConfig : IOffsetProvider {
     public float GetRotation() {
         return 0f;
     }
+    
+    public PitchRoll GetPitchRoll() => PitchRoll.Zero;
 
     public virtual bool ShouldSerializeIgnoreModelOffsets() {
         return true;

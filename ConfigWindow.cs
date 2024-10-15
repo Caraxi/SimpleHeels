@@ -22,6 +22,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using ImGuiNET;
+using ImGuizmoNET;
 using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
@@ -710,6 +711,12 @@ public class ConfigWindow : Window {
                     }
 
                     ImGui.Checkbox("Show Plus/Minus Buttons", ref config.TempOffsetWindowPlusMinus);
+
+                    ImGui.Checkbox("Show Gizmo", ref config.TempOffsetShowGizmo);
+                    ImGui.SameLine();
+                    ImGui.TextDisabled("Gizmo will be displayed while the temp offset window is open, and the SHIFT key is held.");
+                    
+                    ImGui.Checkbox("Enable Pitch/Roll", ref config.TempOffsetPitchRoll);
                 }
                 
                 

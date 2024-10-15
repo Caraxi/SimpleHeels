@@ -22,4 +22,6 @@ public class HeelConfig : IOffsetProvider {
     public Vector3 GetOffset() => Vector3.Zero with { Y = Offset };
 
     public float GetRotation() => 0f;
+
+    public PitchRoll GetPitchRoll() => PitchRoll.Zero;
 }

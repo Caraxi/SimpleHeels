@@ -5,13 +5,15 @@ namespace SimpleHeels;
 public interface IOffsetProvider {
     public Vector3 GetOffset();
     public float GetRotation();
-
-    public void Deconstruct(out float x, out float y, out float z, out float r) {
+    public PitchRoll GetPitchRoll(); // Pitch, Yaw, Roll
+    
+    public void Deconstruct(out float x, out float y, out float z, out float r, out float roll, out float pitch) {
         var o = GetOffset();
         x = o.X;
         y = o.Y;
         z = o.Z;
         r = GetRotation();
+        (roll, pitch) = GetPitchRoll();
     }
 
     public bool Is(IOffsetProvider other) {

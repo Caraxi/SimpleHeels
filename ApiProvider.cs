@@ -28,6 +28,7 @@ public static class ApiProvider {
     private static IpcCharacterConfig? _lastReported;
     private static Vector3? _lastReportedOffset;
     private static float? _lastReportedRotation;
+    private static PitchRoll? _lastReportedPitchRoll;
     private static Plugin? _plugin;
     public static readonly Stopwatch TimeSinceLastReport = Stopwatch.StartNew();
 
@@ -120,10 +121,13 @@ public static class ApiProvider {
         _unregisterPlayer = null;
     }
 
-    internal static void UpdateLocal(Vector3 offset, float rotation) {
-        if (_lastReportedOffset == null || Vector3.Distance(_lastReportedOffset.Value, offset) > Constants.FloatDelta || _lastReportedRotation == null || MathF.Abs(_lastReportedRotation.Value - rotation) > Constants.FloatDelta) {
+    internal static void UpdateLocal(Vector3 offset, float rotation, PitchRoll pitchRoll) {
+        if (_lastReportedOffset == null || Vector3.Distance(_lastReportedOffset.Value, offset) > Constants.FloatDelta ||
+            _lastReportedRotation == null || MathF.Abs(_lastReportedRotation.Value - rotation) > Constants.FloatDelta ||
+            _lastReportedPitchRoll == null || !PitchRoll.Equal(_lastReportedPitchRoll, pitchRoll)) {
             _lastReportedOffset = offset;
             _lastReportedRotation = rotation;
+            _lastReportedPitchRoll = pitchRoll;
             OnChanged();
         }
     }
@@ -131,6 +135,7 @@ public static class ApiProvider {
     internal static void ForceUpdateLocal() {
         _lastReportedOffset = null;
         _lastReportedRotation = null;
+        _lastReportedPitchRoll = null;
         _lastReported = null;
         OnChanged();
     }

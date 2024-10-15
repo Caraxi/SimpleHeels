@@ -10,4 +10,6 @@ public record ModelOffsetProvider(float Offset) : IOffsetProvider {
     public float GetRotation() {
         return 0f;
     }
+
+    public PitchRoll GetPitchRoll() => PitchRoll.Zero;
 }

@@ -34,6 +34,9 @@ public class PluginConfig : IPluginConfiguration {
     public bool TempOffsetWindowTransparent = false;
     public bool TempOffsetWindowPlusMinus = true;
     public bool TempOffsetWindowLockInViewport = false;
+    public bool TempOffsetPitchRoll = false;
+    public bool TempOffsetShowGizmo = false;
+
 
     public bool ApplyStaticMinionPositions = true;
     public bool UsePrecisePositioning = true;
