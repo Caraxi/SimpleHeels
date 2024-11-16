@@ -21,7 +21,7 @@ using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-using World = Lumina.Excel.GeneratedSheets2.World;
+using World = Lumina.Excel.Sheets.World;
 
 namespace SimpleHeels;
 
@@ -622,19 +622,19 @@ public unsafe class Plugin : IDalamudPlugin {
                         break;
                     }
 
-                    var newAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(targetworld.RowId) && Config.WorldCharacterDictionary[targetworld.RowId]
+                    var newAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(targetworld.Value.RowId) && Config.WorldCharacterDictionary[targetworld.Value.RowId]
                         .ContainsKey(targetname);
-                    var oldAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(sourceworld.RowId) && Config.WorldCharacterDictionary[sourceworld.RowId]
+                    var oldAlreadyExists = Config.WorldCharacterDictionary.ContainsKey(sourceworld.Value.RowId) && Config.WorldCharacterDictionary[sourceworld.Value.RowId]
                         .ContainsKey(sourcename);
-                    if (newAlreadyExists || !oldAlreadyExists || !Config.TryAddCharacter(targetname, targetworld.RowId)) {
+                    if (newAlreadyExists || !oldAlreadyExists || !Config.TryAddCharacter(targetname, targetworld.Value.RowId)) {
                         break;
                     }
 
-                    Config.WorldCharacterDictionary[targetworld.RowId][targetname] = Config.WorldCharacterDictionary[sourceworld.RowId][sourcename];
-                    Config.WorldCharacterDictionary[sourceworld.RowId]
+                    Config.WorldCharacterDictionary[targetworld.Value.RowId][targetname] = Config.WorldCharacterDictionary[sourceworld.Value.RowId][sourcename];
+                    Config.WorldCharacterDictionary[sourceworld.Value.RowId]
                         .Remove(sourcename);
-                    if (Config.WorldCharacterDictionary[sourceworld.RowId].Count == 0) {
-                        Config.WorldCharacterDictionary.Remove(sourceworld.RowId);
+                    if (Config.WorldCharacterDictionary[sourceworld.Value.RowId].Count == 0) {
+                        Config.WorldCharacterDictionary.Remove(sourceworld.Value.RowId);
                     }
 
                     break;

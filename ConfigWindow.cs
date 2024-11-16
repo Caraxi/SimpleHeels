@@ -22,12 +22,11 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using ImGuiNET;
-using ImGuizmoNET;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
-using World = Lumina.Excel.GeneratedSheets2.World;
-using WorldDCGroupType = Lumina.Excel.GeneratedSheets2.WorldDCGroupType;
+using World = Lumina.Excel.Sheets.World;
+using WorldDCGroupType = Lumina.Excel.Sheets.WorldDCGroupType;
 
 namespace SimpleHeels;
 
@@ -41,13 +40,13 @@ public class ConfigWindow : Window {
     private readonly Lazy<Dictionary<(ushort, ModelSlot), ShoeModel>> shoeModelList = new(() => {
         var dict = new Dictionary<(ushort, ModelSlot), ShoeModel> { [(0, ModelSlot.Feet)] = new() { Id = 0, Name = "Smallclothes (Barefoot)" } };
 
-        foreach (var item in PluginService.Data.GetExcelSheet<Item>()!.Where(i => i.EquipSlotCategory?.Value?.Feet != 0)) {
-            if (item.ItemUICategory.Row is not (35 or 36 or 38)) continue;
+        foreach (var item in PluginService.Data.GetExcelSheet<Item>().Where(i => i.EquipSlotCategory.Value.Feet != 0)) {
+            if (item.ItemUICategory.RowId is not (35 or 36 or 38)) continue;
 
             var modelBytes = BitConverter.GetBytes(item.ModelMain);
             var modelId = BitConverter.ToUInt16(modelBytes, 0);
 
-            var slot = item.ItemUICategory.Row switch {
+            var slot = item.ItemUICategory.RowId switch {
                 35 => ModelSlot.Top,
                 36 => ModelSlot.Legs,
                 _ => ModelSlot.Feet
@@ -139,26 +138,26 @@ public class ConfigWindow : Window {
 
     public unsafe void DrawCharacterList() {
         foreach (var (worldId, characters) in config.WorldCharacterDictionary.ToArray()) {
-            var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
+            var world = PluginService.Data.GetExcelSheet<World>()?.GetRowOrDefault(worldId);
             if (world == null) continue;
 
-            ImGui.TextDisabled($"{world.Name.RawString}");
+            ImGui.TextDisabled($"{world.Value.Name.ExtractText()}");
             ImGuiExt.Separator();
 
             foreach (var (name, characterConfig) in characters.ToArray()) {
                 using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ParsedGrey, characterConfig.Enabled == false)) {
-                    if (ImGui.Selectable($"{name}##{world.Name.RawString}", selectedCharacter == characterConfig)) {
+                    if (ImGui.Selectable($"{name}##{world.Value.Name.ExtractText()}", selectedCharacter == characterConfig)) {
                         selectedCharacter = characterConfig;
                         selectedName = name;
-                        selectedWorld = world.RowId;
+                        selectedWorld = world.Value.RowId;
                         newName = name;
-                        newWorld = world.RowId;
+                        newWorld = world.Value.RowId;
                         selectedGroup = null;
                     }
                 }
 
                 if (ImGui.BeginPopupContextItem()) {
-                    if (ImGui.Selectable($"Remove '{name} @ {world.Name.RawString}' from Config")) {
+                    if (ImGui.Selectable($"Remove '{name} @ {world.Value.Name.ExtractText()}' from Config")) {
                         characters.Remove(name);
                         if (selectedCharacter == characterConfig) selectedCharacter = null;
                         if (characters.Count == 0) {
@@ -189,17 +188,17 @@ public class ConfigWindow : Window {
 
                 var world = PluginService.Data.GetExcelSheet<World>()?.GetRow(worldId);
                 if (world == null) continue;
-                if (ImGui.Selectable($"{name}##{world.Name.RawString}##ipc", selectedName == name && selectedWorld == worldId)) {
+                if (ImGui.Selectable($"{name}##{world.Value.Name.ExtractText()}##ipc", selectedName == name && selectedWorld == worldId)) {
                     selectedCharacter = ipcCharacterConfig;
                     selectedName = name;
-                    selectedWorld = world.RowId;
+                    selectedWorld = world.Value.RowId;
                     newName = string.Empty;
                     newWorld = 0;
                     selectedGroup = null;
                 }
 
                 ImGui.SameLine();
-                ImGui.TextDisabled(world.Name.ToDalamudString().TextValue);
+                ImGui.TextDisabled(world.Value.Name.ToDalamudString().TextValue);
             }
 
             ImGuiHelpers.ScaledDummy(10);
@@ -265,7 +264,7 @@ public class ConfigWindow : Window {
     private void ShowDebugInfo() {
         if (Plugin.IsDebug && ImGui.TreeNode("DEBUG INFO")) {
             try {
-                var activePlayer = PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
+                var activePlayer = PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.RowId == selectedWorld);
 
                 if (activePlayer is not IPlayerCharacter pc) {
                     ImGui.TextDisabled("Character is not currently in world.");
@@ -370,7 +369,7 @@ public class ConfigWindow : Window {
             if (PluginService.ClientState.LocalPlayer != null) {
                 if (ImGuiComponents.IconButton(FontAwesomeIcon.User)) {
                     if (PluginService.ClientState.LocalPlayer != null) {
-                        config.TryAddCharacter(PluginService.ClientState.LocalPlayer.Name.TextValue, PluginService.ClientState.LocalPlayer.HomeWorld.Id);
+                        config.TryAddCharacter(PluginService.ClientState.LocalPlayer.Name.TextValue, PluginService.ClientState.LocalPlayer.HomeWorld.RowId);
                     }
                 }
 
@@ -379,7 +378,7 @@ public class ConfigWindow : Window {
                 ImGui.SameLine();
                 if (ImGuiComponents.IconButton(FontAwesomeIcon.DotCircle)) {
                     if (PluginService.Targets.Target is IPlayerCharacter pc) {
-                        config.TryAddCharacter(pc.Name.TextValue, pc.HomeWorld.Id);
+                        config.TryAddCharacter(pc.Name.TextValue, pc.HomeWorld.RowId);
                     }
                 }
 
@@ -507,7 +506,7 @@ public class ConfigWindow : Window {
 
                         ImGui.SameLine();
                         ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * 140);
-                        if (ImGui.BeginCombo("##world", c.World == ushort.MaxValue ? "Non Player" : PluginService.Data.GetExcelSheet<World>()?.GetRow(c.World)?.Name.RawString ?? $"World#{c.World}", ImGuiComboFlags.HeightLargest)) {
+                        if (ImGui.BeginCombo("##world", c.World == ushort.MaxValue ? "Non Player" : PluginService.Data.GetExcelSheet<World>()?.GetRowOrDefault(c.World)?.Name.ExtractText() ?? $"World#{c.World}", ImGuiComboFlags.HeightLargest)) {
                             var appearing = ImGui.IsWindowAppearing();
 
                             if (appearing) {
@@ -529,9 +528,9 @@ public class ConfigWindow : Window {
                                     }
 
                                     if (dc != null) {
-                                        if (lastDc != dc.RowId) {
-                                            lastDc = dc.RowId;
-                                            ImGui.TextDisabled($"{dc.Name.RawString}");
+                                        if (lastDc != dc.Value.RowId) {
+                                            lastDc = dc.Value.RowId;
+                                            ImGui.TextDisabled($"{dc.Value.Name.ExtractText()}");
                                         }
                                     }
 
@@ -546,8 +545,8 @@ public class ConfigWindow : Window {
                                 }
 
                                 World("Non Player", ushort.MaxValue);
-                                foreach (var w in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPlayerWorld()).OrderBy(w => w.DataCenter.Value?.Name.RawString).ThenBy(w => w.Name.RawString)) {
-                                    World(w.Name.RawString, w.RowId, w.DataCenter.Value);
+                                foreach (var w in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPlayerWorld()).OrderBy(w => w.DataCenter.Value.Name.ExtractText()).ThenBy(w => w.Name.ExtractText())) {
+                                    World(w.Name.ExtractText(), w.RowId, w.DataCenter.Value);
                                 }
                             }
 
@@ -575,7 +574,7 @@ public class ConfigWindow : Window {
                         ImGui.SameLine();
                         if (ImGuiComponents.IconButton(FontAwesomeIcon.User)) {
                             if (PluginService.ClientState.LocalPlayer != null) {
-                                var c = new GroupCharacter { Name = PluginService.ClientState.LocalPlayer.Name.TextValue, World = PluginService.ClientState.LocalPlayer.HomeWorld.Id };
+                                var c = new GroupCharacter { Name = PluginService.ClientState.LocalPlayer.Name.TextValue, World = PluginService.ClientState.LocalPlayer.HomeWorld.RowId };
                                 if (!selectedGroup.Characters.Any(ec => ec.Name == c.Name && ec.World == c.World)) {
                                     selectedGroup.Characters.Add(c);
                                 }
@@ -588,7 +587,7 @@ public class ConfigWindow : Window {
                         if (ImGuiComponents.IconButton(FontAwesomeIcon.DotCircle)) {
                             var target = PluginService.Targets.SoftTarget ?? PluginService.Targets.Target;
                             if (target != null) {
-                                var c = new GroupCharacter { Name = target.Name.TextValue, World = target is IPlayerCharacter pc ? pc.HomeWorld.Id : ushort.MaxValue };
+                                var c = new GroupCharacter { Name = target.Name.TextValue, World = target is IPlayerCharacter pc ? pc.HomeWorld.RowId : ushort.MaxValue };
                                 if (!selectedGroup.Characters.Any(ec => ec.Name == c.Name && ec.World == c.World)) {
                                     selectedGroup.Characters.Add(c);
                                 }
@@ -872,13 +871,13 @@ public class ConfigWindow : Window {
         IOffsetProvider? activeHeelConfig = null;
 
         if (characterConfig is GroupConfig gc) {
-            var target = new[] { PluginService.Targets.SoftTarget, PluginService.Targets.Target, PluginService.ClientState.LocalPlayer }.FirstOrDefault(t => t is ICharacter character && gc.Matches(((GameObject*)character.Address)->DrawObject, character.Name.TextValue, (character is IPlayerCharacter pc) ? pc.HomeWorld.Id : ushort.MaxValue));
+            var target = new[] { PluginService.Targets.SoftTarget, PluginService.Targets.Target, PluginService.ClientState.LocalPlayer }.FirstOrDefault(t => t is ICharacter character && gc.Matches(((GameObject*)character.Address)->DrawObject, character.Name.TextValue, (character is IPlayerCharacter pc) ? pc.HomeWorld.RowId : ushort.MaxValue));
             if (target is ICharacter) {
                 activeCharacter = (GameObject*)target.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;
                 activeHeelConfig = characterConfig.GetFirstMatch(activeCharacterAsCharacter);
                 if (target is IPlayerCharacter pc) {
-                    ImGui.TextDisabled($"Preview displays based on {target.Name.TextValue} ({pc.HomeWorld?.GameData?.Name.RawString})");
+                    ImGui.TextDisabled($"Preview displays based on {target.Name.TextValue} ({pc.HomeWorld.Value.Name.ExtractText()})");
                 } else {
                     ImGui.TextDisabled($"Preview displays based on {target.Name.TextValue} (NPC)");
                 }
@@ -886,7 +885,7 @@ public class ConfigWindow : Window {
                 Plugin.RequestUpdateAll();
             }
         } else {
-            var player = PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.Id == selectedWorld);
+            var player = PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.RowId == selectedWorld);
             if (player is IPlayerCharacter) {
                 activeCharacter = (GameObject*)player.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;
@@ -918,10 +917,10 @@ public class ConfigWindow : Window {
             var worldName = PluginService.Data.GetExcelSheet<World>()!.GetRow(newWorld)!.Name.ToDalamudString().TextValue;
             if (ImGui.BeginCombo("World", worldName)) {
                 var lastDc = string.Empty;
-                foreach (var world in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPlayerWorld()).OrderBy(w => w.DataCenter?.Value?.Name.RawString ?? string.Empty).ThenBy(w => w.Name.ToDalamudString().TextValue, StringComparer.OrdinalIgnoreCase)) {
-                    if (lastDc != world.DataCenter?.Value?.Name.RawString) {
-                        ImGui.TextDisabled(world.DataCenter?.Value?.Name.RawString ?? string.Empty);
-                        lastDc = world.DataCenter?.Value?.Name.RawString ?? string.Empty;
+                foreach (var world in PluginService.Data.GetExcelSheet<World>()!.Where(w => w.IsPlayerWorld()).OrderBy(w => w.DataCenter.Value.Name.ExtractText() ?? string.Empty).ThenBy(w => w.Name.ToDalamudString().TextValue, StringComparer.OrdinalIgnoreCase)) {
+                    if (lastDc != world.DataCenter.Value.Name.ExtractText()) {
+                        ImGui.TextDisabled(world.DataCenter.Value.Name.ExtractText() ?? string.Empty);
+                        lastDc = world.DataCenter.Value.Name.ExtractText() ?? string.Empty;
                     }
                     
                     if (ImGui.Selectable($"  {world.Name.ToDalamudString().TextValue}", world.RowId == newWorld)) {

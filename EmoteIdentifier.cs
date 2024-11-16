@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using Lumina.Excel.GeneratedSheets2;
+using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 
 namespace SimpleHeels;
@@ -15,7 +15,7 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
     public static Lazy<List<EmoteIdentifier>> EmoteList = new(() => {
         var l = new List<EmoteIdentifier>();
         foreach (var emoteMode in PluginService.Data.GetExcelSheet<EmoteMode>()!) {
-            if (emoteMode.RowId == 0 || emoteMode.StartEmote.Row == 0) continue;
+            if (emoteMode.RowId == 0 || emoteMode.StartEmote.RowId == 0) continue;
             for (byte i = 0; i < emoteMode.RowId switch { 1 => 4, 2 => 5, 3 => 3, _ => 1 }; i++) l.Add(new EmoteIdentifier(emoteMode.RowId, i));
         }
 
@@ -33,18 +33,18 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
     private static string FetchName(uint emoteModeId) {
         var emoteMode = PluginService.Data.GetExcelSheet<EmoteMode>()?.GetRow(emoteModeId);
         if (emoteMode == null) return $"EmoteMode#{emoteModeId}";
-        var emote = emoteMode.StartEmote.Value;
-        if (emote == null) return $"EmoteMode#{emoteModeId}";
-        return emote.Name.ToDalamudString().TextValue;
+        var emote = emoteMode.Value.StartEmote;
+        if (!emote.IsValid || emote.RowId == 0) return $"EmoteMode#{emoteModeId}";
+        return emote.Value.Name.ExtractText();
     }
 
     private static uint FetchIcon(uint emoteModeId) {
         var emoteMode = PluginService.Data.GetExcelSheet<EmoteMode>()?.GetRow(emoteModeId);
         if (emoteMode == null) return 0;
-        var emote = emoteMode.StartEmote.Value;
-        if (emote == null) return 0;
+        var emote = emoteMode.Value.StartEmote;
+        if (!emote.IsValid || emote.RowId == 0) return 0;
 
-        return emote.Icon;
+        return emote.Value.Icon;
     }
 
     [Newtonsoft.Json.JsonIgnore]

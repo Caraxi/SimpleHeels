@@ -8,7 +8,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using ImGuiNET;
-using Companion = Lumina.Excel.GeneratedSheets2.Companion;
+using Companion = Lumina.Excel.Sheets.Companion;
 
 namespace SimpleHeels;
 
@@ -68,12 +68,12 @@ public unsafe class ExtraDebug : Window {
             var companionId = chr->CompanionData.CompanionObject->Character.GameObject.BaseId;
             var companion = PluginService.Data.GetExcelSheet<Companion>()?.GetRow(companionId);
             if (companion == null) continue;
-            if (companion.Behavior.Row != 3) continue;
+            if (companion.Value.Behavior.RowId != 3) continue;
             using (ImRaii.PushId($"chr_{c.EntityId:X}")) {
                 ImGui.Separator();
                 var go = &chr->CompanionData.CompanionObject->Character.GameObject;
                 if (minionPositions[go->ObjectIndex] == default) minionPositions[go->ObjectIndex] = new Vector4(go->Position, go->Rotation);
-                if (ImGui.DragFloat4($"{c.Name.TextValue}'s {companion.Singular.ToDalamudString().TextValue}", ref minionPositions[go->ObjectIndex], 0.01f)) {
+                if (ImGui.DragFloat4($"{c.Name.TextValue}'s {companion.Value.Singular.ToDalamudString().TextValue}", ref minionPositions[go->ObjectIndex], 0.01f)) {
                     go->DrawObject->Object.Position.X = minionPositions[go->ObjectIndex].X;
                     go->DrawObject->Object.Position.Y = minionPositions[go->ObjectIndex].Y;
                     go->DrawObject->Object.Position.Z = minionPositions[go->ObjectIndex].Z;
@@ -97,7 +97,7 @@ public unsafe class ExtraDebug : Window {
                 if (ImGui.IsItemClicked()) ImGui.SetClipboardText($"{actor.Address:X}");
 
                 ImGui.Text($"Name: '{actor.Name}'");
-                ImGui.Text($"HomeWorld: '{pc.HomeWorld.Id}'");
+                ImGui.Text($"HomeWorld: '{pc.HomeWorld.RowId}'");
 
                 ImGui.Text($"Mode: {obj->Mode}");
                 ImGui.Text($"ModeParam: {obj->ModeParam}");
