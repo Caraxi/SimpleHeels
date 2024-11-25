@@ -1020,6 +1020,22 @@ public class ConfigWindow : Window {
             }
         }
 
+        if (characterConfig is not IpcCharacterConfig && activeCharacter != null) {
+            var customizePlusProfile = IPC.CustomizePlus.GetProfileOnCharacter(activeCharacter->ObjectIndex);
+            if (customizePlusProfile != null) {
+                if (customizePlusProfile.Bones.TryGetValue("n_root", out _)) {
+                    ImGui.PushStyleColor(ImGuiCol.Button, ImGuiColors.DalamudRed * new Vector4(1, 1, 1, 0.3f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGuiColors.DalamudRed * new Vector4(1, 1, 1, 0.3f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGuiColors.DalamudRed * new Vector4(1, 1, 1, 0.3f));
+                    ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
+                    ImGui.Button($"Customize Plus is modifying the root node of '{activeCharacter->NameString}'", new Vector2(ImGui.GetContentRegionAvail().X, 32 * ImGuiHelpers.GlobalScale));
+                    ImGui.Button($"Simple Heels WILL NOT work for this character.", new Vector2(ImGui.GetContentRegionAvail().X, 32 * ImGuiHelpers.GlobalScale));
+                    ImGui.PopStyleVar();
+                    ImGui.PopStyleColor(3);
+                }
+            }
+        }
+
         using (ImRaii.Disabled(characterConfig is IpcCharacterConfig)) {
             if (characterConfig is not (IpcCharacterConfig or GroupConfig) && ImGui.Checkbox($"Enable offsets for {selectedName}", ref characterConfig.Enabled)) {
                 Plugin.RequestUpdateAll();
