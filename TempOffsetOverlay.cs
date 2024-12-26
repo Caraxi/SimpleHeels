@@ -166,7 +166,7 @@ public sealed unsafe class TempOffsetOverlay : Window {
             };
         }
 
-        if (ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenOverlapped | ImGuiHoveredFlags.AllowWhenBlockedByPopup | ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)) {
+        if (ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByPopup | ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)) {
             var dl = ImGui.GetBackgroundDrawList();
 
             if (!config.TempOffsetWindowTransparent) {

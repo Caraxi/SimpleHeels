@@ -2,12 +2,18 @@
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Animation;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using FFXIVClientStructs.FFXIV.Client.System.Resource.Handle;
 using ImGuiNET;
+using Lumina.Excel.Sheets;
 using Companion = Lumina.Excel.Sheets.Companion;
 
 namespace SimpleHeels;
@@ -134,6 +140,111 @@ public unsafe class ExtraDebug : Window {
                 ImGui.Text($"PoseIdentifier: {EmoteIdentifier.Get(obj)}");
                 
                 ImGui.TreePop();
+            }
+        }
+    }
+    
+    
+    [StructLayout(LayoutKind.Explicit, Size = 128)]
+    private struct AnimationResourceHandle {
+        [FieldOffset(0x00)] public ResourceHandle ResourceHandle;
+        [FieldOffset(0x00)] public void* Unk00;
+    }
+
+    [StructLayout(LayoutKind.Explicit, Size = 8)]
+    private struct SkeletonExt {
+        [FieldOffset(0x00)] public Skeleton Skeleton;
+        
+        [FieldOffset(0x58)] public SkeletonResourceHandle** SkeletonResourceHandles;
+        [FieldOffset(0x70)] public AnimationResourceHandle** AnimationResourceHandles;
+        
+        
+        
+    }
+
+    private void TabHeight() {
+        foreach (var actor in PluginService.Objects) {
+            
+            
+            
+            
+        }
+    }
+
+    private void TabEmotes() {
+        foreach (var actor in PluginService.Objects) {
+            using (ImRaii.PushId($"emoteCharacter_{actor.EntityId}")) {
+                if (actor is not IPlayerCharacter pc) continue;
+                var character = (Character*)pc.Address;
+                using var tree = ImRaii.TreeNode(character->NameString);
+                if (!tree) continue;
+                var drawObject = character->DrawObject;
+                if (drawObject->GetObjectType() != ObjectType.CharacterBase) continue;
+                var charaBase = (CharacterBase*)drawObject;
+                
+                if (charaBase->GetModelType() != CharacterBase.ModelType.Human) continue;
+                var human = (Human*)charaBase;
+
+                var skeleton = (SkeletonExt*)human->Skeleton;
+                if (skeleton == null) continue;
+                
+                DebugUtil.PrintOutObject(human);
+                
+                DebugUtil.PrintOutObject(skeleton);
+                
+                
+                
+                DebugUtil.PrintOutObject(drawObject);
+                var emoteController = &character->EmoteController;
+
+                var timelineContainer = &character->Timeline;
+                
+                DebugUtil.PrintOutObject(emoteController);
+                
+                DebugUtil.PrintOutObject(timelineContainer);
+                
+                if (PluginService.Data.GetExcelSheet<Emote>().TryGetRow(emoteController->EmoteId, out var emote)) {
+                    ImGui.Text("Emote:");
+                    using (ImRaii.PushIndent()) {
+                        ImGui.Text($"Name: {emote.Name.ExtractText().OrIfWhitespace("No Name")}");
+                    }
+                } else {
+                    ImGui.Text("No Emote Data");
+                }
+
+                foreach (var timeline in timelineContainer->TimelineSequencer.SchedulerTimelines) {
+                    if (timeline.Value == null) continue;
+                    if (timeline.Value->Value == null) continue;
+                    var tl = timeline.Value->Value;
+
+                    if (tl->SchedulerResource == null) continue;
+                    ImGui.Text(tl->SchedulerResource->Name.BufferString);
+                    ImGui.SameLine();
+
+                    if (tl->SchedulerResource->Resource == null) {
+                        ImGui.Text("No Resource");
+                        if (ImGui.IsItemClicked()) {
+                            var r = tl->LoadTimelineResources();
+                            PluginService.Log.Debug($"{r:X}");
+                            ImGui.SetClipboardText($"{r:X}");
+                        }
+                    } else {
+                        ImGui.Text(tl->SchedulerResource->Resource->FileName.ToString());
+                    }
+                    
+                    DebugUtil.PrintOutObject(tl);
+                }
+                
+                
+                
+                
+                
+
+
+
+
+
+
             }
         }
     }

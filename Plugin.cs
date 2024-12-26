@@ -55,6 +55,8 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? 45 84 FF 75 40", DetourName = nameof(SetModeDetour))]
     private Hook<SetMode>? setModeHook;
 
+    public static Dictionary<string, string> ExtraInfo { get; } = new();
+
     public Plugin(IDalamudPluginInterface pluginInterface) {
 #if DEBUG
         IsDebug = true;
@@ -104,6 +106,9 @@ public unsafe class Plugin : IDalamudPlugin {
         terminateCharacterHook?.Enable();
         setModeHook?.Enable();
         RequestUpdateAll();
+        
+        
+        
 
         for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
     }
