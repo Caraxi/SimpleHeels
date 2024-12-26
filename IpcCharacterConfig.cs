@@ -17,10 +17,6 @@ public class IpcCharacterConfig : CharacterConfig {
     public TempOffset? TempOffset;
     public TempOffset? MinionPosition;
     public TempOffset? EmotePosition;
-
-    public bool ShouldSerializeExtraInfo() => ExtraInfo is { Count: > 0 };
-    public Dictionary<string, string> ExtraInfo = new();
-    
     public string PluginVersion = string.Empty;
     
     
@@ -51,11 +47,6 @@ public class IpcCharacterConfig : CharacterConfig {
             // Precise Positioning
             EmotePosition = new TempOffset(chr->GameObject.Position.X, chr->GameObject.Position.Y, chr->GameObject.Position.Z, chr->GameObject.Rotation);
         }
-
-        if (player.ObjectIndex == 0) {
-            ExtraInfo = Plugin.ExtraInfo;
-        }
-        
 
         PluginVersion = Assembly.GetExecutingAssembly()?.GetName()?.Version?.ToString() ?? string.Empty;
     }
