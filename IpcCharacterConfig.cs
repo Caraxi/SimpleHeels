@@ -18,6 +18,7 @@ public class IpcCharacterConfig : CharacterConfig {
     public TempOffset? MinionPosition;
     public TempOffset? EmotePosition;
     public string PluginVersion = string.Empty;
+    public Dictionary<string, string> Tags = new();
     
     
     public unsafe IpcCharacterConfig(Plugin plugin, IPlayerCharacter player) {
@@ -28,6 +29,7 @@ public class IpcCharacterConfig : CharacterConfig {
             EmoteConfigs = characterConfig?.EmoteConfigs?.Where(e => e.Enabled).Select(e => e.IpcClone()).ToList() ?? new List<EmoteConfig>();
         }
 
+        if (Plugin.Tags.TryGetValue(player.EntityId, out var tags)) Tags = tags;
         if (player.ObjectIndex < Constants.ObjectLimit && Plugin.TempOffsets[player.ObjectIndex] != null) {
             TempOffset = Plugin.TempOffsets[player.ObjectIndex]?.Clone() ?? null;
         }
@@ -67,6 +69,8 @@ public class IpcCharacterConfig : CharacterConfig {
 
     public override bool ShouldSerializeIgnoreModelOffsets() => false;
 
+    public bool ShouldSerializeTags() => Tags is { Count: > 0 };
+
     public override bool ShouldSerializeEmoteConfigs() => EmoteConfigs is { Count: > 0 };
     public override bool ShouldSerializeDefaultOffset() => MathF.Abs(DefaultOffset) > Constants.FloatDelta;
 
@@ -75,7 +79,7 @@ public class IpcCharacterConfig : CharacterConfig {
     public bool ShouldSerializeEmotePosition() => EmotePosition != null;
     public bool ShouldSerializePluginVersion() => !string.IsNullOrWhiteSpace(PluginVersion) && (
         ShouldSerializeDefaultOffset() || ShouldSerializeEmotePosition() || ShouldSerializeEmoteConfigs() || 
-        ShouldSerializeTempOffset() || ShouldSerializeMinionPosition()
+        ShouldSerializeTempOffset() || ShouldSerializeMinionPosition() || ShouldSerializeTags()
     );
 
     public override bool ShouldSerializeVersion() => ShouldSerializePluginVersion();

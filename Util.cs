@@ -31,4 +31,8 @@ public static unsafe class Utils {
         if (world.IsPublic) return true;
         return char.IsUpper((char)world.Name.Data.Span[0]);
     }
+
+    public static string OrIfWhitespace(this string? s, string replacement) {
+        return string.IsNullOrWhiteSpace(s) ? replacement : s;
+    }
 }

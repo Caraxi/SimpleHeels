@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Threading;
@@ -9,13 +10,16 @@ namespace SimpleHeels;
 
 public static class ApiProvider {
     private const int ApiVersionMajor = 2;
-    private const int ApiVersionMinor = 1;
+    private const int ApiVersionMinor = 2;
 
     public const string ApiVersionIdentifier = "SimpleHeels.ApiVersion";
     public const string GetLocalPlayerIdentifier = "SimpleHeels.GetLocalPlayer";
     public const string LocalChangedIdentifier = "SimpleHeels.LocalChanged";
     public const string RegisterPlayerIdentifier = "SimpleHeels.RegisterPlayer";
     public const string UnregisterPlayerIdentifier = "SimpleHeels.UnregisterPlayer";
+    public const string CreateTagIdentifier = "SimpleHeels.SetTag";
+    public const string GetTagIdentifier = "SimpleHeels.GetTag";
+    public const string RemoveTagIdentifier = "SimpleHeels.RemoveTag";
 
     public static bool IsSerializing = false;
 
@@ -24,6 +28,9 @@ public static class ApiProvider {
     private static ICallGateProvider<string, object?>? _localChanged;
     private static ICallGateProvider<int, string, object?>? _registerPlayer;
     private static ICallGateProvider<int, object?>? _unregisterPlayer;
+    private static ICallGateProvider<int, string, string, object?>? _setTag;
+    private static ICallGateProvider<int, string, string?>? _getTag;
+    private static ICallGateProvider<int, string, object?>? _removeTag;
 
     private static IpcCharacterConfig? _lastReported;
     private static Vector3? _lastReportedOffset;
@@ -46,6 +53,9 @@ public static class ApiProvider {
         _localChanged = pluginInterface.GetIpcProvider<string, object?>(LocalChangedIdentifier);
         _registerPlayer = pluginInterface.GetIpcProvider<int, string, object?>(RegisterPlayerIdentifier);
         _unregisterPlayer = pluginInterface.GetIpcProvider<int, object?>(UnregisterPlayerIdentifier);
+        _setTag = pluginInterface.GetIpcProvider<int, string, string, object?>(CreateTagIdentifier);
+        _getTag = pluginInterface.GetIpcProvider<int, string, string?>(GetTagIdentifier);
+        _removeTag = pluginInterface.GetIpcProvider<int, string, object?>(RemoveTagIdentifier);
 
         _apiVersion.RegisterFunc(() => (ApiVersionMajor, ApiVersionMinor));
 
@@ -75,6 +85,33 @@ public static class ApiProvider {
             var player = PluginService.ClientState.LocalPlayer;
             if (player == null) return string.Empty;
             return new IpcCharacterConfig(_plugin, player).ToString();
+        });
+        
+        _setTag.RegisterAction((gameObjectIndex, tag, value) => {
+            var gameObject = gameObjectIndex >= 0 && gameObjectIndex < PluginService.Objects.Length ? PluginService.Objects[gameObjectIndex] : null;
+            if (gameObject is not IPlayerCharacter playerCharacter) return;
+
+            if (!Plugin.Tags.TryGetValue(gameObject.EntityId, out var tagDict)) {
+                tagDict = new Dictionary<string, string>();
+                Plugin.Tags.Add(playerCharacter.EntityId, tagDict);
+            }
+            if (!tagDict.TryAdd(tag, value)) {
+                tagDict[tag] = value;
+            }
+        });
+        
+        _getTag.RegisterFunc((gameObjectIndex, tag) => {
+            var gameObject = gameObjectIndex >= 0 && gameObjectIndex < PluginService.Objects.Length ? PluginService.Objects[gameObjectIndex] : null;
+            if (gameObject is not IPlayerCharacter playerCharacter) return null;
+            return !Plugin.Tags.TryGetValue(playerCharacter.EntityId, out var tagDict) ? null : tagDict.GetValueOrDefault(tag);
+        });
+        
+        _removeTag.RegisterAction((gameObjectIndex, tag) => {
+            var gameObject = gameObjectIndex >= 0 && gameObjectIndex < PluginService.Objects.Length ? PluginService.Objects[gameObjectIndex] : null;
+            if (gameObject is not IPlayerCharacter playerCharacter) return;
+            if (!Plugin.Tags.TryGetValue(gameObject.EntityId, out var tagDict)) return;
+            tagDict.Remove(tag);
+            if (tagDict.Count == 0) Plugin.Tags.Remove(playerCharacter.EntityId);
         });
     }
 
@@ -113,12 +150,18 @@ public static class ApiProvider {
         _getLocalPlayer?.UnregisterFunc();
         _registerPlayer?.UnregisterAction();
         _unregisterPlayer?.UnregisterAction();
+        _setTag?.UnregisterAction();
+        _getTag?.UnregisterFunc();
+        _removeTag?.UnregisterAction();
 
         _localChanged = null;
         _apiVersion = null;
         _getLocalPlayer = null;
         _registerPlayer = null;
         _unregisterPlayer = null;
+        _getTag = null;
+        _removeTag = null;
+        _setTag = null;
     }
 
     internal static void UpdateLocal(Vector3 offset, float rotation, PitchRoll pitchRoll) {

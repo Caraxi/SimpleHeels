@@ -129,6 +129,8 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
 
+    public static Dictionary<uint, Dictionary<string, string>> Tags { get; } = new();
+
     public void Dispose() {
         isDisposing = true;
         PluginService.Log.Verbose("Dispose");
