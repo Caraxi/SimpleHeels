@@ -710,12 +710,19 @@ public class ConfigWindow : Window {
                     }
 
                     ImGui.Checkbox("Show Plus/Minus Buttons", ref config.TempOffsetWindowPlusMinus);
-
+                    ImGui.Checkbox("Enable Pitch/Roll", ref config.TempOffsetPitchRoll);
+                    
                     ImGui.Checkbox("Show Gizmo", ref config.TempOffsetShowGizmo);
                     ImGui.SameLine();
-                    ImGui.TextDisabled("Gizmo will be displayed while the temp offset window is open, and the SHIFT key is held.");
+
+                    ImGui.TextDisabled("Gizmo will be displayed while the temp offset window is open, and the");
+                    ImGui.SameLine();
+                    if (HotkeyHelper.DrawHotkeyConfigEditor("##GizmoDisplayHotkey", config.TempOffsetGizmoHotkey, out var newHotkey)) {
+                        config.TempOffsetGizmoHotkey = newHotkey;
+                    }
+                    ImGui.SameLine();
+                    ImGui.TextDisabled("binding is held.");
                     
-                    ImGui.Checkbox("Enable Pitch/Roll", ref config.TempOffsetPitchRoll);
                 }
                 
                 

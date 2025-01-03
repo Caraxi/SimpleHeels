@@ -98,6 +98,7 @@ public static class ApiProvider {
             if (!tagDict.TryAdd(tag, value)) {
                 tagDict[tag] = value;
             }
+            if (gameObject.ObjectIndex == 0) OnChanged();
         });
         
         _getTag.RegisterFunc((gameObjectIndex, tag) => {
@@ -112,6 +113,7 @@ public static class ApiProvider {
             if (!Plugin.Tags.TryGetValue(gameObject.EntityId, out var tagDict)) return;
             tagDict.Remove(tag);
             if (tagDict.Count == 0) Plugin.Tags.Remove(playerCharacter.EntityId);
+            if (gameObject.ObjectIndex == 0) OnChanged();
         });
     }
 

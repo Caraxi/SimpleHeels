@@ -2,6 +2,7 @@
 using System.Numerics;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 
 namespace SimpleHeels;
@@ -16,6 +17,19 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.3f, "0.10.3.0", () => {
+            C("Made hotkey for temp offset gizmo configurable.");
+            C("Default changed to ALT for new installs.", 2);
+            C("Default will remain SHIFT for anyone who had plugin installed before version 0.10.3.", 2);
+            using (ImRaii.PushIndent(2)) {
+                ImGui.TextDisabled("Your hotkey is");
+                ImGui.SameLine();
+                if (HotkeyHelper.DrawHotkeyConfigEditor("##TempOffsetGizmoHotkeyInChangelog", Plugin.Config.TempOffsetGizmoHotkey, out var newKeys, true)) {
+                    Plugin.Config.TempOffsetGizmoHotkey = newKeys;
+                }
+            }
+            
+        });
         ChangelogFor(10.2f, "0.10.2.1", ()=> {
             C("Fixed simple heels preventing rotation of main actor by gpose tools.");
         });

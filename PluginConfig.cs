@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Configuration;
+using Dalamud.Game.ClientState.Keys;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 
 namespace SimpleHeels;
@@ -36,15 +37,21 @@ public class PluginConfig : IPluginConfiguration {
     public bool TempOffsetWindowLockInViewport = false;
     public bool TempOffsetPitchRoll = false;
     public bool TempOffsetShowGizmo = false;
+    public VirtualKey[] TempOffsetGizmoHotkey = [];
 
 
     public bool ApplyStaticMinionPositions = true;
     public bool UsePrecisePositioning = true;
 
     public Dictionary<uint, Dictionary<string, CharacterConfig>> WorldCharacterDictionary = new();
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
 
     public void Initialize() {
+        if (TempOffsetGizmoHotkey.Length == 0) {
+            // Default to ALT on new installs, SHIFT on existing installation.
+            TempOffsetGizmoHotkey = Version == 1 ? [VirtualKey.SHIFT] : [VirtualKey.MENU];
+        }
+        
         // Migrate Sit/Sleep offsets
 
         foreach (var w in WorldCharacterDictionary.Values)
@@ -52,6 +59,7 @@ public class PluginConfig : IPluginConfiguration {
             c.Initialize();
 
         foreach (var g in Groups) g.Initialize();
+        Version = 2;
     }
 
     public unsafe bool TryGetCharacterConfig(string name, uint world, DrawObject* drawObject, out CharacterConfig? characterConfig) {

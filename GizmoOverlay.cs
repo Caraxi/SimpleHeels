@@ -83,8 +83,9 @@ public static unsafe class UIGizmoOverlay {
     }
 
     public static bool Draw(TempOffset? target, Character* character, bool allowHorizontal, bool allowRotation) {
-        if (!ImGui.GetIO()
-                .KeyShift) return false;
+        if (!HotkeyHelper.CheckHotkeyState(Plugin.Config.TempOffsetGizmoHotkey, false)) {
+            return false;
+        }
 
         var modified = false;
         if (target == null) return false;
