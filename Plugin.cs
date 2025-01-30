@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -20,6 +21,7 @@ using Dalamud.Utility;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using World = Lumina.Excel.Sheets.World;
 
@@ -55,6 +57,40 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? 45 84 FF 75 40", DetourName = nameof(SetModeDetour))]
     private Hook<SetMode>? setModeHook;
 
+    [Signature("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 59 70", DetourName = nameof(UpdateMountedPositionsDetour))]
+    private Hook<UpdateMountedPositions>? updateMountedPositionsHook;
+
+    [StructLayout(LayoutKind.Explicit, Size = 0x78)]
+    public struct Attach {
+        [FieldOffset(0x50)] public uint AttachType;
+        [FieldOffset(0x58)] public Skeleton* Skeleton;
+        [FieldOffset(0x60)] public DrawObject* AttachParentDrawObject;
+    }
+    
+    private void* UpdateMountedPositionsDetour(Attach* attach) {
+        try {
+            return updateMountedPositionsHook!.Original(attach);
+        } finally {
+            if (!(attach == null || attach->AttachParentDrawObject == null || attach->Skeleton == null)) {
+                for (var i = 0; i < Constants.ObjectLimit; i++) {
+                    var obj = GameObjectManager.Instance()->Objects.IndexSorted[i].Value;
+                    if (obj == null || obj->DrawObject == null) continue;
+                    if (obj->DrawObject->GetObjectType() != ObjectType.CharacterBase) continue;
+                    var chrBase = (CharacterBase*)obj->DrawObject;
+                    if (chrBase->Skeleton != attach->Skeleton) continue;
+                    var tempOffset = TempOffsets[i];
+                    if (tempOffset == null || TempOffsetEmote[i] == null) break;
+                    if (TempOffsetEmote[i]?.EmoteModeId != EmoteIdentifier.MountedFakeEmoteId) break;
+                    var baseRotation = chrBase->Skeleton->Transform.Rotation * FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(tempOffset.R, 0, 0).Normalized;
+                    chrBase->Skeleton->Transform.Rotation *= FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(tempOffset.R, tempOffset.Pitch, tempOffset.Roll);
+                    var baseOffset = new Vector3(tempOffset.X, tempOffset.Y, tempOffset.Z);
+                    var offset = baseRotation * baseOffset;
+                    chrBase->Skeleton->Transform.Position += offset;
+                }
+            }
+        }
+    }
+    
     public Plugin(IDalamudPluginInterface pluginInterface) {
 #if DEBUG
         IsDebug = true;
@@ -103,6 +139,7 @@ public unsafe class Plugin : IDalamudPlugin {
         setDrawRotationHook?.Enable();
         terminateCharacterHook?.Enable();
         setModeHook?.Enable();
+        updateMountedPositionsHook?.Enable();
         RequestUpdateAll();
 
         for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
@@ -165,6 +202,10 @@ public unsafe class Plugin : IDalamudPlugin {
         setModeHook?.Disable();
         setModeHook?.Dispose();
         setModeHook = null;
+        
+        updateMountedPositionsHook?.Disable();
+        updateMountedPositionsHook?.Dispose();
+        updateMountedPositionsHook = null;
     }
 
     private void* TerminateCharacterDetour(Character* character) {
@@ -187,7 +228,7 @@ public unsafe class Plugin : IDalamudPlugin {
         } finally {
             try {
                 var m = mode;
-                if (character->GameObject.ObjectIndex == 0 && (m is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop || previousMode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop)) {
+                if (character->GameObject.ObjectIndex == 0 && (m is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop or CharacterModes.Mounted or CharacterModes.RidingPillion|| previousMode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop or CharacterModes.Mounted or CharacterModes.RidingPillion)) {
                     ApiProvider.ForceUpdateLocal();
                 }
             } catch (Exception ex) {
@@ -706,4 +747,6 @@ public unsafe class Plugin : IDalamudPlugin {
 
     private delegate void* TerminateCharacter(Character* character);
     private delegate void* SetMode(Character* character, CharacterModes mode, byte modeParam);
+
+    private delegate void* UpdateMountedPositions(Attach* a1);
 }

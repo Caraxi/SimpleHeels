@@ -7,6 +7,7 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using ImGuiNET;
 using Companion = Lumina.Excel.Sheets.Companion;
 
@@ -43,7 +44,17 @@ public unsafe class ExtraDebug : Window {
         var localPlayer = PluginService.ClientState.LocalPlayer;
         if (localPlayer != null) {
             var chr = (Character*)localPlayer.Address;
-            Util.ShowStruct(chr);
+            DebugUtil.PrintOutObject(chr);
+            if (chr->DrawObject != null) {
+                if (chr->DrawObject->GetObjectType() == ObjectType.CharacterBase) {
+                    var chrBase = (CharacterBase*)chr->DrawObject;
+                    if (chrBase->GetModelType() == CharacterBase.ModelType.Human) {
+                        DebugUtil.PrintOutObject((Human*) chrBase);
+                    } else {
+                        DebugUtil.PrintOutObject(chrBase);
+                    }
+                }
+            }
         }
         
         ImGui.Unindent();

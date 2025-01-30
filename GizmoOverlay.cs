@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
 using ImGuizmoNET;
+using CameraManager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager;
 
 namespace SimpleHeels;
 
@@ -93,9 +94,22 @@ public static unsafe class UIGizmoOverlay {
 
         var activeCamera = CameraManager.Instance()->GetActiveCamera();
         if (activeCamera == null) return false;
-        _position = character->DrawObject->Position;
-        _rotationQ = character->DrawObject->Rotation;
-        _rotation = new System.Numerics.Vector3(0, _rotationQ.EulerAngles.Y, 0);
+
+        if (character->Mode is CharacterModes.Mounted or CharacterModes.RidingPillion && character->DrawObject->GetObjectType() == ObjectType.CharacterBase) {
+            var charaBase = (CharacterBase*)character->DrawObject;
+
+            _position = charaBase->Skeleton->Transform.Position;
+            _rotationQ = charaBase->Skeleton->Transform.Rotation;
+            _rotation = new System.Numerics.Vector3(0, _rotationQ.EulerAngles.Y, 0);
+
+        } else {
+            _position = character->DrawObject->Position;
+            _rotationQ = character->DrawObject->Rotation;
+            _rotation = new System.Numerics.Vector3(0, _rotationQ.EulerAngles.Y, 0);
+        }
+        
+
+       
         if (!ImGuizmo.IsUsing()) {
             ImGuizmo.RecomposeMatrixFromComponents(ref _position.X, ref _rotation.X, ref _scale.X, ref _itemMatrix.M11);
         }

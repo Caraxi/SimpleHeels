@@ -17,6 +17,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.4f, "0.10.4.0", "Added ability to adjust temp offsets while on mounts.");
         ChangelogFor(10.3f, "0.10.3.0", () => {
             C("Made hotkey for temp offset gizmo configurable.");
             C("Default changed to ALT for new installs.", 2);

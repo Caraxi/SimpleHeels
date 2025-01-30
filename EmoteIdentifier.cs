@@ -9,6 +9,8 @@ using Newtonsoft.Json;
 namespace SimpleHeels;
 
 public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteModeId, [property: JsonProperty("c")] byte CPoseState) {
+    public const uint MountedFakeEmoteId = 0xFFFE_0001;
+    
     public virtual bool Equals(EmoteIdentifier? other) => other != null && EmoteModeId == other.EmoteModeId && CPoseState == other.CPoseState;
     public override int GetHashCode() => HashCode.Combine(EmoteModeId, CPoseState);
 
@@ -24,10 +26,13 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
 
     public static IReadOnlyList<EmoteIdentifier> List => EmoteList.Value;
 
-    private static readonly Dictionary<uint, string> Names = new();
+    private static readonly Dictionary<uint, string> Names = new() {
+        [MountedFakeEmoteId] = "Mounted",
+    };
 
     private static readonly Dictionary<uint, uint> Icons = new() {
-        [3] = 64013 // Sleep -> Doze
+        [3] = 64013, // Sleep -> Doze
+        [MountedFakeEmoteId] = 58,
     };
 
     private static string FetchName(uint emoteModeId) {
@@ -74,6 +79,7 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
 
     public static EmoteIdentifier? Get(Character* character) {
         if (character == null) return null;
+        if (character->Mode is CharacterModes.Mounted or CharacterModes.RidingPillion) return new EmoteIdentifier(MountedFakeEmoteId, 0);
         if (character->Mode is not (CharacterModes.InPositionLoop or CharacterModes.EmoteLoop)) return null;
         return new EmoteIdentifier(character->ModeParam, character->EmoteController.CPoseState);
     }
