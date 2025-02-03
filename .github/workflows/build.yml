@@ -45,6 +45,6 @@ jobs:
           Expand-Archive -Force ./bin/Release/SimpleHeels/latest.zip ./Artifact
 
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4.6
+        uses: actions/upload-artifact@v4
         with:
           path: ./Artifact/*
