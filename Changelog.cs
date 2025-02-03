@@ -17,6 +17,23 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.5f, "0.10.5.0", () => {
+            C("Added minion positioning gizmo.");
+            using (ImRaii.PushIndent(2)) {
+                using (ImRaii.PushColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled))) {
+                    ImGui.Checkbox("Enable Minion Gizmo", ref Plugin.Config.MinionGizmo);
+                }
+
+                if (!Plugin.Config.MinionGizmo) return;
+                ImGui.TextDisabled("While the temp offset window is open, Hold");
+                ImGui.SameLine();
+                if (HotkeyHelper.DrawHotkeyConfigEditor("##MinionGizmoHotkeyInChangelog", Plugin.Config.MinionGizmoHotkey, out var newKeys)) {
+                    Plugin.Config.TempOffsetGizmoHotkey = newKeys;
+                }
+                ImGui.SameLine();
+                ImGui.TextDisabled("to move your minion.");
+            }
+        });
         ChangelogFor(10.4f, "0.10.4.0", "Added ability to adjust temp offsets while on mounts.");
         ChangelogFor(10.3f, "0.10.3.0", () => {
             C("Made hotkey for temp offset gizmo configurable.");

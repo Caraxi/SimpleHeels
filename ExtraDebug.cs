@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
@@ -72,28 +74,90 @@ public unsafe class ExtraDebug : Window {
 
     private Vector4[] minionPositions = new Vector4[Constants.ObjectLimit];
     private void TabStaticMinions() {
-        foreach (var c in PluginService.Objects.Where(o => o is IPlayerCharacter).Cast<IPlayerCharacter>()) {
-            if (c == null) continue;
-            var chr = (Character*)c.Address;
-            if (chr->CompanionData.CompanionObject == null) continue;
-            var companionId = chr->CompanionData.CompanionObject->Character.GameObject.BaseId;
-            var companion = PluginService.Data.GetExcelSheet<Companion>()?.GetRow(companionId);
-            if (companion == null) continue;
-            if (companion.Value.Behavior.RowId != 3) continue;
-            using (ImRaii.PushId($"chr_{c.EntityId:X}")) {
-                ImGui.Separator();
-                var go = &chr->CompanionData.CompanionObject->Character.GameObject;
-                if (minionPositions[go->ObjectIndex] == default) minionPositions[go->ObjectIndex] = new Vector4(go->Position, go->Rotation);
-                if (ImGui.DragFloat4($"{c.Name.TextValue}'s {companion.Value.Singular.ToDalamudString().TextValue}", ref minionPositions[go->ObjectIndex], 0.01f)) {
-                    go->DrawObject->Object.Position.X = minionPositions[go->ObjectIndex].X;
-                    go->DrawObject->Object.Position.Y = minionPositions[go->ObjectIndex].Y;
-                    go->DrawObject->Object.Position.Z = minionPositions[go->ObjectIndex].Z;
-                    go->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(minionPositions[go->ObjectIndex].W, 0, 0);
+        if (ImGui.BeginTable("Static Minions", 9, ImGuiTableFlags.NoClip | ImGuiTableFlags.SizingFixedFit)) {
+            ImGui.TableSetupColumn("Player", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Minion", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("X", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Y", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Z", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Yaw", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Pitch", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Roll", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Data", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableHeadersRow();
+            foreach (var c in PluginService.Objects.Where(o => o is IPlayerCharacter).Cast<IPlayerCharacter>()) {
+                if (c == null) continue;
+                var chr = (Character*)c.Address;
+                if (chr->CompanionData.CompanionObject == null) continue;
+                var companionId = chr->CompanionData.CompanionObject->Character.GameObject.BaseId;
+                var companion = PluginService.Data.GetExcelSheet<Companion>()?.GetRow(companionId);
+                if (companion == null) continue;
+                if (companion.Value.Behavior.RowId != 3) continue;
+                using (ImRaii.PushId($"chr_{c.EntityId:X}")) {
+
+                    var go = (FFXIVClientStructs.FFXIV.Client.Game.Character.Companion*) &chr->CompanionData.CompanionObject->Character.GameObject;
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{chr->NameString}");
+                    // DebugUtil.PrintOutObject(go);
+                    ImGui.TableNextColumn();
+                    ImGui.Text(companion.Value.Singular.ExtractText());
+                    ImGui.TableNextColumn();
+                    
+                    ImGui.SetNextItemWidth(80);
+                    var pos = new Vector3(go->Position.X, go->Position.Y, go->Position.Z);
+                    var r = go->Rotation;
+                    var pitch = go->Effects.TiltParam1Value;
+                    var roll = go->Effects.TiltParam2Value;
+                    var changePos = ImGui.DragFloat("##x", ref pos.X, 0.01f);
+                    ImGui.TableNextColumn();
+                    ImGui.SetNextItemWidth(80);
+                    changePos |= ImGui.DragFloat("##y", ref pos.Y, 0.01f);
+                    ImGui.TableNextColumn();
+                    ImGui.SetNextItemWidth(80);
+                    changePos |= ImGui.DragFloat("##z", ref pos.Z, 0.01f);
+
+
+                    ImGui.TableNextColumn();
+                    ImGui.SetNextItemWidth(80);
+                    
+                    if (ImGui.DragFloat("##yaw", ref r, 0.01f)) {
+                        if (r < -MathF.PI) r += MathF.Tau;
+                        if (r >= MathF.PI) r -= MathF.Tau;
+                        go->SetRotation(r);
+                        plugin.UpdateCompanionRotation(go);
+                    }
+                    
+                    ImGui.TableNextColumn();
+                    ImGui.SetNextItemWidth(80);
+                    
+                    if (ImGui.DragFloat("##pitch", ref pitch, 0.01f)) {
+                        if (pitch < -MathF.PI) pitch += MathF.Tau;
+                        if (pitch >= MathF.PI) pitch -= MathF.Tau;
+                        go->Effects.TiltParam1Value = pitch;
+                        plugin.UpdateCompanionRotation(go);
+                    }
+                    
+                    ImGui.TableNextColumn();
+                    ImGui.SetNextItemWidth(80);
+                    
+                    if (ImGui.DragFloat("##roll", ref roll, 0.01f)) {
+                        if (roll < -MathF.PI) roll += MathF.Tau;
+                        if (roll >= MathF.PI) roll -= MathF.Tau;
+                        go->Effects.TiltParam2Value = roll;
+                        plugin.UpdateCompanionRotation(go);
+                    }
+
+                    if (changePos) {
+                        go->SetPosition(pos.X, pos.Y, pos.Z);
+                    }
+
+                    ImGui.TableNextColumn();
+                    DebugUtil.PrintOutObject(go);
                 }
-                
-                ImGui.SameLine();
-                ImGui.Text($"{go->EntityId:X}");
             }
+            
+            ImGui.EndTable();
         }
     }
 

@@ -39,6 +39,9 @@ public class PluginConfig : IPluginConfiguration {
     public bool TempOffsetShowGizmo = false;
     public VirtualKey[] TempOffsetGizmoHotkey = [];
 
+    public bool MinionGizmo = false;
+    public VirtualKey[] MinionGizmoHotkey = [ VirtualKey.MENU, VirtualKey.CONTROL];
+
 
     public bool ApplyStaticMinionPositions = true;
     public bool UsePrecisePositioning = true;
@@ -50,6 +53,10 @@ public class PluginConfig : IPluginConfiguration {
         if (TempOffsetGizmoHotkey.Length == 0) {
             // Default to ALT on new installs, SHIFT on existing installation.
             TempOffsetGizmoHotkey = Version == 1 ? [VirtualKey.SHIFT] : [VirtualKey.MENU];
+        }
+
+        if (MinionGizmoHotkey == TempOffsetGizmoHotkey) {
+            MinionGizmoHotkey = [];
         }
         
         // Migrate Sit/Sleep offsets

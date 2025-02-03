@@ -135,7 +135,7 @@ public static class HotkeyHelper {
             var cPos = ImGui.GetCursorScreenPos();
             if (!buttonOnSameLine) ImGui.SetCursorScreenPos(ImGui.GetItemRectMin() - (ImGui.GetItemRectSize() + ImGui.GetStyle().ItemSpacing) * Vector2.UnitY);
             if (buttonOnSameLine) ImGui.SameLine();
-            if (ImGui.Button("Set Keybind###setHotkeyButton{identifier}", ImGui.GetItemRectSize())) {
+            if (ImGui.Button($"Set Keybind###setHotkeyButton{identifier}", ImGui.GetItemRectSize())) {
                 _settingKey = identifier;
             }
 

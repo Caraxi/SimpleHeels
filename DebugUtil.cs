@@ -38,8 +38,8 @@ internal static class DebugUtil {
         try {
             if (_endModule == 0 && _beginModule == 0) {
                 try {
-                    _beginModule = (ulong)Process.GetCurrentProcess().MainModule.BaseAddress.ToInt64();
-                    _endModule = (_beginModule + (ulong)Process.GetCurrentProcess().MainModule.ModuleMemorySize);
+                    _beginModule = (ulong)Process.GetCurrentProcess().MainModule!.BaseAddress.ToInt64();
+                    _endModule = (_beginModule + (ulong)Process.GetCurrentProcess().MainModule!.ModuleMemorySize);
                 } catch {
                     _endModule = 1;
                 }

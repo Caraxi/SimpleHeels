@@ -650,6 +650,16 @@ public class ConfigWindow : Window {
                 ImGui.SameLine();
                 ImGuiComponents.HelpMarker("Allows the sending and recieving of static minion positions when syncing your offset with Mare.\nThis option must be enabled on both sides to have an effect on position.\nOnly works on minions that do not move, such as the Plush Cushion and Wanderers Campfire");
 
+                ImGui.Checkbox("Enable Gizmo for Minion Positions", ref config.MinionGizmo);
+                ImGui.SameLine();
+
+                ImGui.TextDisabled("Gizmo will be displayed while the temp offset window is open, and the");
+                ImGui.SameLine();
+                if (HotkeyHelper.DrawHotkeyConfigEditor("##MinionGizmoDisplayHotkey", config.MinionGizmoHotkey, out var newMinionGizmoHotkey)) {
+                    config.MinionGizmoHotkey = newMinionGizmoHotkey;
+                }
+                ImGui.SameLine();
+                ImGui.TextDisabled("binding is held.");
                 
                 ImGui.Checkbox("Use precise positioning for emotes", ref config.UsePrecisePositioning);
                 ImGui.SameLine();

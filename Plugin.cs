@@ -495,17 +495,18 @@ public unsafe class Plugin : IDalamudPlugin {
         using var performance2 = PerformanceMonitors.Run($"UpdateObject:{updateIndex}", Config.DetailedPerformanceLogging);
 
         if (Config is { Enabled: true } && character->CompanionData.CompanionObject != null) {
-            var companion = (GameObject*) character->CompanionData.CompanionObject;
+            var companion = character->CompanionData.CompanionObject;
             if (companion->DrawObject != null) {
                 if (updateIndex != 0 && Utils.StaticMinions.Value.Contains(companion->BaseId) && IpcAssignedData.TryGetValue(obj->EntityId, out var ipc) && ipc.MinionPosition != null) {
                     companion->DrawObject->Object.Position.X = ipc.MinionPosition.X;
                     companion->DrawObject->Object.Position.Y = ipc.MinionPosition.Y;
                     companion->DrawObject->Object.Position.Z = ipc.MinionPosition.Z;
-                    companion->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(ipc.MinionPosition.R, 0, 0);
+                    companion->DrawObject->Object.Rotation = Quaternion.CreateFromYawPitchRoll(ipc.MinionPosition.R, ipc.MinionPosition.Pitch, ipc.MinionPosition.Roll);
                 }
             
                 if (Config.ApplyStaticMinionPositions && updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->BaseId)) {
-                    ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f);
+                    UpdateCompanionRotation(companion);
+                    ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f, companion->Effects.TiltParam1Value, companion->Effects.TiltParam2Value);
                 }
             }
         }
@@ -749,4 +750,15 @@ public unsafe class Plugin : IDalamudPlugin {
     private delegate void* SetMode(Character* character, CharacterModes mode, byte modeParam);
 
     private delegate void* UpdateMountedPositions(Attach* a1);
+
+    public void UpdateCompanionRotation(Companion* go) {
+        if (go == null) return;
+        if (go->GetObjectKind() != ObjectKind.Companion) return;
+        if (go->DrawObject == null) return;
+
+        var yaw = go->Rotation;
+        var pitch = go->Effects.TiltParam1Value;
+        var roll = go->Effects.TiltParam2Value;
+        go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
+    }
 }

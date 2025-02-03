@@ -185,8 +185,12 @@ public static class ApiProvider {
         OnChanged();
     }
 
-    internal static void UpdateMinion(Vector3 pos, float rotation) {
-        if (_lastReported?.MinionPosition == null || Vector3.Distance(new Vector3(_lastReported.MinionPosition.X, _lastReported.MinionPosition.Y, _lastReported.MinionPosition.Z), pos) > Constants.FloatDelta || MathF.Abs(_lastReported.MinionPosition.R - rotation) > Constants.FloatDelta) {
+    internal static void UpdateMinion(Vector3 pos, float rotation, float pitch, float roll) {
+        if (_lastReported?.MinionPosition == null || 
+            Vector3.Distance(new Vector3(_lastReported.MinionPosition.X, _lastReported.MinionPosition.Y, _lastReported.MinionPosition.Z), pos) > Constants.FloatDelta || 
+            MathF.Abs(_lastReported.MinionPosition.R - rotation) > Constants.FloatDelta || 
+            MathF.Abs(_lastReported.MinionPosition.Pitch - pitch) > Constants.FloatDelta || 
+            MathF.Abs(_lastReported.MinionPosition.Roll - roll) > Constants.FloatDelta) {
             OnChanged();
         }
     }
