@@ -61,12 +61,13 @@ public sealed unsafe class TempOffsetOverlay : Window {
     public override bool DrawConditions() {
         if (!config.TempOffsetWindowOpen) return false;
         if (PluginService.ClientState.IsGPosing) return false;
-        if (PluginService.Condition.Any(ConditionFlag.WatchingCutscene, ConditionFlag.WatchingCutscene78, ConditionFlag.InCombat, ConditionFlag.InFlight)) return false;
+        if (PluginService.Condition.Any(ConditionFlag.WatchingCutscene, ConditionFlag.WatchingCutscene78, ConditionFlag.InCombat)) return false;
         return TryGetActiveCharacter(out _);
     }
 
     public override void Draw() {
         if (!TryGetActiveCharacter(out var obj)) return;
+        if (obj == null) return;
 
         var activeEmote = EmoteIdentifier.Get(obj);
 
@@ -87,7 +88,7 @@ public sealed unsafe class TempOffsetOverlay : Window {
             edited = UIGizmoOverlay.Draw(tempOffset, obj, activeEmote != null, activeEmote != null);
         }
 
-        if (Plugin.Config.MinionGizmo && obj->CompanionObject != null && obj->CompanionObject->DrawObject != null && Utils.StaticMinions.Value.Contains(obj->CompanionData.CompanionObject->BaseId)) {
+        if (Plugin.Config.MinionGizmo && obj->CompanionObject != null && obj->CompanionObject->DrawObject != null && Utils.StaticMinions.Value.Contains(obj->CompanionObject->BaseId)) {
             var companion = obj->CompanionObject;
             if (GizmoOverlayForMinion.Draw(companion)) {
                 ApiProvider.UpdateMinion(companion->Position, companion->Rotation, companion->Effects.TiltParam1Value, companion->Effects.TiltParam2Value);

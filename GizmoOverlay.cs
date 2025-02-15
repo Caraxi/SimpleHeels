@@ -16,6 +16,7 @@ public static unsafe class UIGizmoOverlay {
     private static FFXIVClientStructs.FFXIV.Common.Math.Quaternion _rotationQ;
     private static System.Numerics.Vector3 _rotation;
     private static Vector3 _scale = new(1);
+    private static bool gizmoActiveLastFrame;
 
     public static bool DrawDirection(ref Matrix4x4 view, ref Matrix4x4 proj, MODE mode, OPERATION operation) {
         return DrawDirection(ref view, ref proj, mode, operation, out _);
@@ -84,10 +85,11 @@ public static unsafe class UIGizmoOverlay {
     }
 
     public static bool Draw(TempOffset? target, Character* character, bool allowHorizontal, bool allowRotation) {
-        if (!HotkeyHelper.CheckHotkeyState(Plugin.Config.TempOffsetGizmoHotkey, false)) {
+        if (gizmoActiveLastFrame == false && !HotkeyHelper.CheckHotkeyState(Plugin.Config.TempOffsetGizmoHotkey, false)) {
             return false;
         }
 
+        gizmoActiveLastFrame = false;
         var modified = false;
         if (target == null) return false;
         if (character == null || character->DrawObject == null) return false;
@@ -254,6 +256,7 @@ public static unsafe class UIGizmoOverlay {
             LockOperation = null;
         }
 
+        gizmoActiveLastFrame = ImGuizmo.IsUsing();
         return modified;
     }
 }
