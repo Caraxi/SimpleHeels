@@ -4,6 +4,8 @@ using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Interface;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
@@ -61,6 +63,101 @@ public unsafe class ExtraDebug : Window {
         
         ImGui.Unindent();
         
+    }
+
+    private void TabEmoteTiming() {
+        var syncAll = ImGui.Button("Sync All");
+        if (ImGui.BeginTable("Emote Timings", 5, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.BordersH)) {
+            ImGui.TableSetupColumn("Character");
+            ImGui.TableSetupColumn("Emote");
+            ImGui.TableSetupColumn("Position");
+            ImGui.TableSetupColumn("Length");
+            ImGui.TableSetupColumn("##fill", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableHeadersRow();
+            foreach (var c in PluginService.Objects.Where(o => o is IPlayerCharacter).OrderBy(c => c.Name.TextValue)) {
+                var character = (Character*)c.Address;
+                var emoteIden = EmoteIdentifier.Get(character);
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.Text(character->NameString);
+                
+                ImGui.TableNextColumn();
+
+                if (character->DrawObject == null) {
+                    ImGui.TextDisabled("Not Visible");
+                    continue;
+                }
+
+                if (character->DrawObject->GetObjectType() != ObjectType.CharacterBase) {
+                    ImGui.TextDisabled("Model Invalid");
+                    continue;
+                }
+
+                var charaBase = (CharacterBase*) character->DrawObject;
+                if (charaBase->GetModelType() != CharacterBase.ModelType.Human) {
+                    ImGui.TextDisabled("Non-Human");
+                    continue;
+                }
+                
+                if (emoteIden == null) {
+                    ImGui.TextDisabled("No Emote");
+                    continue;
+                }
+
+                var human = (Human*)charaBase;
+                var skeleton = human->Skeleton;
+                if (skeleton == null) {
+                    ImGui.TextDisabled("No Skeleton");
+                    continue;
+                }
+
+                var img = PluginService.TextureProvider.GetFromGameIcon(new GameIconLookup(emoteIden.Icon)).GetWrapOrEmpty();
+                ImGui.Image(img.ImGuiHandle, new Vector2(ImGui.GetTextLineHeight()));
+                ImGui.SameLine();
+                ImGui.Text($"{emoteIden?.Name}");
+                ImGui.TableNextColumn();
+                var didFirstEntry = false;
+                for (var i = 0; i < skeleton->PartialSkeletonCount && i < 1; ++i) {
+                    var partialSkeleton = &skeleton->PartialSkeletons[i];
+                    var animatedSkeleton = partialSkeleton->GetHavokAnimatedSkeleton(0);
+                    if (animatedSkeleton == null) continue;
+                    for (var animControl = 0; animControl < animatedSkeleton->AnimationControls.Length && animControl < 1; ++animControl) {
+                        var control = animatedSkeleton->AnimationControls[animControl].Value;
+                        if (control == null) continue;
+
+                        var binding = control->hkaAnimationControl.Binding.ptr;
+                        if (binding == null) continue;
+
+                        var anim = binding->Animation.ptr;
+                        if (anim == null) continue;
+                
+                        var duration = anim->Duration;
+                        var position = control->hkaAnimationControl.LocalTime;
+
+                        if (syncAll) {
+                            control->hkaAnimationControl.LocalTime = 0;
+                        }
+                        
+                        
+                        if (didFirstEntry) {
+                            ImGui.TableNextRow();
+                            ImGui.TableNextColumn();
+                            ImGui.TableNextColumn();
+                            ImGui.TableNextColumn();
+                        }
+
+                        didFirstEntry = true;
+                        using (ImRaii.PushFont(UiBuilder.MonoFont)) {
+                            ImGui.Text($"{position:F3}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{duration:F3}");
+                        }
+                    }
+                }
+            }
+            
+            ImGui.EndTable();
+        }
     }
     
     private void TabPerformance() {

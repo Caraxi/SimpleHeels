@@ -612,6 +612,30 @@ public unsafe class Plugin : IDalamudPlugin {
                 UpdateObjectIndex(i);
     }
 
+    private void DoEmoteSync() {
+        foreach (var c in PluginService.Objects.Where(o => o is IPlayerCharacter)) {
+            var character = (Character*)c.Address;
+            if (character->DrawObject == null) continue;
+            if (character->DrawObject->GetObjectType() != ObjectType.CharacterBase) continue;
+            if (((CharacterBase*)character->DrawObject)->GetModelType() != CharacterBase.ModelType.Human) continue;
+            var human = (Human*) character->DrawObject;
+            var emoteIden = EmoteIdentifier.Get(character);
+            if (emoteIden == null) continue;
+            var skeleton = human->Skeleton;
+            if (skeleton == null) continue;
+            for (var i = 0; i < skeleton->PartialSkeletonCount && i < 1; ++i) {
+                var partialSkeleton = &skeleton->PartialSkeletons[i];
+                var animatedSkeleton = partialSkeleton->GetHavokAnimatedSkeleton(0);
+                if (animatedSkeleton == null) continue;
+                for (var animControl = 0; animControl < animatedSkeleton->AnimationControls.Length && animControl < 1; ++animControl) {
+                    var control = animatedSkeleton->AnimationControls[animControl].Value;
+                    if (control == null) continue;
+                    control->hkaAnimationControl.LocalTime = 0;
+                }
+            }
+        }
+    }
+    
     private void OnCommand(string command, string args) {
         var splitArgs = Regex.Matches(args, @"[\""].+?[\""]|[^ ]+")
             .Cast<Match>()
@@ -640,6 +664,9 @@ public unsafe class Plugin : IDalamudPlugin {
                     break;
                 case "temp":
                     Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
+                case "syncemote":
+                case "emotesync":
+                    DoEmoteSync();
                     break;
                 case "renamechar":
                     if (splitArgs.Count != 3) {
