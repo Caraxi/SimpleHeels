@@ -17,6 +17,16 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.6f, "0.10.6.0", () => {
+            C("Added command to sync emote animations between all players");
+            C("/heels emotesync", 1, ImGuiColors.DalamudViolet);
+            C("I didn't like spamming redraw until the game decided to start everyone at the same time", 1, ImGuiColors.DalamudGrey2);
+            C("Added commands to manipulate temp offsets.");
+            C("/heels temp set [...]", 1, ImGuiColors.DalamudViolet);
+            C("/heels temp add [...]", 1, ImGuiColors.DalamudViolet);
+            C("/heels temp reset", 1, ImGuiColors.DalamudViolet);
+            C("Use commands without additional args for more information.", 2);
+        });
         ChangelogFor(10.5f, "0.10.5.0", () => {
             C("Added minion positioning gizmo.");
             using (ImRaii.PushIndent(2)) {

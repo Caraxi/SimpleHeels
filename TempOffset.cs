@@ -20,4 +20,6 @@ public class TempOffset(float x = 0, float y = 0, float z = 0, float r = 0, floa
     public PitchRoll GetPitchRoll() => new(Pitch, Roll);
 
     public TempOffset Clone() => new(X, Y, Z, R, Pitch, Roll);
+
+    public override string ToString() => $"[{X}, {Y}, {Z}, {R}, {Pitch}, {Roll}]";
 }
