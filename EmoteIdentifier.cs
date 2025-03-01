@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using Lumina.Excel.Sheets;
@@ -77,6 +78,8 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
         }
     }
 
+    public static EmoteIdentifier? Get(IPlayerCharacter? playerCharacter) => Get((Character*) (playerCharacter?.Address ?? 0));
+    
     public static EmoteIdentifier? Get(Character* character) {
         if (character == null) return null;
         if (character->Mode is CharacterModes.Mounted or CharacterModes.RidingPillion) return new EmoteIdentifier(MountedFakeEmoteId, 0);

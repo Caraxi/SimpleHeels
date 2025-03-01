@@ -12,6 +12,7 @@ using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
 using Dalamud.Interface.Windowing;
 using Dalamud.Memory;
@@ -23,6 +24,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using Companion = FFXIVClientStructs.FFXIV.Client.Game.Character.Companion;
 using World = Lumina.Excel.Sheets.World;
 
 namespace SimpleHeels;
@@ -663,7 +665,221 @@ public unsafe class Plugin : IDalamudPlugin {
                     RequestUpdateAll();
                     break;
                 case "temp":
-                    Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
+                    if (splitArgs.Count < 2) {
+                        Config.TempOffsetWindowOpen = !Config.TempOffsetWindowOpen;
+                        break;
+                    }
+
+                    SeString SetHelp(bool add) {
+                        var builder = new SeStringBuilder();
+                        builder.Add(NewLinePayload.Payload)
+                            .AddUiForeground($"{command} temp {(add?"add":"set")} <options...> [silent]", 34)
+                            .Add(NewLinePayload.Payload)
+                            .AddText("- You can set multiple options in a single command.")
+                            .Add(NewLinePayload.Payload)
+                            .AddText("- Options are a type and a value.")
+                            .Add(NewLinePayload.Payload)
+                            .AddText(add ? "- Values are added to your existing offset." : "- Values will be set disregarding your existing offset.")
+                            .Add(NewLinePayload.Payload)
+                            .AddText("- Types: ")
+                            .AddUiForeground("up", 24)
+                            .AddText(", ")
+                            .AddUiForeground("down", 24)
+                            .AddText(", ")
+                            .AddUiForeground("forward", 39)
+                            .AddText(", ")
+                            .AddUiForeground("backward", 39)
+                            .AddText(", ")
+                            .AddUiForeground("left", 43)
+                            .AddText(", ")
+                            .AddUiForeground("right", 43)
+                            .AddText(", ")
+                            .AddUiForeground("rotate", 56);
+                        if (Config.TempOffsetPitchRoll) {
+                            builder = builder.AddText(", ")
+                            .AddUiForeground("pitch", 72)
+                            .AddText(", ")
+                            .AddUiForeground("roll", 11);
+                        }
+
+                        builder = builder.Add(NewLinePayload.Payload)
+                            .AddText("- Example: ")
+                            .AddUiForeground($"{command} temp {(add?"add":"set")} height 0.2 right 0.5 rotate 90", 34);
+                        
+                        return builder.Build();
+                    }
+
+                    switch (splitArgs[1].ToLowerInvariant()) {
+                        case "a":
+                        case "add":
+                        case "s":
+                        case "set": {
+                            var add = splitArgs[1].ToLowerInvariant().StartsWith('a');
+                            if (splitArgs.Count < 3) {
+                                // Explain Set
+                                var builder = SetHelp(add);
+                                PluginService.ChatGui.Print(builder, Name, 500);
+                                break;
+                            }
+
+                            var setting = string.Empty;
+                            var newOffset = TempOffsets[0]?.Clone() ?? new TempOffset();
+                            var anySet = false;
+                            var heightSet = false;
+                            var silent = false;
+
+                            var emote = EmoteIdentifier.Get(PluginService.ClientState.LocalPlayer);
+                            
+                            foreach (var a in splitArgs[2..]) {
+                                if (!string.IsNullOrWhiteSpace(setting)) {
+                                    if (!float.TryParse(a, out var val)) {
+                                        PluginService.ChatGui.PrintError($"{a} is not a valid value.", Name, 500);
+                                        anySet = false;
+                                        goto Error;
+                                    }
+
+                                    switch (setting) {
+                                        case "height" or "up":
+                                            if (add)
+                                                newOffset.Y += val;
+                                            else
+                                                newOffset.Y = val;
+                                            anySet = true;
+                                            heightSet = true;
+                                            break;
+                                        case "down":
+                                            if (add)
+                                                newOffset.Y -= val;
+                                            else
+                                                newOffset.Y = -val;
+                                            anySet = true;
+                                            heightSet = true;
+                                            break;
+                                        case "forward":
+                                            if (add)
+                                                newOffset.Z += val;
+                                            else
+                                                newOffset.Z = val;
+                                            anySet = true;
+                                            break;
+                                        case "backward":
+                                            if (add)
+                                                newOffset.Z -= val;
+                                            else
+                                                newOffset.Z = -val;
+                                            anySet = true;
+                                            break;
+                                        case "left":
+                                            if (add)
+                                                newOffset.X += val;
+                                            else
+                                                newOffset.X = val;
+                                            anySet = true;
+                                            break;
+                                        case "right":
+                                            if (add)
+                                                newOffset.X -= val;
+                                            else
+                                                newOffset.X = -val;
+                                            anySet = true;
+                                            break;
+                                        case "rotate" or "yaw":
+                                            if (add)
+                                                newOffset.R += val * MathF.PI / 180;
+                                            else
+                                                newOffset.R = val * MathF.PI / 180;
+                                            anySet = true;
+                                            break;
+                                        case "pitch" when Config.TempOffsetPitchRoll:
+                                            if (add)
+                                                newOffset.Pitch += val * MathF.PI / 180;
+                                            else
+                                                newOffset.Pitch = val * MathF.PI / 180;
+                                            anySet = true;
+                                            break;
+                                        case "roll" when Config.TempOffsetPitchRoll:
+                                            if (add)
+                                                newOffset.Roll += val * MathF.PI / 180;
+                                            else
+                                                newOffset.Roll = val * MathF.PI / 180;
+                                            anySet = true;
+                                            break;
+                                    }
+                                    setting = string.Empty;
+                                } else {
+                                    switch (a) {
+                                        case "silent": {
+                                            silent = true;
+                                            break;
+                                        }
+                                        case "up" or "down" or "height" or "forward" or "backward" or "left" or "right" or "rotate":
+                                        case "pitch" or "roll" when Config.TempOffsetPitchRoll:
+                                            setting = a;
+                                            break;
+                                        default:
+                                            PluginService.ChatGui.PrintError($"Invalid option: {a}", Name, 500);
+                                            anySet = false;
+                                            goto Error;
+                                    }
+                                }
+                            }
+                            
+                            Error:
+                            if (anySet) {
+                                if (emote == null) {
+                                    newOffset = new TempOffset(y: newOffset.Y);
+                                    if (!heightSet) {
+                                        if (!silent) {
+                                            PluginService.ChatGui.Print("Unable to apply offset. Not performing a looping emote.", Name, 500);
+                                        }
+                                        break;
+                                    }
+                                }
+                                
+                                TempOffsetEmote[0] = emote;
+                                TempOffsets[0] = newOffset;
+                                ApiProvider.ForceUpdateLocal();
+                                
+                                if (!silent) {
+                                    PluginService.ChatGui.Print("Offset applied.", Name, 500);
+                                }
+                            } else {
+                                var helpMessage = SetHelp(add);
+                                PluginService.ChatGui.Print(helpMessage, Name, 500);
+                            }
+                            
+                            
+                            break;
+                        }
+
+                        case "r":
+                        case "reset":
+                            var e = TempOffsetEmote[0];
+                            var o = TempOffsets[0];
+                            if (e != null && o != null) PreviousTempOffsets[e] = o;
+                            TempOffsets[0] = null;
+                            TempOffsetEmote[0] = null;
+                            ApiProvider.ForceUpdateLocal();
+                            break;
+                        case "help": {
+                            var builder = new SeStringBuilder()
+                                .AddText("Temp offset commands:")
+                                .Add(NewLinePayload.Payload)
+                                .AddUiForeground($"{command} temp set <options...> [silent]", 34)
+                                .Add(NewLinePayload.Payload)
+                                .AddUiForeground($"{command} temp reset", 34);
+                            PluginService.ChatGui.Print(builder.Build(), Name, 500);
+                            
+                            break;
+                        }
+                        
+                        default:
+                            PluginService.ChatGui.PrintError($"{command} {args} is not a valid command.", Name, 500);
+                            PluginService.ChatGui.PrintError($"Try {command} temp help", Name, 500);
+                            break;
+                    }
+                    
+                    break;
                 case "syncemote":
                 case "emotesync":
                     DoEmoteSync();
