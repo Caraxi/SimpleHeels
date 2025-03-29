@@ -9,7 +9,7 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-        <Version>0.10.6.1</Version>
+        <Version>0.10.6.2</Version>
         <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>

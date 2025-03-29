@@ -53,7 +53,7 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? 83 FE 01 75 0D", DetourName = nameof(SetDrawRotationDetour))]
     private Hook<SetDrawRotation>? setDrawRotationHook;
 
-    [Signature("48 89 5C 24 ?? 57 48 83 EC 20 80 89", DetourName = nameof(TerminateCharacterDetour))]
+    [Signature("48 89 5C 24 ?? 57 48 83 EC 20 80 89 ?? ?? ?? ?? ?? 48 8B D9", DetourName = nameof(TerminateCharacterDetour))]
     private Hook<TerminateCharacter>? terminateCharacterHook;
 
     [Signature("E8 ?? ?? ?? ?? 45 84 FF 75 40", DetourName = nameof(SetModeDetour))]
