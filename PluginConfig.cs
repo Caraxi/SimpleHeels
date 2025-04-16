@@ -47,6 +47,7 @@ public class PluginConfig : IPluginConfiguration {
     public bool UsePrecisePositioning = true;
 
     public Dictionary<uint, Dictionary<string, CharacterConfig>> WorldCharacterDictionary = new();
+    public Dictionary<ulong, (string, uint)> IdentifyAs = new();
     public int Version { get; set; } = 2;
 
     public void Initialize() {

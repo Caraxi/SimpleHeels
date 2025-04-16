@@ -10,7 +10,7 @@ namespace SimpleHeels;
 
 public static class ApiProvider {
     private const int ApiVersionMajor = 2;
-    private const int ApiVersionMinor = 2;
+    private const int ApiVersionMinor = 3;
 
     public const string ApiVersionIdentifier = "SimpleHeels.ApiVersion";
     public const string GetLocalPlayerIdentifier = "SimpleHeels.GetLocalPlayer";
@@ -20,6 +20,7 @@ public static class ApiProvider {
     public const string CreateTagIdentifier = "SimpleHeels.SetTag";
     public const string GetTagIdentifier = "SimpleHeels.GetTag";
     public const string RemoveTagIdentifier = "SimpleHeels.RemoveTag";
+    public const string SetLocalPlayerIdentity = "SimpleHeels.SetLocalPlayerIdentity";
 
     public static bool IsSerializing = false;
 
@@ -31,6 +32,7 @@ public static class ApiProvider {
     private static ICallGateProvider<int, string, string, object?>? _setTag;
     private static ICallGateProvider<int, string, string?>? _getTag;
     private static ICallGateProvider<int, string, object?>? _removeTag;
+    private static ICallGateProvider<string, uint, object?>? _setLocalPlayerIdentity;
 
     private static IpcCharacterConfig? _lastReported;
     private static Vector3? _lastReportedOffset;
@@ -56,6 +58,7 @@ public static class ApiProvider {
         _setTag = pluginInterface.GetIpcProvider<int, string, string, object?>(CreateTagIdentifier);
         _getTag = pluginInterface.GetIpcProvider<int, string, string?>(GetTagIdentifier);
         _removeTag = pluginInterface.GetIpcProvider<int, string, object?>(RemoveTagIdentifier);
+        _setLocalPlayerIdentity = pluginInterface.GetIpcProvider<string, uint, object?>(SetLocalPlayerIdentity);
 
         _apiVersion.RegisterFunc(() => (ApiVersionMajor, ApiVersionMinor));
 
@@ -115,6 +118,15 @@ public static class ApiProvider {
             if (tagDict.Count == 0) Plugin.Tags.Remove(playerCharacter.EntityId);
             if (gameObject.ObjectIndex == 0) OnChanged();
         });
+        
+        _setLocalPlayerIdentity.RegisterAction(((name, world) => {
+            if (PluginService.ClientState.LocalContentId == 0) return;
+            if (string.IsNullOrWhiteSpace(name)) {
+                Plugin.Config.IdentifyAs.Remove(PluginService.ClientState.LocalContentId);
+            } else {
+                Plugin.Config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, world);
+            }
+        }));
     }
 
     private static void OnChanged() {
@@ -155,6 +167,7 @@ public static class ApiProvider {
         _setTag?.UnregisterAction();
         _getTag?.UnregisterFunc();
         _removeTag?.UnregisterAction();
+        _setLocalPlayerIdentity?.UnregisterAction();
 
         _localChanged = null;
         _apiVersion = null;
@@ -164,6 +177,7 @@ public static class ApiProvider {
         _getTag = null;
         _removeTag = null;
         _setTag = null;
+        _setLocalPlayerIdentity = null;
     }
 
     internal static void UpdateLocal(Vector3 offset, float rotation, PitchRoll pitchRoll) {

@@ -24,6 +24,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using Lumina.Extensions;
 using Companion = FFXIVClientStructs.FFXIV.Client.Game.Character.Companion;
 using World = Lumina.Excel.Sheets.World;
 
@@ -259,7 +260,11 @@ public unsafe class Plugin : IDalamudPlugin {
 
         string name;
         ushort homeWorld;
-        if (ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mappedActor)) {
+
+        if (character->GameObject.ObjectIndex == 0 && Config.IdentifyAs.TryGetValue(PluginService.ClientState.LocalContentId, out var identity)) {
+            name = identity.Item1;
+            homeWorld = (ushort) identity.Item2;
+        } else  if (ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mappedActor)) {
             name = mappedActor.name;
             homeWorld = mappedActor.homeWorld;
         } else {
@@ -286,7 +291,6 @@ public unsafe class Plugin : IDalamudPlugin {
         } else {
             name = SeString.Parse(minion->Name).TextValue;
         }
-        
         
         if (Config.TryGetCharacterConfig(name, ushort.MaxValue, minion->DrawObject, out characterConfig) && characterConfig != null) return true;
 
@@ -925,6 +929,66 @@ public unsafe class Plugin : IDalamudPlugin {
                     }
 
                     break;
+                case "identity":
+                    void HelpIdentitySet() {
+                        PluginService.ChatGui.Print(new SeStringBuilder().AddText("/heels identity set ").AddUiForeground("<name>", 35).AddText(" | ").AddUiForeground("[server]", 52).Build(), Name, 500);
+                    }
+                    void HelpIdentity() {
+                        HelpIdentitySet();
+                        PluginService.ChatGui.Print(new SeStringBuilder().AddText("/heels identity reset").Build(), Name, 500);
+                    }
+                    
+                    if (PluginService.ClientState.LocalContentId == 0 || PluginService.ClientState.LocalPlayer == null) return;
+                    if (splitArgs.Count < 2) {
+                        HelpIdentity();
+                        return;
+                    }
+
+                    switch (splitArgs[1]) {
+                        case "reset":
+                            Config.IdentifyAs.Remove(PluginService.ClientState.LocalContentId);
+                            PluginService.PluginInterface.SavePluginConfig(Config);
+                            return;
+                        case "set":
+
+                            if (splitArgs.Count < 3) {
+                                HelpIdentitySet();
+                                return;
+                            }
+
+                            var nameServerSplit = string.Join(" ", splitArgs[2..]).Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+                            var name = nameServerSplit[0];
+                            var serverName = nameServerSplit.Length > 1 ? nameServerSplit[1] : string.Empty;
+                            var serverId = 0U;
+                            if (string.IsNullOrWhiteSpace(serverName)) {
+                                serverId = PluginService.ClientState.LocalPlayer.HomeWorld.RowId;
+                            } else {
+                                if (!uint.TryParse(serverName, out serverId)) {
+
+                                    var worldRow = PluginService.Data.GetExcelSheet<World>().FirstOrNull(w => w.Name.ExtractText().Equals(serverName, StringComparison.InvariantCultureIgnoreCase));
+                                    if (worldRow is { } world) {
+                                        serverId = world.RowId;
+                                    } else {
+                                        PluginService.ChatGui.PrintError($"World not found: '{serverName}'", Name, 500);
+                                        return;
+                                    }
+                                }
+                            }
+
+                            if (PluginService.Data.GetExcelSheet<World>().GetRowOrDefault(serverId) == null) {
+                                PluginService.ChatGui.PrintError($"World not found: 'World#{serverId}'", Name, 500);
+                                return;
+                            }
+                            
+                            Config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, serverId);
+                            PluginService.PluginInterface.SavePluginConfig(Config);
+                            
+                            return;
+                        default:
+                            HelpIdentity();
+                            return;
+                    }
                 default:
                     configWindow.ToggleWithWarning();
                     break;

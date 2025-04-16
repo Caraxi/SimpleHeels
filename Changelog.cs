@@ -17,6 +17,13 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.7f, "0.10.7.0", () => {
+            C("Added ability to change selected 'identity'.");
+            C("When using another 'identity' configs for heels will be used for the configured character instead of the default.");
+            C("/heels identity set [name]", 0, ImGuiColors.DalamudViolet);
+            C("/heels identity reset", 0, ImGuiColors.DalamudViolet);
+            C("or Right click a character in the honorific config window and select 'Identity as'");
+        });
         ChangelogFor(10.6f, "0.10.6.0", () => {
             C("Added command to sync emote animations between all players");
             C("/heels emotesync", 1, ImGuiColors.DalamudViolet);
