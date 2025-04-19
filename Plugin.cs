@@ -315,6 +315,10 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private void* SetDrawRotationDetour(GameObject* gameObject, float rotation) {
+        if (!AllowAdvancedPositioning()) {
+            return setDrawRotationHook!.Original(gameObject, rotation);;
+        }
+        
         if (gameObject->ObjectIndex >= Constants.ObjectLimit || ManagedIndex[gameObject->ObjectIndex] == false) {
             return setDrawRotationHook!.Original(gameObject, rotation);
         }
@@ -334,6 +338,12 @@ public unsafe class Plugin : IDalamudPlugin {
                 
             }
         }
+    }
+
+    private bool AllowAdvancedPositioning() {
+        if (PluginService.Condition.Any(ConditionFlag.WatchingCutscene, ConditionFlag.WatchingCutscene78, ConditionFlag.OccupiedInCutSceneEvent)) return false;
+
+        return true;
     }
 
     private void* CloneActorDetour(Character** destinationArray, Character* source, uint copyFlags) {
@@ -551,8 +561,9 @@ public unsafe class Plugin : IDalamudPlugin {
         }
 
         var appliedOffset = offsetProvider.GetOffset();
+        if (!AllowAdvancedPositioning()) appliedOffset = appliedOffset with { X = 0, Z = 0 };
         offset += appliedOffset;
-        if (updateIndex != 0 && Config.UsePrecisePositioning && character->Mode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop && IpcAssignedData.TryGetValue(obj->EntityId, out var ipcCharacter) && ipcCharacter.EmotePosition != null) {
+        if (updateIndex != 0 && Config.UsePrecisePositioning && character->Mode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop && IpcAssignedData.TryGetValue(obj->EntityId, out var ipcCharacter) && ipcCharacter.EmotePosition != null && AllowAdvancedPositioning()) {
             using (PerformanceMonitors.Run($"Calculate Precise Position Offset:{updateIndex}", Config.DetailedPerformanceLogging))
             using (PerformanceMonitors.Run("Calculate Precise Position Offset")) {
                 var pos = (Vector3) character->GameObject.Position;
