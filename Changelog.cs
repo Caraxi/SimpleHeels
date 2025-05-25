@@ -17,6 +17,10 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.72f, "0.10.7.2", () => {
+            C("Added optional 'delay' parameter to emotesync command.");
+            C("/heels emotesync delay [seconds]", 0, ImGuiColors.DalamudViolet);
+        });
         ChangelogFor(10.7f, "0.10.7.0", () => {
             C("Added ability to change selected 'identity'.");
             C("When using another 'identity' configs for heels will be used for the configured character instead of the default.");

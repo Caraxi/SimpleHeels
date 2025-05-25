@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
@@ -31,6 +32,7 @@ using World = Lumina.Excel.Sheets.World;
 namespace SimpleHeels;
 
 public unsafe class Plugin : IDalamudPlugin {
+    public static CancellationTokenSource CancellationTokenSource { get; private set; } = new CancellationTokenSource();
     internal static bool IsDebug;
     private static bool _updateAll;
 
@@ -95,6 +97,7 @@ public unsafe class Plugin : IDalamudPlugin {
     }
     
     public Plugin(IDalamudPluginInterface pluginInterface) {
+        CancellationTokenSource = new CancellationTokenSource();
 #if DEBUG
         IsDebug = true;
 #endif
@@ -172,6 +175,7 @@ public unsafe class Plugin : IDalamudPlugin {
     public static Dictionary<uint, Dictionary<string, string>> Tags { get; } = new();
 
     public void Dispose() {
+        CancellationTokenSource.Cancel();
         isDisposing = true;
         PluginService.Log.Verbose("Dispose");
         PluginService.Framework.Update -= OnFrameworkUpdate;
@@ -635,7 +639,7 @@ public unsafe class Plugin : IDalamudPlugin {
             if (character->DrawObject == null) continue;
             if (character->DrawObject->GetObjectType() != ObjectType.CharacterBase) continue;
             if (((CharacterBase*)character->DrawObject)->GetModelType() != CharacterBase.ModelType.Human) continue;
-            var human = (Human*) character->DrawObject;
+            var human = (Human*)character->DrawObject;
             var emoteIden = EmoteIdentifier.Get(character);
             if (emoteIden == null) continue;
             var skeleton = human->Skeleton;
@@ -650,6 +654,42 @@ public unsafe class Plugin : IDalamudPlugin {
                     control->hkaAnimationControl.LocalTime = 0;
                 }
             }
+        }
+    }
+    
+    private void DoEmoteSync(List<string> splitArgs) {
+        var delay = 0f;
+        try {
+            for (var i = 0; i < splitArgs.Count; i++) {
+                switch (splitArgs[i].ToLowerInvariant()) {
+                    case "delay": {
+                        if (splitArgs.Count < i + 2) {
+                            PluginService.ChatGui.PrintError("Invalid Argument Syntax: delay <seconds>", Name, 500);
+                            return;
+                        }
+
+                        if (!float.TryParse(splitArgs[i + 1], out delay)) {
+                            PluginService.ChatGui.PrintError("Invalid Argument Syntax: delay <seconds>", Name, 500);
+                            return;
+                        }
+                        
+                        i++;
+                        break;
+                    }
+                    default: {
+                        PluginService.ChatGui.PrintError($"Invalid Argument: {splitArgs[i]}", Name, 500);
+                        return;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            PluginService.Log.Error(ex, "Error parsing EmoteSync command.");
+        }
+        
+        if (delay <= 0) {
+            PluginService.Framework.RunOnFrameworkThread(DoEmoteSync);
+        } else {
+            PluginService.Framework.RunOnTick(DoEmoteSync, TimeSpan.FromSeconds(delay), cancellationToken: CancellationTokenSource.Token);
         }
     }
     
@@ -897,7 +937,7 @@ public unsafe class Plugin : IDalamudPlugin {
                     break;
                 case "syncemote":
                 case "emotesync":
-                    DoEmoteSync();
+                    DoEmoteSync(splitArgs[1..]);
                     break;
                 case "renamechar":
                     if (splitArgs.Count != 3) {
