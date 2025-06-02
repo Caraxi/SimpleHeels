@@ -456,6 +456,19 @@ public class ConfigWindow : Window {
             }
 
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Plugin Options");
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.Save)) { 
+                Plugin.SaveConfig();
+            }
+
+            if (ImGui.IsItemHovered()) {
+                using (ImRaii.Tooltip()) {
+                    ImGui.Text("Manually Save Plugin Config");
+                    ImGui.Separator();
+                    ImGui.Text("This should not be necessary, but it might\nhelp in certain circumstances.");
+                }
+            }
+
             iconButtonSize = ImGui.GetItemRectSize() + ImGui.GetStyle().ItemSpacing;
 
             if (!config.HideKofi) {
@@ -1960,7 +1973,7 @@ public class ConfigWindow : Window {
     }
 
     public override void OnClose() {
-        PluginService.PluginInterface.SavePluginConfig(config);
+        Plugin.SaveConfig();
         base.OnClose();
     }
 

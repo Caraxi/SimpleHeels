@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
@@ -26,6 +27,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using Lumina.Extensions;
+using Newtonsoft.Json;
 using Companion = FFXIVClientStructs.FFXIV.Client.Game.Character.Companion;
 using World = Lumina.Excel.Sheets.World;
 
@@ -188,7 +190,7 @@ public unsafe class Plugin : IDalamudPlugin {
         PluginService.Commands.RemoveHandler("/heels");
         windowSystem.RemoveAllWindows();
 
-        PluginService.PluginInterface.SavePluginConfig(Config);
+        SaveConfig();
 
         setDrawOffset?.Disable();
         setDrawOffset?.Dispose();
@@ -998,7 +1000,7 @@ public unsafe class Plugin : IDalamudPlugin {
                     switch (splitArgs[1]) {
                         case "reset":
                             Config.IdentifyAs.Remove(PluginService.ClientState.LocalContentId);
-                            PluginService.PluginInterface.SavePluginConfig(Config);
+                            SaveConfig();
                             return;
                         case "set":
 
@@ -1033,7 +1035,7 @@ public unsafe class Plugin : IDalamudPlugin {
                             }
                             
                             Config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, serverId);
-                            PluginService.PluginInterface.SavePluginConfig(Config);
+                            SaveConfig();
                             
                             return;
                         default:
@@ -1119,4 +1121,15 @@ public unsafe class Plugin : IDalamudPlugin {
         var roll = go->Effects.TiltParam2Value;
         go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
     }
+
+    public static void SaveConfig() {
+        try {
+            PluginService.Log.Information("Saving Plugin Config");
+            PluginService.PluginInterface.SavePluginConfig(Config);
+        } catch (Exception ex) {
+            PluginService.ChatGui.PrintError($"Failed to save config: {ex.Message}.", "Simple Heels", 500);
+            PluginService.Log.Error(ex, "Failed to save config.");
+        }
+    }
+    
 }
