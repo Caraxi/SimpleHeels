@@ -670,7 +670,7 @@ public unsafe class Plugin : IDalamudPlugin {
                             return;
                         }
 
-                        if (!float.TryParse(splitArgs[i + 1], out delay)) {
+                        if (!float.TryParse(splitArgs[i + 1], CultureInfo.InvariantCulture, out delay)) {
                             PluginService.ChatGui.PrintError("Invalid Argument Syntax: delay <seconds>", Name, 500);
                             return;
                         }
@@ -789,7 +789,7 @@ public unsafe class Plugin : IDalamudPlugin {
                             
                             foreach (var a in splitArgs[2..]) {
                                 if (!string.IsNullOrWhiteSpace(setting)) {
-                                    if (!float.TryParse(a, out var val)) {
+                                    if (!float.TryParse(a, CultureInfo.InvariantCulture, out var val)) {
                                         PluginService.ChatGui.PrintError($"{a} is not a valid value.", Name, 500);
                                         anySet = false;
                                         goto Error;
