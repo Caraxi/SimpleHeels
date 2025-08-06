@@ -2,8 +2,8 @@
 using System.Diagnostics;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using ImGuizmoNET;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Bindings.ImGuizmo;
 using CameraManager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager;
 
 namespace SimpleHeels;
@@ -15,7 +15,7 @@ public unsafe class GizmoOverlayForMinion {
     private static Vector3 _scale = new(1);
     private static readonly Stopwatch UnlockDelay = Stopwatch.StartNew();
 
-    private static OPERATION? LockOperation {
+    private static ImGuizmoOperation? LockOperation {
         get;
         set {
             if (value == null) {
@@ -34,11 +34,11 @@ public unsafe class GizmoOverlayForMinion {
     private static Vector2 _rotateMouseStartPos = new(0);
     private static Vector2 _rotateCenterPos = new(0);
     
-    private static bool DrawDirection(ref Matrix4x4 view, ref Matrix4x4 proj, MODE mode, OPERATION operation) {
+    private static bool DrawDirection(ref Matrix4x4 view, ref Matrix4x4 proj, ImGuizmoMode mode, ImGuizmoOperation operation) {
         return DrawDirection(ref view, ref proj, mode, operation, out _);
     }
 
-    private static bool DrawDirection(ref Matrix4x4 view, ref Matrix4x4 proj, MODE mode, OPERATION operation, out Matrix4x4 delta) {
+    private static bool DrawDirection(ref Matrix4x4 view, ref Matrix4x4 proj, ImGuizmoMode mode, ImGuizmoOperation operation, out Matrix4x4 delta) {
         try {
             ImGuizmo.SetID((int)ImGui.GetID(nameof(SimpleHeels) + $"#Minion_{operation}"));
             var viewport = ImGui.GetMainViewport();
@@ -81,22 +81,22 @@ public unsafe class GizmoOverlayForMinion {
             proj.M33 = -((far + near) / (far - near));
             view.M44 = 1.0f;
             
-            if (LockOperation is null or OPERATION.TRANSLATE && DrawDirection(ref view, ref proj, MODE.LOCAL, OPERATION.TRANSLATE)) {
-                LockOperation = OPERATION.TRANSLATE;
+            if (LockOperation is null or ImGuizmoOperation.Translate && DrawDirection(ref view, ref proj, ImGuizmoMode.Local, ImGuizmoOperation.Translate)) {
+                LockOperation = ImGuizmoOperation.Translate;
                 ImGuizmo.DecomposeMatrixToComponents(ref _itemMatrix.M11, ref _position.X, ref _rotation.X, ref _scale.X);
                 companion->SetPosition(_position.X, _position.Y, _position.Z);
                 modified = true;
             }
             
-            if (LockOperation is null or OPERATION.ROTATE_Y && DrawDirection(ref view, ref proj, MODE.LOCAL, OPERATION.ROTATE_Y)) {
-                if (LockOperation != OPERATION.ROTATE_Y) {
+            if (LockOperation is null or ImGuizmoOperation.RotateY && DrawDirection(ref view, ref proj, ImGuizmoMode.Local, ImGuizmoOperation.RotateY)) {
+                if (LockOperation != ImGuizmoOperation.RotateY) {
                     _rotateMouseStartPos = ImGui.GetMousePos();
                     if (PluginService.GameGui.WorldToScreen(_position, out var c)) {
                         _rotateCenterPos = c;
-                        LockOperation = OPERATION.ROTATE_Y;
+                        LockOperation = ImGuizmoOperation.RotateY;
                         return false;
                     } else {
-                        LockOperation = OPERATION.BOUNDS;
+                        LockOperation = ImGuizmoOperation.Bounds;
                         return false;
                     }
                 }
@@ -113,15 +113,15 @@ public unsafe class GizmoOverlayForMinion {
                 modified = true;
             }
             
-            if (Plugin.Config.TempOffsetPitchRoll && LockOperation is null or OPERATION.ROTATE_X && DrawDirection(ref view, ref proj, MODE.LOCAL, OPERATION.ROTATE_X)) {
-                if (LockOperation != OPERATION.ROTATE_X) {
+            if (Plugin.Config.TempOffsetPitchRoll && LockOperation is null or ImGuizmoOperation.RotateX && DrawDirection(ref view, ref proj, ImGuizmoMode.Local, ImGuizmoOperation.RotateX)) {
+                if (LockOperation != ImGuizmoOperation.RotateX) {
                     _rotateMouseStartPos = ImGui.GetMousePos();
                     if (PluginService.GameGui.WorldToScreen(_position, out var c)) {
                         _rotateCenterPos = c;
-                        LockOperation = OPERATION.ROTATE_X;
+                        LockOperation = ImGuizmoOperation.RotateX;
                         return false;
                     } else {
-                        LockOperation = OPERATION.BOUNDS;
+                        LockOperation = ImGuizmoOperation.Bounds;
                         return false;
                     }
                 }
@@ -143,15 +143,15 @@ public unsafe class GizmoOverlayForMinion {
                 modified = true;
             }
 
-            if (Plugin.Config.TempOffsetPitchRoll && LockOperation is null or OPERATION.ROTATE_Z && DrawDirection(ref view, ref proj, MODE.LOCAL, OPERATION.ROTATE_Z)) {
-                if (LockOperation != OPERATION.ROTATE_Z) {
+            if (Plugin.Config.TempOffsetPitchRoll && LockOperation is null or ImGuizmoOperation.RotateZ && DrawDirection(ref view, ref proj, ImGuizmoMode.Local, ImGuizmoOperation.RotateZ)) {
+                if (LockOperation != ImGuizmoOperation.RotateZ) {
                     _rotateMouseStartPos = ImGui.GetMousePos();
                     if (PluginService.GameGui.WorldToScreen(_position, out var c)) {
                         _rotateCenterPos = c;
-                        LockOperation = OPERATION.ROTATE_Z;
+                        LockOperation = ImGuizmoOperation.RotateZ;
                         return false;
                     } else {
-                        LockOperation = OPERATION.BOUNDS;
+                        LockOperation = ImGuizmoOperation.Bounds;
                         return false;
                     }
                 }

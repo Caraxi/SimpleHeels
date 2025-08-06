@@ -21,7 +21,7 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
@@ -108,13 +108,13 @@ public class ConfigWindow : Window {
         Size = new Vector2(1000, 500);
         SizeCondition = ImGuiCond.FirstUseEver;
 
-        clickAllowInGposePayload = PluginService.PluginInterface.AddChatLinkHandler(1000, (_, _) => {
+        clickAllowInGposePayload = PluginService.ChatGui.AddChatLinkHandler((_, _) => {
             config.ConfigInGpose = true;
             PluginService.PluginInterface.UiBuilder.DisableGposeUiHide = true;
             IsOpen = true;
         });
 
-        clickAllowInCutscenePayload = PluginService.PluginInterface.AddChatLinkHandler(1001, (_, _) => {
+        clickAllowInCutscenePayload = PluginService.ChatGui.AddChatLinkHandler((_, _) => {
             config.ConfigInCutscene = true;
             PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = true;
             IsOpen = true;
@@ -165,8 +165,9 @@ public class ConfigWindow : Window {
             ImGuiExt.Separator();
             
             foreach (var (name, characterConfig) in characters.ToArray()) {
+                var id = $"{name}##{world.Value.Name.ExtractText()}";
                 using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ParsedGrey, characterConfig.Enabled == false)) {
-                    if (ImGui.Selectable($"{name}##{world.Value.Name.ExtractText()}", selectedCharacter == characterConfig)) {
+                    if (ImGui.Selectable(id, selectedCharacter == characterConfig)) {
                         selectedCharacter = characterConfig;
                         selectedName = name;
                         selectedWorld = world.Value.RowId;
@@ -188,7 +189,7 @@ public class ConfigWindow : Window {
                     }
                 }
                 
-                if (ImGui.BeginPopupContextItem()) {
+                if (ImGui.BeginPopupContextItem(id)) {
                     if (ImGui.Selectable($"Remove '{name} @ {world.Value.Name.ExtractText()}' from Config")) {
                         characters.Remove(name);
                         if (selectedCharacter == characterConfig) selectedCharacter = null;
@@ -259,7 +260,7 @@ public class ConfigWindow : Window {
                     }
                 }
 
-                if (ImGui.BeginPopupContextItem()) {
+                if (ImGui.BeginPopupContextItem($"{filterConfig.Label}##filterConfig_{i}")) {
                     if (config.Groups.Count > 1) {
                         if (i > 0) {
                             if (ImGui.Selectable($"Move Up")) {

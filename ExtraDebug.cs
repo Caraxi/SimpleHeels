@@ -12,7 +12,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Companion = Lumina.Excel.Sheets.Companion;
 
 namespace SimpleHeels;
@@ -112,7 +112,7 @@ public unsafe class ExtraDebug : Window {
                 }
 
                 var img = PluginService.TextureProvider.GetFromGameIcon(new GameIconLookup(emoteIden.Icon)).GetWrapOrEmpty();
-                ImGui.Image(img.ImGuiHandle, new Vector2(ImGui.GetTextLineHeight()));
+                ImGui.Image(img.Handle, new Vector2(ImGui.GetTextLineHeight()));
                 ImGui.SameLine();
                 ImGui.Text($"{emoteIden?.Name}");
                 ImGui.TableNextColumn();

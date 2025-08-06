@@ -45,7 +45,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
     public Dictionary<uint, Vector3> BaseOffsets = new();
 
-    [Signature("E8 ?? ?? ?? ?? 0F B6 9E ?? ?? ?? ?? 48 8D 8E", DetourName = nameof(CloneActorDetour))]
+    [Signature("E8 ?? ?? ?? ?? 8B 87 ?? ?? ?? ?? 85 C0 74 24", DetourName = nameof(CloneActorDetour))]
     private Hook<CloneActor>? cloneActor;
 
     private bool isDisposing;

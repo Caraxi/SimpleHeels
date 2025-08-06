@@ -9,13 +9,13 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-        <Version>0.10.7.3</Version>
+        <Version>0.10.7.4</Version>
         <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="12.0.0" />
+        <PackageReference Include="DalamudPackager" Version="13.0.0" />
         <Reference Include="Dalamud">
             <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
             <Private>false</Private>
@@ -40,9 +40,17 @@
             <HintPath>$(DalamudLibPath)Newtonsoft.Json.dll</HintPath>
             <Private>false</Private>
         </Reference>
-        <Reference Include="ImGui.NET">
-            <HintPath>$(DalamudLibPath)ImGui.NET.dll</HintPath>
+        <Reference Include="Dalamud.Bindings.ImGui">
             <Private>false</Private>
+            <HintPath>$(DalamudLibPath)\Dalamud.Bindings.ImGui.dll</HintPath>
+        </Reference>
+        <Reference Include="Dalamud.Bindings.ImPlot">
+            <Private>false</Private>
+            <HintPath>$(DalamudLibPath)\Dalamud.Bindings.ImPlot.dll</HintPath>
+        </Reference>
+        <Reference Include="Dalamud.Bindings.ImGuizmo">
+            <Private>false</Private>
+            <HintPath>$(DalamudLibPath)\Dalamud.Bindings.ImGuizmo.dll</HintPath>
         </Reference>
     </ItemGroup>
 </Project>

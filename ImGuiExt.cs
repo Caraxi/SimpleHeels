@@ -4,7 +4,7 @@ using System.Numerics;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility.Raii;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 namespace SimpleHeels;
 
@@ -24,7 +24,7 @@ public static class ImGuiExt {
             if (ImGui.BeginChildFrame(ImGui.GetID($"iconTextFrame_{previewIcon}_{previewText}"), frameSize)) {
                 var dl = ImGui.GetWindowDrawList();
                 var icon = PluginService.TextureProvider.GetFromGameIcon(previewIcon).GetWrapOrDefault();
-                if (icon != null) dl.AddImage(icon.ImGuiHandle, pos, pos + new Vector2(size.Y));
+                if (icon != null) dl.AddImage(icon.Handle, pos, pos + new Vector2(size.Y));
                 var textSize = ImGui.CalcTextSize(previewText);
                 dl.AddText(pos + new Vector2(size.Y + ImGui.GetStyle().FramePadding.X, size.Y / 2f - textSize.Y / 2f), ImGui.GetColorU32(ImGuiCol.Text), previewText);
             }
