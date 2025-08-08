@@ -108,13 +108,13 @@ public class ConfigWindow : Window {
         Size = new Vector2(1000, 500);
         SizeCondition = ImGuiCond.FirstUseEver;
 
-        clickAllowInGposePayload = PluginService.ChatGui.AddChatLinkHandler((_, _) => {
+        clickAllowInGposePayload = PluginService.ChatGui.AddChatLinkHandler(1000, (_, _) => {
             config.ConfigInGpose = true;
             PluginService.PluginInterface.UiBuilder.DisableGposeUiHide = true;
             IsOpen = true;
         });
 
-        clickAllowInCutscenePayload = PluginService.ChatGui.AddChatLinkHandler((_, _) => {
+        clickAllowInCutscenePayload = PluginService.ChatGui.AddChatLinkHandler(1001, (_, _) => {
             config.ConfigInCutscene = true;
             PluginService.PluginInterface.UiBuilder.DisableCutsceneUiHide = true;
             IsOpen = true;
