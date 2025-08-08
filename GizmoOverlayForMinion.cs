@@ -85,6 +85,7 @@ public unsafe class GizmoOverlayForMinion {
                 LockOperation = ImGuizmoOperation.Translate;
                 ImGuizmo.DecomposeMatrixToComponents(ref _itemMatrix.M11, ref _position.X, ref _rotation.X, ref _scale.X);
                 companion->SetPosition(_position.X, _position.Y, _position.Z);
+                Plugin.SetMinionAdjusted(companion);
                 modified = true;
             }
             
@@ -108,6 +109,7 @@ public unsafe class GizmoOverlayForMinion {
                 if (MathF.Abs(a) > Constants.FloatDelta) {
                     companion->SetRotation(companion->Rotation - a);
                     _rotateMouseStartPos = p3;
+                    Plugin.SetMinionAdjusted(companion);
                 }
 
                 modified = true;
@@ -138,6 +140,7 @@ public unsafe class GizmoOverlayForMinion {
                     companion->Effects.TiltParam1Value = pitch;
                     
                     _rotateMouseStartPos = p3;
+                    Plugin.SetMinionAdjusted(companion);
                 }
 
                 modified = true;
@@ -167,6 +170,7 @@ public unsafe class GizmoOverlayForMinion {
                     if (roll < 0) roll += MathF.Tau;
                     companion->Effects.TiltParam2Value = roll;
                     _rotateMouseStartPos = p3;
+                    Plugin.SetMinionAdjusted(companion);
                 }
 
                 modified = true;

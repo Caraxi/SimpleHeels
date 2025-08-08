@@ -179,6 +179,23 @@ public unsafe class Plugin : IDalamudPlugin {
     public void Dispose() {
         CancellationTokenSource.Cancel();
         isDisposing = true;
+
+        if (_isMinionAdjusted) {
+            var pObj = GameObjectManager.Instance()->Objects.IndexSorted[0].Value;
+            if (pObj != null && pObj->IsCharacter() ) {
+                var pChr = (Character*)pObj;
+                if (pChr->CompanionObject != null) {
+                    var go =  pChr->CompanionObject;
+                    if (go->DrawObject != null) {
+                        go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(go->Rotation, 0, 0);
+                    }
+                    
+                    go->Effects.TiltParam1Value = 0;
+                    go->Effects.TiltParam2Value = 0;
+                }
+            }
+        }
+        
         PluginService.Log.Verbose("Dispose");
         PluginService.Framework.Update -= OnFrameworkUpdate;
 
@@ -1111,15 +1128,37 @@ public unsafe class Plugin : IDalamudPlugin {
 
     private delegate void* UpdateMountedPositions(Attach* a1);
 
+    private static uint _companionBaseId = 0;
+    private static bool _isMinionAdjusted = false;
+
+    public static void SetMinionAdjusted(Companion* go) {
+        if (go == null) return;
+        if (go->GetObjectKind() != ObjectKind.Companion) return;
+        if (go->DrawObject == null) return;
+        _isMinionAdjusted = true;
+        _companionBaseId = go->BaseId;
+    }
+    
     public void UpdateCompanionRotation(Companion* go) {
         if (go == null) return;
         if (go->GetObjectKind() != ObjectKind.Companion) return;
         if (go->DrawObject == null) return;
+        if (!_isMinionAdjusted) return;
 
-        var yaw = go->Rotation;
-        var pitch = go->Effects.TiltParam1Value;
-        var roll = go->Effects.TiltParam2Value;
-        go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
+        if (_companionBaseId != go->BaseId && _isMinionAdjusted) {
+            // Reset
+            _companionBaseId = 0;
+            PluginService.Log.Debug($"Change Companion: {go->BaseId}");
+            go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(go->Rotation, 0, 0);
+            go->Effects.TiltParam1Value = 0;
+            go->Effects.TiltParam2Value = 0;
+            _isMinionAdjusted = false;
+        } else if (_isMinionAdjusted) {
+            var yaw = go->Rotation;
+            var pitch = go->Effects.TiltParam1Value;
+            var roll = go->Effects.TiltParam2Value;
+            go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
+        }
     }
 
     public static void SaveConfig() {
