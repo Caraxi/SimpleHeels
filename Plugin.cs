@@ -545,7 +545,11 @@ public unsafe class Plugin : IDalamudPlugin {
             
                 if (Config.ApplyStaticMinionPositions && updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->BaseId)) {
                     UpdateCompanionRotation(companion);
-                    ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f, companion->Effects.TiltParam1Value, companion->Effects.TiltParam2Value);
+                    if (_isMinionAdjusted) {
+                        ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f, companion->Effects.TiltParam1Value, companion->Effects.TiltParam2Value);
+                    } else {
+                        ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f, 0, 0);
+                    }
                 }
             }
         }
