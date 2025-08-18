@@ -170,6 +170,8 @@ public unsafe class Plugin : IDalamudPlugin {
 
     private byte[] SetGposeRotationCounter { get; } = new byte[Constants.ObjectLimit];
 
+    public bool IsMinionAdjusted => _isMinionAdjusted;
+    
     public static Dictionary<uint, IpcCharacterConfig> IpcAssignedData { get; } = new();
 
     public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
