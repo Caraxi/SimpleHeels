@@ -366,6 +366,7 @@ public unsafe class Plugin : IDalamudPlugin {
     }
 
     private bool AllowAdvancedPositioning() {
+        if (PluginService.ClientState.IsGPosing) return true;
         if (PluginService.Condition.Any(ConditionFlag.WatchingCutscene, ConditionFlag.WatchingCutscene78, ConditionFlag.OccupiedInCutSceneEvent)) return false;
 
         return true;

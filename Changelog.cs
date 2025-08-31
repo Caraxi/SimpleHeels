@@ -17,6 +17,7 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(10.78f, "0.10.7.8", "Fixed emote offsets not correctly applying in gpose.");
         ChangelogFor(10.75f, "0.10.7.5", "Attempted to fix the minion rotation bug.");
         ChangelogFor(10.73f, "0.10.7.3", "Added manual save button.");
         ChangelogFor(10.72f, "0.10.7.2", () => {
