@@ -29,7 +29,12 @@ public class IpcCharacterConfig : CharacterConfig {
             EmoteConfigs = characterConfig?.EmoteConfigs?.Where(e => e.Enabled).Select(e => e.IpcClone()).ToList() ?? new List<EmoteConfig>();
         }
 
-        if (Plugin.Tags.TryGetValue(player.EntityId, out var tags)) Tags = tags;
+        if (Plugin.Tags.TryGetValue(player.EntityId, out var tags)) {
+            foreach (var t in tags) {
+                Tags.TryAdd(t.Key, t.Value);
+            }
+        }
+
         if (player.ObjectIndex < Constants.ObjectLimit && Plugin.TempOffsets[player.ObjectIndex] != null) {
             TempOffset = Plugin.TempOffsets[player.ObjectIndex]?.Clone() ?? null;
         }
