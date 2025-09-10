@@ -39,6 +39,8 @@ public class PluginConfig : IPluginConfiguration {
     public bool TempOffsetShowGizmo = false;
     public VirtualKey[] TempOffsetGizmoHotkey = [];
 
+    public bool LivePoseEnabled = true;
+
     public bool MinionGizmo = false;
     public VirtualKey[] MinionGizmoHotkey = [ VirtualKey.MENU, VirtualKey.CONTROL];
 

@@ -6,13 +6,13 @@ using System.Reflection;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Interface;
 using Dalamud.Interface.Textures;
-using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using Dalamud.Bindings.ImGui;
+using SimpleHeels.Utility;
 using Companion = Lumina.Excel.Sheets.Companion;
 
 namespace SimpleHeels;
@@ -35,11 +35,12 @@ public unsafe class ExtraDebug : Window {
         Plugin.Config.ExtendedDebugOpen = false;
     }
 
-    private void TabDebug() {
-        ImGui.Text("Last Reported IPC:");
-        ImGui.Indent();
 
-        ImGui.TextWrapped(ApiProvider.LastReportedData);
+    private readonly SimpleJsonViewer simpleJsonViewer = new();
+    
+    private void TabDebug() {
+        simpleJsonViewer.Draw("Last Reported IPC", ApiProvider.LastReportedData);
+        
         ImGui.Spacing();
         ImGui.Spacing();
         ImGui.TextDisabled($"Time Since Report: {ApiProvider.TimeSinceLastReport.Elapsed:hh\\:mm\\:ss}");
@@ -60,9 +61,6 @@ public unsafe class ExtraDebug : Window {
                 }
             }
         }
-        
-        ImGui.Unindent();
-        
     }
 
     private void TabEmoteTiming() {

@@ -9,12 +9,16 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-        <Version>0.10.7.10</Version>
+        <Version>0.11.0.0</Version>
         <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="LivePose\LivePose\LivePose.csproj" />
+        <Compile Remove="LivePose\**" />
+        <EmbeddedResource Remove="LivePose\**" />
+        <None Remove="LivePose\**" />
         <PackageReference Include="DalamudPackager" Version="13.0.0" />
         <Reference Include="Dalamud">
             <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>

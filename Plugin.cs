@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
@@ -27,7 +26,6 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using Lumina.Extensions;
-using Newtonsoft.Json;
 using Companion = FFXIVClientStructs.FFXIV.Client.Game.Character.Companion;
 using World = Lumina.Excel.Sheets.World;
 
@@ -43,6 +41,8 @@ public unsafe class Plugin : IDalamudPlugin {
     private readonly WindowSystem windowSystem;
     private readonly TempOffsetOverlay tempOffsetOverlay;
 
+    private LivePose.LivePose? livePose;
+    
     public Dictionary<uint, Vector3> BaseOffsets = new();
 
     [Signature("E8 ?? ?? ?? ?? 8B 87 ?? ?? ?? ?? 85 C0 74 24", DetourName = nameof(CloneActorDetour))]
@@ -151,6 +151,51 @@ public unsafe class Plugin : IDalamudPlugin {
         RequestUpdateAll();
 
         for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
+
+
+        SetupLivePose();
+    }
+    
+    public void SetupLivePose(bool announce = false) {
+        PluginService.PluginInterface.ActivePluginsChanged -= ActivePluginsChanged; 
+        PluginService.PluginInterface.ActivePluginsChanged += ActivePluginsChanged;
+
+        if (livePose != null) {
+            PluginService.Log.Info("Unloading LivePose Module.");
+            if (announce) PluginService.ChatGui.Print("Unloading LivePose module.", Name);
+            
+            
+            livePose?.Dispose();
+            livePose = null;
+        }
+
+        
+        PluginService.Framework.RunOnTick(() => {
+            try {
+                if (Config.LivePoseEnabled) {
+                    if (PluginService.PluginInterface.InstalledPlugins.Any(p => p.InternalName == "LivePose" && p.IsLoaded)) {
+                        PluginService.ChatGui.PrintError("Refusing to Load LivePose module. Please uninstall the LivePose plugin.",  Name);
+                        return;
+                    }
+                    
+                    PluginService.Log.Info("Starting LivePose Module.");
+                    if (announce) PluginService.ChatGui.Print("Loading LivePose module.", Name);
+                    livePose = new LivePose.LivePose(PluginService.PluginInterface);
+                }
+            } catch(Exception ex) {
+                livePose?.Dispose();
+                livePose = null;
+                PluginService.Log.Error(ex, "Exception while setting up LivePose");
+            }
+            
+        }, delayTicks: 5);
+        
+    }
+
+    private void ActivePluginsChanged(IActivePluginsChangedEventArgs args) {
+        if (args.AffectedInternalNames.Any(p => p == "LivePose")) {
+            SetupLivePose(true);
+        }
     }
 
     public string Name => "Simple Heels";
@@ -179,6 +224,8 @@ public unsafe class Plugin : IDalamudPlugin {
     public static Dictionary<uint, Dictionary<string, string>> Tags { get; } = new();
 
     public void Dispose() {
+        livePose?.Dispose();
+        livePose = null;
         CancellationTokenSource.Cancel();
         isDisposing = true;
 
@@ -751,6 +798,14 @@ public unsafe class Plugin : IDalamudPlugin {
                 case "toggle":
                     Config.Enabled = !Config.Enabled;
                     RequestUpdateAll();
+                    break;
+                case "livepose":
+                    if (livePose == null) {
+                        PluginService.ChatGui.PrintError("LivePose is not enabled.", Name);
+                        return;
+                    }
+                    
+                    livePose.ToggleOverlay();
                     break;
                 case "temp":
                     if (splitArgs.Count < 2) {
