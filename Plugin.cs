@@ -149,10 +149,7 @@ public unsafe class Plugin : IDalamudPlugin {
         setModeHook?.Enable();
         updateMountedPositionsHook?.Enable();
         RequestUpdateAll();
-
         for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
-
-
         SetupLivePose();
     }
     
@@ -177,6 +174,17 @@ public unsafe class Plugin : IDalamudPlugin {
                         PluginService.ChatGui.PrintError("Refusing to Load LivePose module. Please uninstall the LivePose plugin.",  Name);
                         return;
                     }
+
+                    if (PluginService.ClientState.IsGPosing) {
+                        PluginService.Log.Debug("Delaying LivePose until out of GPose");
+                        PluginService.Framework.RunOnTick(() => {
+                            SetupLivePose(announce);
+                        }, delay: TimeSpan.FromSeconds(5));
+                        
+                        return;
+                    }
+                    
+                    
                     
                     PluginService.Log.Info("Starting LivePose Module.");
                     if (announce) PluginService.ChatGui.Print("Loading LivePose module.", Name);

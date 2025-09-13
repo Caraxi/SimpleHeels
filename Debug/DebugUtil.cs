@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Dalamud.Plugin;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Utility;
 
 namespace SimpleHeels;
 

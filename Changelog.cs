@@ -17,6 +17,13 @@ public static class Changelog {
     private static bool _isOldExpanded;
 
     private static void Changelogs() {
+        ChangelogFor(11.00f, "0.11.0.0", () => {
+            C("Added 'LivePose' system.");
+            C("Allows you to pose individual bones as in Brio.", 1);
+            C("Poses will be disabled while in combat.", 1);
+            C("/heels livepose", 1, ImGuiColors.DalamudViolet);
+            C("Poses will attempt to copy to Brio when entering GPose.", 1);
+        });
         ChangelogFor(10.78f, "0.10.7.8", "Fixed emote offsets not correctly applying in gpose.");
         ChangelogFor(10.75f, "0.10.7.5", "Attempted to fix the minion rotation bug.");
         ChangelogFor(10.73f, "0.10.7.3", "Added manual save button.");

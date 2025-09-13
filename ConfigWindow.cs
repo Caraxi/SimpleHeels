@@ -25,6 +25,7 @@ using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
+using SimpleHeels.Utility;
 using World = Lumina.Excel.Sheets.World;
 using WorldDCGroupType = Lumina.Excel.Sheets.WorldDCGroupType;
 
@@ -1898,12 +1899,15 @@ public class ConfigWindow : Window {
                     
                     ImGui.Unindent();
                 }
-                
-                ImGui.TextWrapped(ipcCharacter.IpcJson);
+
+                ipcDataViewer.Draw("Data", ipcCharacter.IpcJson);
+
                 ImGui.TreePop();
             }
         }
     }
+
+    private SimpleJsonViewer ipcDataViewer = new SimpleJsonViewer();
 
     private void ShowActiveOffsetMarker(bool show, bool isEnabled, bool isActive, string tooltipText) {
         if (!show) {
