@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{A70663D7-6EA4-4FD8-AC9A-BB7D1CD86678}") = "SimpleHeels", "SimpleHeels.csproj", "{B4FE8155-7639-4588-8715-1EB17CDF8F15}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LivePose", "LivePose\LivePose\LivePose.csproj", "{EE159C2A-0D36-4C60-A025-A397058B9C48}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Release|x64 = Release|x64
@@ -12,5 +14,9 @@ Global
 		{B4FE8155-7639-4588-8715-1EB17CDF8F15}.Release|x64.Build.0 = Release|x64
 		{B4FE8155-7639-4588-8715-1EB17CDF8F15}.Debug|x64.ActiveCfg = Debug|x64
 		{B4FE8155-7639-4588-8715-1EB17CDF8F15}.Debug|x64.Build.0 = Debug|x64
+		{EE159C2A-0D36-4C60-A025-A397058B9C48}.Release|x64.ActiveCfg = Release|x64
+		{EE159C2A-0D36-4C60-A025-A397058B9C48}.Release|x64.Build.0 = Release|x64
+		{EE159C2A-0D36-4C60-A025-A397058B9C48}.Debug|x64.ActiveCfg = Debug|x64
+		{EE159C2A-0D36-4C60-A025-A397058B9C48}.Debug|x64.Build.0 = Debug|x64
 	EndGlobalSection
 EndGlobal

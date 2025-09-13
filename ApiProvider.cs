@@ -22,6 +22,7 @@ public static class ApiProvider {
     public const string RemoveTagIdentifier = "SimpleHeels.RemoveTag";
     public const string TagChangedIdentifier = "SimpleHeels.TagChanged";
     public const string SetLocalPlayerIdentity = "SimpleHeels.SetLocalPlayerIdentity";
+    public const string ReadyIdentifier = "SimpleHeels.Ready";
 
     public static bool IsSerializing = false;
 
@@ -35,6 +36,7 @@ public static class ApiProvider {
     private static ICallGateProvider<int, string, object?>? _removeTag;
     private static ICallGateProvider<int, string, string?, object?>? _tagChanged;
     private static ICallGateProvider<string, uint, object?>? _setLocalPlayerIdentity;
+    private static ICallGateProvider<object?>? _ready;
 
     private static IpcCharacterConfig? _lastReported;
     private static Vector3? _lastReportedOffset;
@@ -64,6 +66,7 @@ public static class ApiProvider {
         _removeTag = pluginInterface.GetIpcProvider<int, string, object?>(RemoveTagIdentifier);
         _setLocalPlayerIdentity = pluginInterface.GetIpcProvider<string, uint, object?>(SetLocalPlayerIdentity);
         _tagChanged = pluginInterface.GetIpcProvider<int, string, string?, object?>(TagChangedIdentifier);
+        _ready = pluginInterface.GetIpcProvider<object?>(ReadyIdentifier);
 
         _apiVersion.RegisterFunc(() => (ApiVersionMajor, ApiVersionMinor));
 
@@ -186,6 +189,8 @@ public static class ApiProvider {
                 Plugin.Config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, world);
             }
         }));
+        
+        _ready.SendMessage();
     }
 
     private static void OnChanged() {

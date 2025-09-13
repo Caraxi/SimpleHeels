@@ -25,6 +25,7 @@ using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
+using SimpleHeels.Utility;
 using World = Lumina.Excel.Sheets.World;
 using WorldDCGroupType = Lumina.Excel.Sheets.WorldDCGroupType;
 
@@ -796,6 +797,37 @@ public class ConfigWindow : Window {
                 
                 
                 ImGuiExt.Separator();
+                
+                ImGuiExt.Separator();
+                ImGui.Text("Live-Posing");
+                ImGui.SameLine();
+                using (ImRaii.PushFont(UiBuilder.IconFont)) {
+                    ImGui.TextColored(ImGuiColors.DalamudWhite, FontAwesomeIcon.InfoCircle.ToIconString());
+                }
+
+                if (ImGui.IsItemHovered()) {
+                    
+                    ImGui.BeginTooltip();
+                    
+                    ImGui.TextWrapped("TODO: Live Posing Help");
+                    ImGuiHelpers.ScaledDummy(350, 1);
+                    ImGui.EndTooltip();
+                }
+                
+                using (ImRaii.PushIndent())
+                using (ImRaii.PushId("LivePoseConfig")) {
+
+                    if (ImGui.Checkbox("Enable LivePose", ref config.LivePoseEnabled)) {
+                        plugin.SetupLivePose();
+                    }
+                }
+
+
+                ImGuiExt.Separator();
+                
+                
+                
+                
 
 #if DEBUG
                 ImGui.Checkbox("[DEBUG] Open config window on startup", ref config.DebugOpenOnStartup);
@@ -1867,12 +1899,15 @@ public class ConfigWindow : Window {
                     
                     ImGui.Unindent();
                 }
-                
-                ImGui.TextWrapped(ipcCharacter.IpcJson);
+
+                ipcDataViewer.Draw("Data", ipcCharacter.IpcJson);
+
                 ImGui.TreePop();
             }
         }
     }
+
+    private SimpleJsonViewer ipcDataViewer = new SimpleJsonViewer();
 
     private void ShowActiveOffsetMarker(bool show, bool isEnabled, bool isActive, string tooltipText) {
         if (!show) {

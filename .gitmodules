@@ -1,0 +1,3 @@
+[submodule "LivePose"]
+	path = LivePose
+	url = https://github.com/Caraxi/LivePose
