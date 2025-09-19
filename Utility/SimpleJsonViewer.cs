@@ -1,4 +1,9 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Text;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Newtonsoft.Json;
@@ -9,6 +14,7 @@ namespace SimpleHeels.Utility;
     public class SimpleJsonViewer {
         private string? lastString;
         private JObject? deserialized;
+        private Dictionary<string, SimpleJsonViewer?> extras = [];
         
         public void Draw(string rootLabel, string json) {
             if (json != lastString) Update(json);
@@ -38,7 +44,27 @@ namespace SimpleHeels.Utility;
                 }
                 
                 foreach (var node in jObject.Properties().Where(p => p.Value is not (JObject or JArray))) {
-                    ImGui.TreeNodeEx($"{node.Name}: {node.Value.ToString(Formatting.None)}##Node{id++}", ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen);
+
+
+                    if (node.Value.Type == JTokenType.String) {
+                        try {
+                            var str = node.Value.ToObject<string>();
+                            var decomp = Decompress(str);
+                            if (decomp.StartsWith('{') && decomp.EndsWith('}')) {
+
+                                if (!extras.TryGetValue(node.Path, out var extra) || extra == null) {
+                                    extras[node.Path] = extra = new SimpleJsonViewer();
+                                }
+                                
+                                extra.Draw(node.Name, decomp);
+                                continue;
+                            }
+                        } catch {
+                            //
+                        }
+                    }
+
+                    ImGui.TreeNodeEx($"[{node.Value.Type}] {node.Name}: {node.Value.ToString(Formatting.None)}##Node{id++}", ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen);
                     if (ImGui.BeginPopupContextItem($"popup_{id++}")) {
                         if (ImGui.MenuItem($"Copy Value")) {
                             ImGui.SetClipboardText($"{node.Value.ToString(Formatting.None)}");
@@ -74,7 +100,6 @@ namespace SimpleHeels.Utility;
                     index++;
                 }
                 
-                
                 ImGui.TreePop();
             }
         }
@@ -83,4 +108,21 @@ namespace SimpleHeels.Utility;
             lastString = json;
             deserialized = JsonConvert.DeserializeObject<JObject>(json);
         }
+
+        public static string Decompress(string? compressedString) {
+            if(string.IsNullOrEmpty(compressedString)) return string.Empty;
+            byte[] decompressedBytes;
+            var compressedStream = new MemoryStream(Convert.FromBase64String(compressedString));
+            using (var gzipStream = new GZipStream(compressedStream, CompressionMode.Decompress))
+            {
+                using (var decompressedStream = new MemoryStream())
+                {
+                    gzipStream.CopyTo(decompressedStream);
+                    decompressedBytes = decompressedStream.ToArray();
+                }
+            }
+
+            return Encoding.UTF8.GetString(decompressedBytes);
+        }
+        
     }

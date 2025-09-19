@@ -237,33 +237,38 @@ public unsafe class Plugin : IDalamudPlugin {
         CancellationTokenSource.Cancel();
         isDisposing = true;
 
-        if (_isMinionAdjusted) {
-            var pObj = GameObjectManager.Instance()->Objects.IndexSorted[0].Value;
-            if (pObj != null && pObj->IsCharacter() ) {
-                var pChr = (Character*)pObj;
-                if (pChr->CompanionObject != null) {
-                    var go =  pChr->CompanionObject;
-                    if (go->DrawObject != null) {
-                        go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(go->Rotation, 0, 0);
-                    }
-                    
-                    go->Effects.TiltParam1Value = 0;
-                    go->Effects.TiltParam2Value = 0;
-                }
-            }
-        }
-        
         PluginService.Log.Verbose("Dispose");
         PluginService.Framework.Update -= OnFrameworkUpdate;
-
-        for (var i = 0U; i < Constants.ObjectLimit; i++)
-            if (i == 0 || ManagedIndex[i])
-                UpdateObjectIndex(i);
-
+        
         ApiProvider.DeInit();
+        
         PluginService.Commands.RemoveHandler("/heels");
         windowSystem.RemoveAllWindows();
+        
+        PluginService.Framework.RunOnFrameworkThread(() => {
+            if (_isMinionAdjusted) {
+                var pObj = GameObjectManager.Instance()->Objects.IndexSorted[0].Value;
+                if (pObj != null && pObj->IsCharacter() ) {
+                    var pChr = (Character*)pObj;
+                    if (pChr->CompanionObject != null) {
+                        var go =  pChr->CompanionObject;
+                        if (go->DrawObject != null) {
+                            go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(go->Rotation, 0, 0);
+                        }
+                    
+                        go->Effects.TiltParam1Value = 0;
+                        go->Effects.TiltParam2Value = 0;
+                    }
+                }
+            }
+        
 
+
+            for (var i = 0U; i < Constants.ObjectLimit; i++)
+                if (i == 0 || ManagedIndex[i])
+                    UpdateObjectIndex(i);
+        }).Wait();
+        
         SaveConfig();
 
         setDrawOffset?.Disable();
@@ -812,8 +817,20 @@ public unsafe class Plugin : IDalamudPlugin {
                         PluginService.ChatGui.PrintError("LivePose is not enabled.", Name);
                         return;
                     }
+
+                    if (splitArgs.Count < 2) {
+                        livePose.ToggleOverlay();
+                    } else {
+                        switch (splitArgs[1].ToLowerInvariant()) {
+                            case "debug":
+                                livePose.ToggleDebugWindow();
+                                break;
+                            default:
+                                livePose.ToggleOverlay();
+                                break;
+                        }
+                    }
                     
-                    livePose.ToggleOverlay();
                     break;
                 case "temp":
                     if (splitArgs.Count < 2) {
