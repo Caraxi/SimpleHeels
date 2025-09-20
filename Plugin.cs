@@ -719,7 +719,8 @@ public unsafe class Plugin : IDalamudPlugin {
                 UpdateObjectIndex(i);
     }
 
-    private void DoEmoteSync(bool force) {
+    private void DoEmoteSync(bool force, bool random) {
+        var r = new Random();
         foreach (var c in PluginService.Objects.Where(o => o is IPlayerCharacter)) {
             var character = (Character*)c.Address;
             if (character->DrawObject == null) continue;
@@ -739,7 +740,12 @@ public unsafe class Plugin : IDalamudPlugin {
                 for (var animControl = 0; animControl < animatedSkeleton->AnimationControls.Length && animControl < 1; ++animControl) {
                     var control = animatedSkeleton->AnimationControls[animControl].Value;
                     if (control == null) continue;
-                    control->hkaAnimationControl.LocalTime = 0;
+                    var t = 0f;
+                    if (random && control->Binding.ptr != null && control->Binding.ptr->Animation.ptr != null) {
+                        t = r.NextSingle() * control->Binding.ptr->Animation.ptr->Duration;
+                    }
+                    
+                    control->hkaAnimationControl.LocalTime = t;
                 }
             }
         }
@@ -748,6 +754,7 @@ public unsafe class Plugin : IDalamudPlugin {
     private void DoEmoteSync(List<string> splitArgs) {
         var delay = 0f;
         var force = false;
+        var random = false;
         try {
             for (var i = 0; i < splitArgs.Count; i++) {
                 switch (splitArgs[i].ToLowerInvariant()) {
@@ -765,6 +772,10 @@ public unsafe class Plugin : IDalamudPlugin {
                         i++;
                         break;
                     }
+                    case "random": {
+                        random = true;
+                        break;
+                    }
                     case "force": {
                         force = true;
                         break;
@@ -780,9 +791,9 @@ public unsafe class Plugin : IDalamudPlugin {
         }
         
         if (delay <= 0) {
-            PluginService.Framework.RunOnFrameworkThread(() => DoEmoteSync(force));
+            PluginService.Framework.RunOnFrameworkThread(() => DoEmoteSync(force, random));
         } else {
-            PluginService.Framework.RunOnTick(() => DoEmoteSync(force), TimeSpan.FromSeconds(delay), cancellationToken: CancellationTokenSource.Token);
+            PluginService.Framework.RunOnTick(() => DoEmoteSync(force, random), TimeSpan.FromSeconds(delay), cancellationToken: CancellationTokenSource.Token);
         }
     }
     
