@@ -32,6 +32,7 @@ using World = Lumina.Excel.Sheets.World;
 namespace SimpleHeels;
 
 public unsafe class Plugin : IDalamudPlugin {
+    public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0, 0);
     public static CancellationTokenSource CancellationTokenSource { get; private set; } = new CancellationTokenSource();
     internal static bool IsDebug;
     private static bool _updateAll;

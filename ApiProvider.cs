@@ -9,6 +9,7 @@ using Dalamud.Plugin.Ipc;
 namespace SimpleHeels;
 
 public static class ApiProvider {
+    private static bool _hasShownVersionWarning;
     private const int ApiVersionMajor = 2;
     private const int ApiVersionMinor = 4;
 
@@ -101,7 +102,14 @@ public static class ApiProvider {
             foreach (var tag in tags.Keys) {
                 _tagChanged.SendMessage(gameObjectIndex, tag, null);
             }
-            
+
+            if (!_hasShownVersionWarning && Version.TryParse(assigned.PluginVersion, out var remoteVersion)) {
+                if (remoteVersion > Plugin.Version) {
+                    _hasShownVersionWarning = true;
+                    PluginService.ChatGui.PrintError("SimpleHeels seems to be out of date. Please update to ensure synced characters are displayed correctly.", "Simple Heels", 500);
+                }
+            }
+
             Plugin.RequestUpdateAll();
         });
 
