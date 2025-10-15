@@ -224,7 +224,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
     private byte[] SetGposeRotationCounter { get; } = new byte[Constants.ObjectLimit];
 
-    public bool IsMinionAdjusted => _isMinionAdjusted;
+    public static bool IsMinionAdjusted => _isMinionAdjusted;
     
     public static Dictionary<uint, IpcCharacterConfig> IpcAssignedData { get; } = new();
 
@@ -1241,6 +1241,8 @@ public unsafe class Plugin : IDalamudPlugin {
         if (go == null) return;
         if (go->GetObjectKind() != ObjectKind.Companion) return;
         if (go->DrawObject == null) return;
+        go->Effects.TiltParam1Value = Math.Clamp(go->Effects.TiltParam1Value, 0, MathF.Tau);
+        go->Effects.TiltParam2Value = Math.Clamp(go->Effects.TiltParam2Value, 0, MathF.Tau);
         _isMinionAdjusted = true;
         _companionBaseId = go->BaseId;
     }

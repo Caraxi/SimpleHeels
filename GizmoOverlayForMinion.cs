@@ -133,7 +133,7 @@ public unsafe class GizmoOverlayForMinion {
                 var p3 = ImGui.GetMousePos();
                 var a = MathF.Atan2(p3.Y - p1.Y, p3.X - p1.X) - MathF.Atan2(p2.Y - p1.Y, p2.X - p1.X);
                 if (MathF.Abs(a) > Constants.FloatDelta) {
-                    var pitch = companion->Effects.TiltParam1Value;
+                    var pitch = Plugin.IsMinionAdjusted ? companion->Effects.TiltParam1Value : 0;
                     pitch -= a;
                     if (pitch > MathF.Tau) pitch -= MathF.Tau;
                     if (pitch < 0) pitch += MathF.Tau;
@@ -164,7 +164,7 @@ public unsafe class GizmoOverlayForMinion {
                 var p3 = ImGui.GetMousePos();
                 var a = MathF.Atan2(p3.Y - p1.Y, p3.X - p1.X) - MathF.Atan2(p2.Y - p1.Y, p2.X - p1.X);
                 if (MathF.Abs(a) > Constants.FloatDelta) {
-                    var roll = companion->Effects.TiltParam2Value;
+                    var roll = Plugin.IsMinionAdjusted ? companion->Effects.TiltParam2Value : 0;
                     roll -= a;
                     if (roll > MathF.Tau) roll -= MathF.Tau;
                     if (roll < 0) roll += MathF.Tau;
