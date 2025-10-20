@@ -830,19 +830,7 @@ public unsafe class Plugin : IDalamudPlugin {
                         return;
                     }
 
-                    if (splitArgs.Count < 2) {
-                        livePose.ToggleOverlay();
-                    } else {
-                        switch (splitArgs[1].ToLowerInvariant()) {
-                            case "debug":
-                                livePose.ToggleDebugWindow();
-                                break;
-                            default:
-                                livePose.ToggleOverlay();
-                                break;
-                        }
-                    }
-                    
+                    livePose.ProcessCommand(splitArgs[1..]);
                     break;
                 case "temp":
                     if (splitArgs.Count < 2) {
