@@ -84,6 +84,7 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
         if (character == null) return null;
         if (character->Mode is CharacterModes.Mounted or CharacterModes.RidingPillion) return new EmoteIdentifier(MountedFakeEmoteId, 0);
         if (character->Mode is not (CharacterModes.InPositionLoop or CharacterModes.EmoteLoop)) return null;
+        if (Plugin.OverrideEmotes.TryGetValue(character->EntityId, out var overrideEmote)) return overrideEmote;
         return new EmoteIdentifier(character->ModeParam, character->EmoteController.CPoseState);
     }
 

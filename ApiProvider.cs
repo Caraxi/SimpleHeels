@@ -5,13 +5,14 @@ using System.Numerics;
 using System.Threading;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Plugin.Ipc;
+using Lumina.Excel.Sheets;
 
 namespace SimpleHeels;
 
 public static class ApiProvider {
     private static bool _hasShownVersionWarning;
     private const int ApiVersionMajor = 2;
-    private const int ApiVersionMinor = 4;
+    private const int ApiVersionMinor = 5;
 
     public const string ApiVersionIdentifier = "SimpleHeels.ApiVersion";
     public const string GetLocalPlayerIdentifier = "SimpleHeels.GetLocalPlayer";
@@ -24,6 +25,8 @@ public static class ApiProvider {
     public const string TagChangedIdentifier = "SimpleHeels.TagChanged";
     public const string SetLocalPlayerIdentity = "SimpleHeels.SetLocalPlayerIdentity";
     public const string ReadyIdentifier = "SimpleHeels.Ready";
+    public const string RegisterEmoteOverride = "SimpleHeels.RegisterEmoteOverride";
+    public const string ClearEmoteOverride = "SimpleHeels.ClearEmoteOverride";
 
     public static bool IsSerializing = false;
 
@@ -38,6 +41,8 @@ public static class ApiProvider {
     private static ICallGateProvider<int, string, string?, object?>? _tagChanged;
     private static ICallGateProvider<string, uint, object?>? _setLocalPlayerIdentity;
     private static ICallGateProvider<object?>? _ready;
+    private static ICallGateProvider<int, uint, byte, object?>? _registerEmoteOverride;
+    private static ICallGateProvider<int, object?>? _clearEmoteOverride;
 
     private static IpcCharacterConfig? _lastReported;
     private static Vector3? _lastReportedOffset;
@@ -68,6 +73,8 @@ public static class ApiProvider {
         _setLocalPlayerIdentity = pluginInterface.GetIpcProvider<string, uint, object?>(SetLocalPlayerIdentity);
         _tagChanged = pluginInterface.GetIpcProvider<int, string, string?, object?>(TagChangedIdentifier);
         _ready = pluginInterface.GetIpcProvider<object?>(ReadyIdentifier);
+        _registerEmoteOverride = pluginInterface.GetIpcProvider<int, uint, byte, object?>(RegisterEmoteOverride);
+        _clearEmoteOverride = pluginInterface.GetIpcProvider<int, object?>(ClearEmoteOverride);
 
         _apiVersion.RegisterFunc(() => (ApiVersionMajor, ApiVersionMinor));
 
@@ -197,6 +204,22 @@ public static class ApiProvider {
                 Plugin.Config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, world);
             }
         }));
+        
+        _registerEmoteOverride.RegisterAction((gameObjectIndex, emoteModeId, cPose) => {
+            var gameObject = gameObjectIndex >= 0 && gameObjectIndex < PluginService.Objects.Length ? PluginService.Objects[gameObjectIndex] : null;
+            if (gameObject is not IPlayerCharacter playerCharacter) return;
+            if (emoteModeId == 0) throw new Exception("Invalid Emote Mode. ID must be > 0");
+            var emoteMode = PluginService.Data.GetExcelSheet<EmoteMode>().GetRowOrDefault(emoteModeId);
+            if (emoteMode == null) throw new Exception("Invalid Emote Mode. ID does not exist.");
+            var identifier = new EmoteIdentifier(emoteModeId, emoteModeId <= 3 ? cPose : (byte) 0);
+            Plugin.OverrideEmotes[gameObject.EntityId] = identifier;
+        });
+
+        _clearEmoteOverride.RegisterAction(gameObjectIndex => {
+            var gameObject = gameObjectIndex >= 0 && gameObjectIndex < PluginService.Objects.Length ? PluginService.Objects[gameObjectIndex] : null;
+            if (gameObject == null) return;
+            Plugin.OverrideEmotes.Remove(gameObject.EntityId);
+        });
         
         _ready.SendMessage();
     }

@@ -227,6 +227,7 @@ public unsafe class Plugin : IDalamudPlugin {
     public static bool IsMinionAdjusted => _isMinionAdjusted;
     
     public static Dictionary<uint, IpcCharacterConfig> IpcAssignedData { get; } = new();
+    public static Dictionary<uint, EmoteIdentifier> OverrideEmotes { get; } = new();
 
     public static Dictionary<uint, (string name, ushort homeWorld)> ActorMapping { get; } = new();
 
@@ -305,12 +306,14 @@ public unsafe class Plugin : IDalamudPlugin {
             BaseOffsets.Remove(character->GameObject.ObjectIndex);
             NeedsUpdate[character->GameObject.ObjectIndex] = false;
             TempOffsets[character->GameObject.ObjectIndex] = null;
+            OverrideEmotes.Remove(character->EntityId);
         }
 
         return terminateCharacterHook!.Original(character);
     }
 
     private void* SetModeDetour(Character* character, CharacterModes mode, byte modeParam) {
+        OverrideEmotes.Remove(character->EntityId);
         var previousMode = character == null ? CharacterModes.None : character->Mode;
         try {
             return setModeHook!.Original(character, mode, modeParam);
@@ -823,6 +826,10 @@ public unsafe class Plugin : IDalamudPlugin {
                 case "toggle":
                     Config.Enabled = !Config.Enabled;
                     RequestUpdateAll();
+                    break;
+                case "clearemoteoverride":
+                case "clearemoteoverrides":
+                    OverrideEmotes.Clear();
                     break;
                 case "livepose":
                     if (livePose == null) {

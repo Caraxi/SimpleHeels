@@ -2,7 +2,7 @@
     <PropertyGroup>
         <LangVersion>preview</LangVersion>
         <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
-        <Version>0.11.0.18</Version>
+        <Version>0.11.0.19</Version>
     </PropertyGroup>
 
     <ItemGroup>

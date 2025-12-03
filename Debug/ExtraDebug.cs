@@ -12,6 +12,7 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Plugin.Ipc;
 using SimpleHeels.Utility;
 using Companion = Lumina.Excel.Sheets.Companion;
 
@@ -304,6 +305,71 @@ public unsafe class ExtraDebug : Window {
                 ImGui.Text($"PoseIdentifier: {EmoteIdentifier.Get(obj)}");
                 
                 ImGui.TreePop();
+            }
+        }
+    }
+
+    private static ICallGateSubscriber<int, uint, byte, object?>? _registerEmoteOverride;
+    private static ICallGateSubscriber<int, object?>? _clearEmoteOverride;
+    
+    private string searchInput = string.Empty;
+    private EmoteIdentifier selectedEmoteOverride = new(1, 0);
+    private void TabIPC() {
+
+        if (ImGui.CollapsingHeader("Emote Override"))
+        {
+            ImGui.SetNextItemWidth(300);
+            if (ImGui.BeginCombo("Select Emote", selectedEmoteOverride.Name, ImGuiComboFlags.HeightLargest)) {
+                if (ImGui.IsWindowAppearing()) {
+                    searchInput = string.Empty;
+                    ImGui.SetKeyboardFocusHere();
+                }
+
+                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                ImGui.InputTextWithHint("##searchInput", "Search...", ref searchInput, 128);
+                if (ImGui.BeginChild("##searchScroll", new Vector2(ImGui.GetContentRegionAvail().X, 300))) {
+                    using (ImRaii.PushColor(ImGuiCol.FrameBgHovered, ImGui.GetColorU32(ImGuiCol.ButtonHovered))) {
+                        foreach (var emote in EmoteIdentifier.List) {
+                            if (!string.IsNullOrWhiteSpace(searchInput)) {
+                                if (!(emote.Name.Contains(searchInput, StringComparison.InvariantCultureIgnoreCase) || (ushort.TryParse(searchInput, out var searchShort) && searchShort == emote.EmoteModeId))) continue;
+                            }
+                                    
+                            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                            if (ImGuiExt.IconTextFrame(emote.Icon, emote.Name, true)) {
+                                selectedEmoteOverride = emote;
+                                ImGui.CloseCurrentPopup();
+                            }
+                        }
+                    }
+                }
+
+                ImGui.EndChild();
+                ImGui.EndCombo();
+            }
+
+            if (ImGui.Button("Set Override for Self")) {
+                _registerEmoteOverride ??= PluginService.PluginInterface.GetIpcSubscriber<int, uint, byte, object?>(ApiProvider.RegisterEmoteOverride);
+                _registerEmoteOverride?.InvokeAction(0, selectedEmoteOverride.EmoteModeId, selectedEmoteOverride.CPoseState);
+            }
+            
+            ImGui.SameLine();
+            if (ImGui.Button("Clear Override for Self")) {
+                            
+
+                _clearEmoteOverride ??= PluginService.PluginInterface.GetIpcSubscriber<int, object?>(ApiProvider.ClearEmoteOverride);
+                _clearEmoteOverride.InvokeAction(0);
+            }
+
+            using (ImRaii.Disabled(PluginService.Targets.Target == null)) {
+                if (ImGui.Button("Set Override for Target") && PluginService.Targets.Target != null) {
+                    _registerEmoteOverride ??= PluginService.PluginInterface.GetIpcSubscriber<int, uint, byte, object?>(ApiProvider.RegisterEmoteOverride);
+                    _registerEmoteOverride?.InvokeAction(PluginService.Targets.Target.ObjectIndex, selectedEmoteOverride.EmoteModeId, selectedEmoteOverride.CPoseState);
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("Clear Override for Target") &&  PluginService.Targets.Target != null) {
+                    _clearEmoteOverride ??= PluginService.PluginInterface.GetIpcSubscriber<int, object?>(ApiProvider.ClearEmoteOverride);
+                    _clearEmoteOverride.InvokeAction(PluginService.Targets.Target.ObjectIndex);
+                }
             }
         }
     }
