@@ -51,7 +51,7 @@ public sealed unsafe class TempOffsetOverlay : Window {
     }
 
     public bool TryGetActiveCharacter(out Character* character) {
-        character = (Character*)(PluginService.ClientState.LocalPlayer?.Address ?? nint.Zero);
+        character = (Character*)(PluginService.Objects.LocalPlayer?.Address ?? nint.Zero);
         if (character == null) return false;
         if (character->GameObject.ObjectIndex >= Constants.ObjectLimit) return false;
         if (!character->GameObject.IsCharacter()) return false;

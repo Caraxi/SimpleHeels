@@ -10,7 +10,11 @@ using Lumina.Excel.Sheets;
 namespace SimpleHeels;
 
 public static class ApiProvider {
+#if DEBUG
+    private static bool _hasShownVersionWarning = true;
+#else
     private static bool _hasShownVersionWarning;
+#endif
     private const int ApiVersionMajor = 2;
     private const int ApiVersionMinor = 5;
 
@@ -135,7 +139,7 @@ public static class ApiProvider {
         });
 
         _getLocalPlayer.RegisterFunc(() => {
-            var player = PluginService.ClientState.LocalPlayer;
+            var player = PluginService.Objects.LocalPlayer;
             if (player == null) return string.Empty;
             return new IpcCharacterConfig(_plugin, player).ToString();
         });
@@ -197,11 +201,11 @@ public static class ApiProvider {
         });
         
         _setLocalPlayerIdentity.RegisterAction(((name, world) => {
-            if (PluginService.ClientState.LocalContentId == 0) return;
+            if (PluginService.PlayerState.ContentId == 0) return;
             if (string.IsNullOrWhiteSpace(name)) {
-                Plugin.Config.IdentifyAs.Remove(PluginService.ClientState.LocalContentId);
+                Plugin.Config.IdentifyAs.Remove(PluginService.PlayerState.ContentId);
             } else {
-                Plugin.Config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, world);
+                Plugin.Config.IdentifyAs[PluginService.PlayerState.ContentId] = (name, world);
             }
         }));
         
@@ -229,7 +233,7 @@ public static class ApiProvider {
             PluginService.Log.Debug("Reporting to IPC");
             localTagsChanged = false;
             TimeSinceLastReport.Restart();
-            var gameObject = PluginService.ClientState.LocalPlayer;
+            var gameObject = PluginService.Objects.LocalPlayer;
             if (gameObject == null) return;
             if (gameObject.ObjectIndex != 0) return;
             if (_plugin == null) return;

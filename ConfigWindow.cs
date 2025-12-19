@@ -139,17 +139,17 @@ public class ConfigWindow : Window {
 
     public unsafe void DrawCharacterList() {
         
-        var highlightName = PluginService.ClientState.LocalPlayer?.Name.TextValue ?? string.Empty;
-        var highlightWorld = PluginService.ClientState.LocalPlayer?.HomeWorld.RowId ?? 0;
+        var highlightName = PluginService.Objects.LocalPlayer?.Name.TextValue ?? string.Empty;
+        var highlightWorld = PluginService.Objects.LocalPlayer?.HomeWorld.RowId ?? 0;
 
-        if (config.IdentifyAs.TryGetValue(PluginService.ClientState.LocalContentId, out var identity)) {
+        if (config.IdentifyAs.TryGetValue(PluginService.PlayerState.ContentId, out var identity)) {
             highlightName = identity.Item1;
             highlightWorld = identity.Item2;
             var worldName = PluginService.Data.GetExcelSheet<World>().GetRowOrDefault(identity.Item2)?.Name.ExtractText() ?? $"UnknownWorld#{identity.Item2}";
             ImGui.Text("Current Identity:");
             ImGui.SameLine();
             if (ImGui.SmallButton("Reset")) {
-                config.IdentifyAs.Remove(PluginService.ClientState.LocalContentId);
+                config.IdentifyAs.Remove(PluginService.PlayerState.ContentId);
             } else {
                 ImGui.Text($"\t{identity.Item1}\n\t\t@ {worldName}");
                         
@@ -199,8 +199,8 @@ public class ConfigWindow : Window {
                         }
                     }
                     
-                    if (PluginService.ClientState.LocalContentId != 0 && ImGui.Selectable($"Identify as '{name} @ {world.Value.Name.ExtractText()}'")) {
-                        config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, world.Value.RowId);
+                    if (PluginService.PlayerState.ContentId != 0 && ImGui.Selectable($"Identify as '{name} @ {world.Value.Name.ExtractText()}'")) {
+                        config.IdentifyAs[PluginService.PlayerState.ContentId] = (name, world.Value.RowId);
                     }
 
                     ImGui.EndPopup();
@@ -404,14 +404,14 @@ public class ConfigWindow : Window {
 
             var charaListPos = ImGui.GetItemRectSize().X;
 
-            if (PluginService.ClientState.LocalPlayer != null) {
+            if (PluginService.Objects.LocalPlayer != null) {
                 if (ImGuiComponents.IconButton(FontAwesomeIcon.User)) {
-                    if (PluginService.ClientState.LocalPlayer != null) {
+                    if (PluginService.Objects.LocalPlayer != null) {
 
-                        var name = PluginService.ClientState.LocalPlayer.Name.TextValue;
-                        var world = PluginService.ClientState.LocalPlayer.HomeWorld.RowId;
+                        var name = PluginService.Objects.LocalPlayer.Name.TextValue;
+                        var world = PluginService.Objects.LocalPlayer.HomeWorld.RowId;
 
-                        if (config.IdentifyAs.TryGetValue(PluginService.ClientState.LocalContentId, out var identity)) {
+                        if (config.IdentifyAs.TryGetValue(PluginService.PlayerState.ContentId, out var identity)) {
                             name = identity.Item1;
                             world = identity.Item2;
                         }
@@ -630,11 +630,11 @@ public class ConfigWindow : Window {
                         groupNameMatchingNewInput = string.Empty;
                     }
                     
-                    if (PluginService.ClientState.LocalPlayer != null) {
+                    if (PluginService.Objects.LocalPlayer != null) {
                         ImGui.SameLine();
                         if (ImGuiComponents.IconButton(FontAwesomeIcon.User)) {
-                            if (PluginService.ClientState.LocalPlayer != null) {
-                                var c = new GroupCharacter { Name = PluginService.ClientState.LocalPlayer.Name.TextValue, World = PluginService.ClientState.LocalPlayer.HomeWorld.RowId };
+                            if (PluginService.Objects.LocalPlayer != null) {
+                                var c = new GroupCharacter { Name = PluginService.Objects.LocalPlayer.Name.TextValue, World = PluginService.Objects.LocalPlayer.HomeWorld.RowId };
                                 if (!selectedGroup.Characters.Any(ec => ec.Name == c.Name && ec.World == c.World)) {
                                     selectedGroup.Characters.Add(c);
                                 }
@@ -836,7 +836,7 @@ public class ConfigWindow : Window {
                 if (Plugin.IsDebug) {
                     if (ImGui.TreeNode("DEBUG")) {
                         
-                        ImGui.Text($"Dalamud: {Util.GetGitHash()}- ClientStructs: {FFXIVClientStructs.ThisAssembly.Git.Commit}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]");
+                        // ImGui.Text($"Dalamud: {Util.GetGitHash()}- ClientStructs: {FFXIVClientStructs.ThisAssembly.Git.Commit}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]");
                         
                         ImGui.Text("Last Reported Data:");
                         ImGui.Indent();
@@ -979,7 +979,7 @@ public class ConfigWindow : Window {
         IOffsetProvider? activeHeelConfig = null;
 
         if (characterConfig is GroupConfig gc) {
-            var target = new[] { PluginService.Targets.SoftTarget, PluginService.Targets.Target, PluginService.ClientState.LocalPlayer }.FirstOrDefault(t => t is ICharacter character && gc.Matches(((GameObject*)character.Address)->DrawObject, character.Name.TextValue, (character is IPlayerCharacter pc) ? pc.HomeWorld.RowId : ushort.MaxValue));
+            var target = new[] { PluginService.Targets.SoftTarget, PluginService.Targets.Target, PluginService.Objects.LocalPlayer }.FirstOrDefault(t => t is ICharacter character && gc.Matches(((GameObject*)character.Address)->DrawObject, character.Name.TextValue, (character is IPlayerCharacter pc) ? pc.HomeWorld.RowId : ushort.MaxValue));
             if (target is ICharacter) {
                 activeCharacter = (GameObject*)target.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;
@@ -993,7 +993,7 @@ public class ConfigWindow : Window {
                 Plugin.RequestUpdateAll();
             }
         } else {
-            var player =  PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && ((playerCharacter.ObjectIndex == 0 && config.IdentifyAs.TryGetValue(PluginService.ClientState.LocalContentId, out var identity)) ? (identity.Item1 == selectedName && identity.Item2 == selectedWorld) : (playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.RowId == selectedWorld)));
+            var player =  PluginService.Objects.FirstOrDefault(t => t is IPlayerCharacter playerCharacter && ((playerCharacter.ObjectIndex == 0 && config.IdentifyAs.TryGetValue(PluginService.PlayerState.ContentId, out var identity)) ? (identity.Item1 == selectedName && identity.Item2 == selectedWorld) : (playerCharacter.Name.TextValue == selectedName && playerCharacter.HomeWorld.RowId == selectedWorld)));
             if (player is IPlayerCharacter) {
                 activeCharacter = (GameObject*)player.Address;
                 activeCharacterAsCharacter = (Character*)activeCharacter;

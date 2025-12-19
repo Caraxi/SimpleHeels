@@ -1,8 +1,12 @@
-<Project Sdk="Dalamud.NET.SDK/13.1.0">
+<Project Sdk="Dalamud.NET.SDK/14.0.1">
     <PropertyGroup>
         <LangVersion>preview</LangVersion>
         <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
         <Version>0.11.0.19</Version>
+
+        <!-- TODO: Remove -->
+        <Is2025 Condition="$([System.DateTime]::UtcNow.Year) == 2025">true</Is2025>
+        <NoWarn Condition="'$(Is2025)' == 'true'">MSB3277</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

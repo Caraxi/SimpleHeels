@@ -47,7 +47,7 @@ public unsafe class ExtraDebug : Window {
         ImGui.TextDisabled($"Time Since Report: {ApiProvider.TimeSinceLastReport.Elapsed:hh\\:mm\\:ss}");
         
         ImGui.Separator();
-        var localPlayer = PluginService.ClientState.LocalPlayer;
+        var localPlayer = PluginService.Objects.LocalPlayer;
         if (localPlayer != null) {
             var chr = (Character*)localPlayer.Address;
             DebugUtil.PrintOutObject(chr);

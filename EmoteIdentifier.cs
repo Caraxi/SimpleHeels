@@ -32,7 +32,7 @@ public unsafe record EmoteIdentifier([property: JsonProperty("e")] uint EmoteMod
     };
 
     private static readonly Dictionary<uint, uint> Icons = new() {
-        [3] = 64013, // Sleep -> Doze
+        [3] = 246213, // Sleep -> Doze
         [MountedFakeEmoteId] = 58,
     };
 

@@ -107,7 +107,7 @@ public unsafe class Plugin : IDalamudPlugin {
         using var _ = PerformanceMonitors.Run($"Plugin Startup");
         pluginInterface.Create<PluginService>();
         
-        PluginService.Log.Information($"Starting SimpleHeels - D: {Util.GetGitHash()}- CS: {FFXIVClientStructs.ThisAssembly.Git.Commit}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]");
+        // PluginService.Log.Information($"Starting SimpleHeels - D: {Util.GetGitHash()}- CS: {FFXIVClientStructs.ThisAssembly.Git.Commit}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]");
         
         
         DoConfigBackup(pluginInterface);
@@ -350,7 +350,7 @@ public unsafe class Plugin : IDalamudPlugin {
         string name;
         ushort homeWorld;
 
-        if (character->GameObject.ObjectIndex == 0 && Config.IdentifyAs.TryGetValue(PluginService.ClientState.LocalContentId, out var identity)) {
+        if (character->GameObject.ObjectIndex == 0 && Config.IdentifyAs.TryGetValue(PluginService.PlayerState.ContentId, out var identity)) {
             name = identity.Item1;
             homeWorld = (ushort) identity.Item2;
         } else  if (ActorMapping.TryGetValue(character->GameObject.ObjectIndex, out var mappedActor)) {
@@ -903,7 +903,7 @@ public unsafe class Plugin : IDalamudPlugin {
                             var heightSet = false;
                             var silent = false;
 
-                            var emote = EmoteIdentifier.Get(PluginService.ClientState.LocalPlayer);
+                            var emote = EmoteIdentifier.Get(PluginService.Objects.LocalPlayer);
                             
                             foreach (var a in splitArgs[2..]) {
                                 if (!string.IsNullOrWhiteSpace(setting)) {
@@ -1109,7 +1109,7 @@ public unsafe class Plugin : IDalamudPlugin {
                         PluginService.ChatGui.Print(new SeStringBuilder().AddText("/heels identity reset").Build(), Name, 500);
                     }
                     
-                    if (PluginService.ClientState.LocalContentId == 0 || PluginService.ClientState.LocalPlayer == null) return;
+                    if (PluginService.PlayerState.ContentId == 0 || PluginService.Objects.LocalPlayer == null) return;
                     if (splitArgs.Count < 2) {
                         HelpIdentity();
                         return;
@@ -1117,7 +1117,7 @@ public unsafe class Plugin : IDalamudPlugin {
 
                     switch (splitArgs[1]) {
                         case "reset":
-                            Config.IdentifyAs.Remove(PluginService.ClientState.LocalContentId);
+                            Config.IdentifyAs.Remove(PluginService.PlayerState.ContentId);
                             SaveConfig();
                             return;
                         case "set":
@@ -1133,7 +1133,7 @@ public unsafe class Plugin : IDalamudPlugin {
                             var serverName = nameServerSplit.Length > 1 ? nameServerSplit[1] : string.Empty;
                             var serverId = 0U;
                             if (string.IsNullOrWhiteSpace(serverName)) {
-                                serverId = PluginService.ClientState.LocalPlayer.HomeWorld.RowId;
+                                serverId = PluginService.Objects.LocalPlayer.HomeWorld.RowId;
                             } else {
                                 if (!uint.TryParse(serverName, out serverId)) {
 
@@ -1152,7 +1152,7 @@ public unsafe class Plugin : IDalamudPlugin {
                                 return;
                             }
                             
-                            Config.IdentifyAs[PluginService.ClientState.LocalContentId] = (name, serverId);
+                            Config.IdentifyAs[PluginService.PlayerState.ContentId] = (name, serverId);
                             SaveConfig();
                             
                             return;
