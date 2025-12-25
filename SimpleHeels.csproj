@@ -2,11 +2,7 @@
     <PropertyGroup>
         <LangVersion>preview</LangVersion>
         <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
-        <Version>0.11.0.21</Version>
-
-        <!-- TODO: Remove -->
-        <Is2025 Condition="$([System.DateTime]::UtcNow.Year) == 2025">true</Is2025>
-        <NoWarn Condition="'$(Is2025)' == 'true'">MSB3277</NoWarn>
+        <Version>0.11.0.22</Version>
     </PropertyGroup>
 
     <ItemGroup>
