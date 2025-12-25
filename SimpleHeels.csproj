@@ -2,7 +2,7 @@
     <PropertyGroup>
         <LangVersion>preview</LangVersion>
         <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
-        <Version>0.11.0.20</Version>
+        <Version>0.11.0.21</Version>
 
         <!-- TODO: Remove -->
         <Is2025 Condition="$([System.DateTime]::UtcNow.Year) == 2025">true</Is2025>
