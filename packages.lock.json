@@ -14,6 +14,11 @@
         "resolved": "1.2.39",
         "contentHash": "fcFN01tDTIQqDuTwr1jUQK/geofiwjG5DycJQOnC72i1SsLAk1ELe+apBOuZ11UMQG8YKFZG1FgvjZPbqHyatg=="
       },
+      "Brio.API": {
+        "type": "Transitive",
+        "resolved": "3.0.1",
+        "contentHash": "40MD49ETqyGsdHGoG3JF/BFcNAphRqi27+ZxfDk2Aj7gAkzDFe7C2UVGirUByrUIj8lxiz9eEoB2i7O9lefEPQ=="
+      },
       "EmbedIO": {
         "type": "Transitive",
         "resolved": "3.5.2",
@@ -101,6 +106,7 @@
       "livepose": {
         "type": "Project",
         "dependencies": {
+          "Brio.API": "[3.0.1, )",
           "DalamudPackager": "[14.0.1, )",
           "EmbedIO": "[3.5.2, )",
           "Glamourer.Api": "[2.6.0, )",
