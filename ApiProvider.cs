@@ -5,6 +5,8 @@ using System.Numerics;
 using System.Threading;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Plugin.Ipc;
+using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using Lumina.Excel.Sheets;
 
 namespace SimpleHeels;
@@ -229,32 +231,35 @@ public static class ApiProvider {
     }
 
     private static void OnChanged() {
-        using (PerformanceMonitors.Run("Generate IPC Message")) {
-            PluginService.Log.Debug("Reporting to IPC");
-            localTagsChanged = false;
-            TimeSinceLastReport.Restart();
-            var gameObject = PluginService.Objects.LocalPlayer;
-            if (gameObject == null) return;
-            if (gameObject.ObjectIndex != 0) return;
-            if (_plugin == null) return;
-            var data = new IpcCharacterConfig(_plugin, gameObject);
-            if (data.Equals(_lastReported)) return;
+        if (PluginService.Framework.IsFrameworkUnloading) return;
+        PluginService.Framework.RunOnFrameworkThread(() => {
+            using (PerformanceMonitors.Run("Generate IPC Message")) {
+                var gameObject = PluginService.Objects.LocalPlayer;
+                if (gameObject == null) return;
+                if (gameObject.ObjectIndex != 0) return;
+                if (_plugin == null) return;
+                var data = new IpcCharacterConfig(_plugin, gameObject);
+                if (data.Equals(_lastReported)) return;
 
-            var json = data.ToString();
-            _lastReported = data;
+                var json = data.ToString();
+                _lastReported = data;
 
-            var tokenSource = _tokenSource;
-            tokenSource?.Cancel();
+                var tokenSource = _tokenSource;
+                tokenSource?.Cancel();
 
-            _tokenSource = new CancellationTokenSource();
+                _tokenSource = new CancellationTokenSource();
 
-            PluginService.Framework.RunOnTick(() => {
-                using (PerformanceMonitors.Run("Send IPC Message")) {
-                    LastReportedData = json;
-                    _localChanged?.SendMessage(json);
-                }
-            }, cancellationToken: _tokenSource.Token, delay: TimeSpan.FromMilliseconds(250));
-        }
+                PluginService.Framework.RunOnTick(() => {
+                    localTagsChanged = false;
+                    PluginService.Log.Warning("Reporting to IPC");
+                    TimeSinceLastReport.Restart();
+                    using (PerformanceMonitors.Run("Send IPC Message")) {
+                        LastReportedData = json;
+                        _localChanged?.SendMessage(json);
+                    }
+                }, cancellationToken: _tokenSource.Token, delay: TimeSpan.FromMilliseconds(250));
+            }
+        });
     }
 
     internal static void DeInit() {
@@ -289,6 +294,10 @@ public static class ApiProvider {
             _lastReportedPitchRoll = pitchRoll;
             OnChanged();
         }
+    }
+
+    internal static void UpdateLocal() {
+        OnChanged();
     }
 
     internal static void ForceUpdateLocal() {

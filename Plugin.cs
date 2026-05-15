@@ -143,12 +143,13 @@ public unsafe class Plugin : IDalamudPlugin {
         ApiProvider.Init(this);
         PluginService.Framework.Update += OnFrameworkUpdate;
         PluginService.HoodProvider.InitializeFromAttributes(this);
-        setDrawOffset?.Enable();
-        cloneActor?.Enable();
-        setDrawRotationHook?.Enable();
-        terminateCharacterHook?.Enable();
-        setModeHook?.Enable();
-        updateMountedPositionsHook?.Enable();
+
+        if (PluginService.ClientState.IsLoggedIn) {
+            Enable();
+        }
+        
+        PluginService.ClientState.Login += OnLogin;
+        PluginService.ClientState.Logout += OnLogout;
         RequestUpdateAll();
         for (var i = 0U; i < Constants.ObjectLimit; i++) NeedsUpdate[i] = true;
         SetupLivePose();
@@ -234,6 +235,8 @@ public unsafe class Plugin : IDalamudPlugin {
     public static Dictionary<uint, Dictionary<string, string>> Tags { get; } = new();
 
     public void Dispose() {
+        PluginService.ClientState.Login -= OnLogin;
+        PluginService.ClientState.Logout -= OnLogout;
         livePose?.Dispose();
         livePose = null;
         CancellationTokenSource.Cancel();
@@ -273,33 +276,55 @@ public unsafe class Plugin : IDalamudPlugin {
         
         SaveConfig();
 
-        setDrawOffset?.Disable();
+        Disable();
+        
         setDrawOffset?.Dispose();
         setDrawOffset = null!;
-
-        cloneActor?.Disable();
+        
         cloneActor?.Dispose();
         cloneActor = null!;
-
-        setDrawRotationHook?.Disable();
+        
         setDrawRotationHook?.Dispose();
         setDrawRotationHook = null;
-
-        terminateCharacterHook?.Disable();
+        
         terminateCharacterHook?.Dispose();
         terminateCharacterHook = null;
         
-        setModeHook?.Disable();
         setModeHook?.Dispose();
         setModeHook = null;
         
-        updateMountedPositionsHook?.Disable();
         updateMountedPositionsHook?.Dispose();
         updateMountedPositionsHook = null;
     }
 
+    private void OnLogin() {
+        Enable();
+    }
+
+    private void Enable() {
+        setDrawOffset?.Enable();
+        cloneActor?.Enable();
+        setDrawRotationHook?.Enable();
+        terminateCharacterHook?.Enable();
+        setModeHook?.Enable();
+        updateMountedPositionsHook?.Enable();
+    }
+
+    private void OnLogout(int type, int code) {
+        Disable();
+    }
+    
+    private void Disable() {
+        setDrawOffset?.Disable();
+        cloneActor?.Disable();
+        setDrawRotationHook?.Disable();
+        terminateCharacterHook?.Disable();
+        setModeHook?.Disable();
+        updateMountedPositionsHook?.Disable();
+    }
+
     private void* TerminateCharacterDetour(Character* character) {
-        if (character->GameObject.ObjectIndex < Constants.ObjectLimit) {
+        if (character->GameObject.ObjectIndex < Constants.ObjectLimit && !PluginService.Framework.IsFrameworkUnloading) {
             if (ManagedIndex[character->GameObject.ObjectIndex])
                 PluginService.Log.Debug($"Managed Character#{character->GameObject.ObjectIndex} Destroyed");
             ManagedIndex[character->GameObject.ObjectIndex] = false;
@@ -321,7 +346,7 @@ public unsafe class Plugin : IDalamudPlugin {
             try {
                 var m = mode;
                 if (character->GameObject.ObjectIndex == 0 && (m is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop or CharacterModes.Mounted or CharacterModes.RidingPillion|| previousMode is CharacterModes.EmoteLoop or CharacterModes.InPositionLoop or CharacterModes.Mounted or CharacterModes.RidingPillion)) {
-                    ApiProvider.ForceUpdateLocal();
+                    ApiProvider.UpdateLocal();
                 }
             } catch (Exception ex) {
                 PluginService.Log.Error(ex, "Error handling SetMode");
@@ -1013,7 +1038,7 @@ public unsafe class Plugin : IDalamudPlugin {
                                 
                                 TempOffsetEmote[0] = emote;
                                 TempOffsets[0] = newOffset;
-                                ApiProvider.ForceUpdateLocal();
+                                ApiProvider.UpdateLocal();
                                 
                                 if (!silent) {
                                     PluginService.ChatGui.Print("Offset applied.", Name, 500);
@@ -1034,7 +1059,7 @@ public unsafe class Plugin : IDalamudPlugin {
                             if (e != null && o != null) PreviousTempOffsets[e] = o;
                             TempOffsets[0] = null;
                             TempOffsetEmote[0] = null;
-                            ApiProvider.ForceUpdateLocal();
+                            ApiProvider.UpdateLocal();
                             break;
                         case "help": {
                             var builder = new SeStringBuilder()
