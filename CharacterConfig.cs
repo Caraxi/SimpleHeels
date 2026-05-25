@@ -17,6 +17,7 @@ public class CharacterConfig : IOffsetProvider {
     public bool Enabled = true;
     public List<HeelConfig> HeelsConfig = new();
     public bool IgnoreModelOffsets = false;
+    public ushort? CustomVoiceId;
     public uint Version = 2;
 
     public Vector3 GetOffset() {
@@ -184,6 +185,7 @@ public class CharacterConfig : IOffsetProvider {
     public virtual bool ShouldSerializeHeelsConfig() => true;
 
     public virtual bool ShouldSerializeEmoteConfigs() => true;
+    public bool ShouldSerializeCustomVoiceId() => CustomVoiceId != null;
 
     public virtual bool ShouldSerializeVersion() => true;
 

@@ -29,6 +29,7 @@ public class PluginConfig : IPluginConfiguration {
     public bool RightClickResetValue = false;
     public bool CopyAttributeButton;
 
+    public bool ShowSpecialOptions = false;
     public bool TempOffsetWindowOpen = false;
     public bool TempOffsetWindowLock = false;
     public bool TempOffsetWindowTooltips = true;

@@ -308,6 +308,7 @@ public unsafe class Plugin : IDalamudPlugin {
         terminateCharacterHook?.Enable();
         setModeHook?.Enable();
         updateMountedPositionsHook?.Enable();
+        getVoiceIdHook?.Enable();
     }
 
     private void OnLogout(int type, int code) {
@@ -321,6 +322,7 @@ public unsafe class Plugin : IDalamudPlugin {
         terminateCharacterHook?.Disable();
         setModeHook?.Disable();
         updateMountedPositionsHook?.Disable();
+        getVoiceIdHook?.Disable();
     }
 
     private void* TerminateCharacterDetour(Character* character) {
@@ -1299,4 +1301,20 @@ public unsafe class Plugin : IDalamudPlugin {
         }
     }
     
+    [Signature("E8 ?? ?? ?? ?? 88 43 1A", DetourName = nameof(GetVoiceId))]
+    private Hook<GetVoiceIdDelegate>? getVoiceIdHook;
+    private delegate ushort GetVoiceIdDelegate(VfxContainer* vfxContainer);
+    private ushort GetVoiceId(VfxContainer* vfxContainer) {
+        if (vfxContainer == null || vfxContainer->OwnerObject == null) return 0;
+        if (vfxContainer->OwnerObject->TransformationId != 0 || vfxContainer->OwnerObject->ObjectKind != ObjectKind.Pc)
+            return getVoiceIdHook?.Original(vfxContainer) ?? vfxContainer->VoiceId;
+        try {
+            if (TryGetCharacterConfig(vfxContainer->OwnerObject, out var chrConfig) && chrConfig.CustomVoiceId.HasValue) {
+                return (ushort) chrConfig.CustomVoiceId.Value;
+            }
+        } catch (Exception ex) {
+            PluginService.Log.Error(ex, "Error handling custom VoiceId");
+        }
+        return vfxContainer->VoiceId;
+    }
 }
