@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 
 namespace SimpleHeels;
 
@@ -99,5 +101,59 @@ public static class ImGuiExt {
         }
         
         return c;
+    }
+
+    private static Dictionary<(int, int), (DateTime Expires, string[]? Lines)> wrapCache = [];
+    public static void TextWrapped(int width, string fullStr) {
+        using (ImRaii.Group())
+        using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero)) {
+            foreach (var str in fullStr.Split('\n')) {
+                if (!(wrapCache.TryGetValue((str.GetHashCode(), width), out var wCache) && wCache.Expires > DateTime.Now)) {
+                    try {
+                        var words = str.Split(" ");
+                        var lines = new List<string>();
+                        var currentLine = string.Empty;
+                        var freshLine = true;
+                        for (var i = 0; i < words.Length; i++) {
+                            var s = ImGui.CalcTextSize(currentLine);
+                            if (!(s.X <= width * ImGuiHelpers.GlobalScale && i > 0)) {
+                                lines.Add(currentLine);
+                                currentLine = string.Empty;
+                                freshLine = true;
+                            }
+
+                            if (freshLine) {
+                                currentLine += words[i];
+                                freshLine = false;
+                            } else {
+                                currentLine += $" {words[i]}";
+                            }
+                        }
+
+                        lines.Add(currentLine);
+                        if (lines.Count > 1 && string.IsNullOrWhiteSpace(lines[0])) lines.RemoveAt(0);
+                        wCache = wrapCache[(str.GetHashCode(), width)] = (DateTime.Now + TimeSpan.FromSeconds(30), lines.ToArray());
+                    } catch (Exception ex) {
+                        PluginService.Log.Error(ex, "Error dealing with wrapped strings...");
+                        wCache = (DateTime.Now + TimeSpan.FromSeconds(30), null);
+                        try {
+                            wrapCache[(str.GetHashCode(), width)] = wCache;
+                        } catch {
+                            //
+                        }
+                    }
+                }
+
+                if (wCache.Lines == null) {
+                    ImGui.TextWrapped(str);
+                } else if (wCache.Lines.Length == 0) {
+                    ImGui.Text(string.Empty);
+                } else {
+                    foreach (var l in wCache.Lines) {
+                        ImGui.Text(l);
+                    }
+                }
+            }
+        }
     }
 }

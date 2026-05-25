@@ -760,8 +760,8 @@ public class ConfigWindow : Window {
                     
                     ImGui.BeginTooltip();
                     
-                    ImGui.TextWrapped("Temporary Offsets allow adjusting your current offset without permanently changing the config. Offsets will automatically be reset when you begin or end a looped emote, or if manually reset with the 'Reset Offset' button.");
-                    ImGuiHelpers.ScaledDummy(350, 1);
+                    ImGuiExt.TextWrapped(350, "Temporary Offsets allow adjusting your current offset without permanently changing the config. Offsets will automatically be reset when you begin or end a looped emote, or if manually reset with the 'Reset Offset' button.");
+                    
                     ImGui.EndTooltip();
                 }
                 
@@ -806,11 +806,8 @@ public class ConfigWindow : Window {
                 }
 
                 if (ImGui.IsItemHovered()) {
-                    
                     ImGui.BeginTooltip();
-                    
-                    ImGui.TextWrapped("TODO: Live Posing Help");
-                    ImGuiHelpers.ScaledDummy(350, 1);
+                    ImGuiExt.TextWrapped(350, "TODO: Live Posing Help");
                     ImGui.EndTooltip();
                 }
                 
