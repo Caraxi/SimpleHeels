@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
@@ -27,6 +28,7 @@ using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using Lumina.Extensions;
 using Companion = FFXIVClientStructs.FFXIV.Client.Game.Character.Companion;
+using ObjectType = FFXIVClientStructs.FFXIV.Client.Graphics.Scene.ObjectType;
 using World = Lumina.Excel.Sheets.World;
 
 namespace SimpleHeels;
@@ -68,11 +70,24 @@ public unsafe class Plugin : IDalamudPlugin {
     [Signature("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 59 70", DetourName = nameof(UpdateMountedPositionsDetour))]
     private Hook<UpdateMountedPositions>? updateMountedPositionsHook;
 
+    [Signature("E8 ?? ?? ?? ?? 48 8B 43 08 F3 0F 11 43", DetourName = nameof(CalculateFloatHeightDetour))]
+    private Hook<CalculateFloatHeightDelegate>? calculateFloatHeightHook;
+
     [StructLayout(LayoutKind.Explicit, Size = 0x78)]
     public struct Attach {
         [FieldOffset(0x50)] public uint AttachType;
         [FieldOffset(0x58)] public Skeleton* Skeleton;
         [FieldOffset(0x60)] public DrawObject* AttachParentDrawObject;
+    }
+
+    private float CalculateFloatHeightDetour(EffectContainer* effectContainer) {
+        if (effectContainer == null || effectContainer->OwnerObject == null) return 0f;
+        var floatHeight = calculateFloatHeightHook?.Original(effectContainer) ?? 0f;
+        if (effectContainer->OwnerObject->MoveController.IsSwimming && ManagedIndex[effectContainer->OwnerObject->ObjectIndex]) {
+            return floatHeight + effectContainer->OwnerObject->DrawOffset.Y;
+        }
+        
+        return floatHeight;
     }
     
     private void* UpdateMountedPositionsDetour(Attach* attach) {
@@ -261,8 +276,8 @@ public unsafe class Plugin : IDalamudPlugin {
                             go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(go->Rotation, 0, 0);
                         }
                     
-                        go->Effects.TiltParam1Value = 0;
-                        go->Effects.TiltParam2Value = 0;
+                        go->Effects.MountGroundTiltAngle = 0;
+                        go->Effects.MountGroundTiltSpeed = 0;
                     }
                 }
             }
@@ -295,6 +310,12 @@ public unsafe class Plugin : IDalamudPlugin {
         
         updateMountedPositionsHook?.Dispose();
         updateMountedPositionsHook = null;
+        
+        getVoiceIdHook?.Dispose();
+        getVoiceIdHook = null;
+
+        calculateFloatHeightHook?.Dispose();
+        calculateFloatHeightHook = null;
     }
 
     private void OnLogin() {
@@ -309,6 +330,7 @@ public unsafe class Plugin : IDalamudPlugin {
         setModeHook?.Enable();
         updateMountedPositionsHook?.Enable();
         getVoiceIdHook?.Enable();
+        calculateFloatHeightHook?.Enable();
     }
 
     private void OnLogout(int type, int code) {
@@ -323,6 +345,7 @@ public unsafe class Plugin : IDalamudPlugin {
         setModeHook?.Disable();
         updateMountedPositionsHook?.Disable();
         getVoiceIdHook?.Disable();
+        calculateFloatHeightHook?.Disable();
     }
 
     private void* TerminateCharacterDetour(Character* character) {
@@ -640,7 +663,7 @@ public unsafe class Plugin : IDalamudPlugin {
                 if (Config.ApplyStaticMinionPositions && updateIndex == 0 && Utils.StaticMinions.Value.Contains(companion->BaseId)) {
                     UpdateCompanionRotation(companion);
                     if (_isMinionAdjusted) {
-                        ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f, companion->Effects.TiltParam1Value, companion->Effects.TiltParam2Value);
+                        ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f, companion->Effects.MountGroundTiltAngle, companion->Effects.MountGroundTiltSpeed);
                     } else {
                         ApiProvider.UpdateMinion(companion->DrawObject->Object.Position, companion->DrawObject->Object.Rotation.EulerAngles.Y * MathF.PI / 180f, 0, 0);
                     }
@@ -1160,6 +1183,8 @@ public unsafe class Plugin : IDalamudPlugin {
                             var serverName = nameServerSplit.Length > 1 ? nameServerSplit[1] : string.Empty;
                             var serverId = 0U;
                             if (string.IsNullOrWhiteSpace(serverName)) {
+
+                                var dl = ImGui.GetWindowDrawList();
                                 serverId = PluginService.Objects.LocalPlayer.HomeWorld.RowId;
                             } else {
                                 if (!uint.TryParse(serverName, out serverId)) {
@@ -1255,6 +1280,8 @@ public unsafe class Plugin : IDalamudPlugin {
     private delegate void SetMode(Character* character, CharacterModes mode, byte modeParam);
 
     private delegate void* UpdateMountedPositions(Attach* a1);
+    
+    private delegate float CalculateFloatHeightDelegate(EffectContainer* effectContainer);
 
     private static uint _companionBaseId = 0;
     private static bool _isMinionAdjusted = false;
@@ -1263,8 +1290,8 @@ public unsafe class Plugin : IDalamudPlugin {
         if (go == null) return;
         if (go->GetObjectKind() != ObjectKind.Companion) return;
         if (go->DrawObject == null) return;
-        go->Effects.TiltParam1Value = Math.Clamp(go->Effects.TiltParam1Value, 0, MathF.Tau);
-        go->Effects.TiltParam2Value = Math.Clamp(go->Effects.TiltParam2Value, 0, MathF.Tau);
+        go->Effects.MountGroundTiltAngle = Math.Clamp(go->Effects.MountGroundTiltAngle, 0, MathF.Tau);
+        go->Effects.MountGroundTiltSpeed = Math.Clamp(go->Effects.MountGroundTiltSpeed, 0, MathF.Tau);
         _isMinionAdjusted = true;
         _companionBaseId = go->BaseId;
     }
@@ -1280,13 +1307,13 @@ public unsafe class Plugin : IDalamudPlugin {
             _companionBaseId = 0;
             PluginService.Log.Debug($"Change Companion: {go->BaseId}");
             go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(go->Rotation, 0, 0);
-            go->Effects.TiltParam1Value = 0;
-            go->Effects.TiltParam2Value = 0;
+            go->Effects.MountGroundTiltAngle = 0;
+            go->Effects.MountGroundTiltSpeed = 0;
             _isMinionAdjusted = false;
         } else if (_isMinionAdjusted) {
             var yaw = go->Rotation;
-            var pitch = go->Effects.TiltParam1Value;
-            var roll = go->Effects.TiltParam2Value;
+            var pitch = go->Effects.MountGroundTiltAngle;
+            var roll = go->Effects.MountGroundTiltSpeed;
             go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
         }
     }

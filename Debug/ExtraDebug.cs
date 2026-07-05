@@ -203,8 +203,8 @@ public unsafe class ExtraDebug : Window {
                     ImGui.SetNextItemWidth(80);
                     var pos = new Vector3(go->Position.X, go->Position.Y, go->Position.Z);
                     var r = go->Rotation;
-                    var pitch = go->Effects.TiltParam1Value;
-                    var roll = go->Effects.TiltParam2Value;
+                    var pitch = go->Effects.MountGroundTiltAngle;
+                    var roll = go->Effects.MountGroundTiltSpeed;
                     var changePos = ImGui.DragFloat("##x", ref pos.X, 0.01f);
                     ImGui.TableNextColumn();
                     ImGui.SetNextItemWidth(80);
@@ -230,7 +230,7 @@ public unsafe class ExtraDebug : Window {
                     if (ImGui.DragFloat("##pitch", ref pitch, 0.01f)) {
                         if (pitch < -MathF.PI) pitch += MathF.Tau;
                         if (pitch >= MathF.PI) pitch -= MathF.Tau;
-                        go->Effects.TiltParam1Value = pitch;
+                        go->Effects.MountGroundTiltAngle = pitch;
                         plugin.UpdateCompanionRotation(go);
                     }
                     
@@ -240,7 +240,7 @@ public unsafe class ExtraDebug : Window {
                     if (ImGui.DragFloat("##roll", ref roll, 0.01f)) {
                         if (roll < -MathF.PI) roll += MathF.Tau;
                         if (roll >= MathF.PI) roll -= MathF.Tau;
-                        go->Effects.TiltParam2Value = roll;
+                        go->Effects.MountGroundTiltSpeed = roll;
                         plugin.UpdateCompanionRotation(go);
                     }
 

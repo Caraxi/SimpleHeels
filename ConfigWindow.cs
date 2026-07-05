@@ -29,6 +29,7 @@ using Lumina.Extensions;
 using Newtonsoft.Json;
 using SimpleHeels.Files;
 using SimpleHeels.Utility;
+using ObjectType = FFXIVClientStructs.FFXIV.Client.Graphics.Scene.ObjectType;
 using World = Lumina.Excel.Sheets.World;
 using WorldDCGroupType = Lumina.Excel.Sheets.WorldDCGroupType;
 

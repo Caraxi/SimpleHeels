@@ -47,7 +47,7 @@ public class IpcCharacterConfig : CharacterConfig {
                 if (drawObj != null) {
                     var p = drawObj->Object.Position;
                     if (Plugin.IsMinionAdjusted) {
-                        MinionPosition = new TempOffset(drawObj->Position.X, drawObj->Position.Y, drawObj->Position.Z, drawObj->Rotation.EulerAngles.Y * MathF.PI / 180, chr->CompanionObject->Effects.TiltParam1Value, chr->CompanionObject->Effects.TiltParam2Value);
+                        MinionPosition = new TempOffset(drawObj->Position.X, drawObj->Position.Y, drawObj->Position.Z, drawObj->Rotation.EulerAngles.Y * MathF.PI / 180, chr->CompanionObject->Effects.MountGroundTiltAngle, chr->CompanionObject->Effects.MountGroundTiltSpeed);
                     } else {
                         MinionPosition = new TempOffset(drawObj->Position.X, drawObj->Position.Y, drawObj->Position.Z, drawObj->Rotation.EulerAngles.Y * MathF.PI / 180, 0, 0);
                     }

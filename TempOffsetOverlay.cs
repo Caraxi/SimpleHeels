@@ -91,7 +91,7 @@ public sealed unsafe class TempOffsetOverlay : Window {
         if (Plugin.Config.MinionGizmo && obj->CompanionObject != null && obj->CompanionObject->DrawObject != null && Utils.StaticMinions.Value.Contains(obj->CompanionObject->BaseId)) {
             var companion = obj->CompanionObject;
             if (GizmoOverlayForMinion.Draw(companion)) {
-                ApiProvider.UpdateMinion(companion->Position, companion->Rotation, companion->Effects.TiltParam1Value, companion->Effects.TiltParam2Value);
+                ApiProvider.UpdateMinion(companion->Position, companion->Rotation, companion->Effects.MountGroundTiltAngle, companion->Effects.MountGroundTiltSpeed);
                 plugin.UpdateCompanionRotation(companion);
             }
         }
