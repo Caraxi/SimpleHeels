@@ -1183,8 +1183,6 @@ public unsafe class Plugin : IDalamudPlugin {
                             var serverName = nameServerSplit.Length > 1 ? nameServerSplit[1] : string.Empty;
                             var serverId = 0U;
                             if (string.IsNullOrWhiteSpace(serverName)) {
-
-                                var dl = ImGui.GetWindowDrawList();
                                 serverId = PluginService.Objects.LocalPlayer.HomeWorld.RowId;
                             } else {
                                 if (!uint.TryParse(serverName, out serverId)) {
