@@ -83,7 +83,7 @@ public unsafe class Plugin : IDalamudPlugin {
     private float CalculateFloatHeightDetour(EffectContainer* effectContainer) {
         if (effectContainer == null || effectContainer->OwnerObject == null) return 0f;
         var floatHeight = calculateFloatHeightHook?.Original(effectContainer) ?? 0f;
-        if (effectContainer->OwnerObject->MoveController.IsSwimming && ManagedIndex[effectContainer->OwnerObject->ObjectIndex]) {
+        if (effectContainer->OwnerObject->MoveController.IsSwimming && effectContainer->OwnerObject->ObjectIndex < ManagedIndex.Length && ManagedIndex[effectContainer->OwnerObject->ObjectIndex]) {
             return floatHeight + effectContainer->OwnerObject->DrawOffset.Y;
         }
         
@@ -270,8 +270,8 @@ public unsafe class Plugin : IDalamudPlugin {
                 var pObj = GameObjectManager.Instance()->Objects.IndexSorted[0].Value;
                 if (pObj != null && pObj->IsCharacter() ) {
                     var pChr = (Character*)pObj;
-                    if (pChr->CompanionObject != null) {
-                        var go =  pChr->CompanionObject;
+                    if (pChr->ChildObject != null && pChr->ChildObject->ObjectKind == ObjectKind.Companion) {
+                        var go =  (Companion*) pChr->ChildObject;
                         if (go->DrawObject != null) {
                             go->DrawObject->Rotation = FFXIVClientStructs.FFXIV.Common.Math.Quaternion.CreateFromYawPitchRoll(go->Rotation, 0, 0);
                         }

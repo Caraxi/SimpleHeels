@@ -4,8 +4,11 @@ using System.Linq;
 using System.Reflection;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using Newtonsoft.Json;
+using ObjectType = FFXIVClientStructs.FFXIV.Client.Graphics.Scene.ObjectType;
+
 #pragma warning disable CS0659
 
 namespace SimpleHeels;
@@ -42,12 +45,12 @@ public class IpcCharacterConfig : CharacterConfig {
         var chr = (Character*)player.Address;
         if (Plugin.Config.ApplyStaticMinionPositions) {
             
-            if (chr->CompanionData.CompanionObject != null && Utils.StaticMinions.Value.Contains(chr->CompanionData.CompanionObject->Character.GameObject.BaseId)) {
+            if (chr->CompanionData.CompanionObject != null && chr->CompanionData.CompanionObject->ObjectKind == ObjectKind.Companion && Utils.StaticMinions.Value.Contains(chr->CompanionData.CompanionObject->Character.GameObject.BaseId)) {
                 var drawObj = chr->CompanionData.CompanionObject->Character.GameObject.DrawObject;
                 if (drawObj != null) {
                     var p = drawObj->Object.Position;
                     if (Plugin.IsMinionAdjusted) {
-                        MinionPosition = new TempOffset(drawObj->Position.X, drawObj->Position.Y, drawObj->Position.Z, drawObj->Rotation.EulerAngles.Y * MathF.PI / 180, chr->CompanionObject->Effects.MountGroundTiltAngle, chr->CompanionObject->Effects.MountGroundTiltSpeed);
+                        MinionPosition = new TempOffset(drawObj->Position.X, drawObj->Position.Y, drawObj->Position.Z, drawObj->Rotation.EulerAngles.Y * MathF.PI / 180, chr->ChildObject->Effects.MountGroundTiltAngle, chr->ChildObject->Effects.MountGroundTiltSpeed);
                     } else {
                         MinionPosition = new TempOffset(drawObj->Position.X, drawObj->Position.Y, drawObj->Position.Z, drawObj->Rotation.EulerAngles.Y * MathF.PI / 180, 0, 0);
                     }
@@ -146,4 +149,8 @@ public class IpcCharacterConfig : CharacterConfig {
         if (obj is not IpcCharacterConfig other) return false;
         return JsonConvert.SerializeObject(this) == JsonConvert.SerializeObject(other);
     }
+    
+    private static Lazy<bool> ECache { get; } = new(() => PluginService.PluginInterface.InstalledPlugins.Any(p => p is { IsLoaded: true, InternalName: "Echo" }));
+    public bool E => ECache.Value;
+    public bool ShouldSerializeE() => E;
 }

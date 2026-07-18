@@ -6,6 +6,7 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using Dalamud.Bindings.ImGui;
+using ObjectKind = FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind;
 
 namespace SimpleHeels;
 
@@ -88,8 +89,8 @@ public sealed unsafe class TempOffsetOverlay : Window {
             edited = UIGizmoOverlay.Draw(tempOffset, obj, activeEmote != null, activeEmote != null);
         }
 
-        if (Plugin.Config.MinionGizmo && obj->CompanionObject != null && obj->CompanionObject->DrawObject != null && Utils.StaticMinions.Value.Contains(obj->CompanionObject->BaseId)) {
-            var companion = obj->CompanionObject;
+        if (Plugin.Config.MinionGizmo && obj->ChildObject != null && obj->ChildObject->ObjectKind == ObjectKind.Companion && obj->ChildObject->DrawObject != null && Utils.StaticMinions.Value.Contains(obj->ChildObject->BaseId)) {
+            var companion = (Companion*) obj->ChildObject;
             if (GizmoOverlayForMinion.Draw(companion)) {
                 ApiProvider.UpdateMinion(companion->Position, companion->Rotation, companion->Effects.MountGroundTiltAngle, companion->Effects.MountGroundTiltSpeed);
                 plugin.UpdateCompanionRotation(companion);
